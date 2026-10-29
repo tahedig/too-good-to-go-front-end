@@ -1,0 +1,11 @@
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_APP_NAME: crumb
+        VITE_SUPPORT_EMAIL: support@example.com
+    ports:
+      - "8080:80"
+    restart: unless-stopped

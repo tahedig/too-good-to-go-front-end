@@ -1,0 +1,4 @@
+type nul > src\features\.gitkeep
+type nul > src\hooks\.gitkeep
+type nul > src\types\.gitkeep
+type nul > src\lib\.gitkeep

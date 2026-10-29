@@ -1,0 +1,182 @@
+@import 'tailwindcss';
+
+@theme {
+  /* ---------- Font ---------- */
+  --font-sans: 'Vazirmatn Variable', system-ui, sans-serif;
+
+  /* ---------- Colors: surfaces ---------- */
+  --color-background: #f6f0e5;
+  --color-surface: #ffffff;
+  --color-surface-secondary: #eee8dd;
+  --color-surface-sage: #dce6d6;
+
+  /* ---------- Colors: text ---------- */
+  --color-text-primary: #263d32;
+  --color-text-secondary: #657166;
+  --color-text-disabled: #98a097;
+  --color-text-inverse: #ffffff;
+  --color-text-on-accent: #263d32;
+
+  /* ---------- Colors: primary ---------- */
+  --color-primary: #263d32;
+  --color-primary-hover: #1d3027;
+  --color-primary-pressed: #15231b;
+  --color-primary-subtle: #e3e9da;
+  --color-on-primary: #ffffff;
+
+  /* ---------- Colors: accent ---------- */
+  --color-accent: #e8b477;
+  --color-accent-subtle: #fbebd3;
+
+  /* ---------- Colors: borders & focus ---------- */
+  --color-border-default: #e1dbd0;
+  --color-border-input: #657166;
+  --color-focus: #527fca;
+
+  /* ---------- Colors: status ---------- */
+  --color-success: #326747;
+  --color-success-subtle: #dce6d6;
+  --color-warning: #94621d;
+  --color-warning-subtle: #fbebd3;
+  --color-error: #a33e32;
+  --color-error-hover: #8a3228;
+  --color-error-pressed: #6e281f;
+  --color-error-subtle: #fbeae6;
+
+  /* ---------- Spacing (4px grid) ---------- */
+  --spacing: 4px; /* space-1 = 4px, space-4 = 16px, space-16 = 64px */
+
+  /* ---------- Radius ---------- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+  --radius-full: 999px;
+
+  /* ---------- Shadows (elevation 0–3) ---------- */
+  --shadow-1: 0 1px 2px rgb(38 61 50 / 0.06);
+  --shadow-2: 0 4px 12px rgb(38 61 50 / 0.08);
+  --shadow-3: 0 16px 40px rgb(38 61 50 / 0.14);
+
+  /* ---------- Breakpoints ---------- */
+  --breakpoint-sm: 48rem; /* 768px — tablet */
+  --breakpoint-lg: 64rem; /* 1024px — desktop */
+  --breakpoint-xl: 90rem; /* 1440px — wide desktop */
+}
+
+[data-theme='dark'] {
+  --color-background: #17231d;
+  --color-surface: #202e26;
+  --color-text-primary: #f4f0e7;
+  --color-text-secondary: #b6c1b7;
+  --color-primary: #b8d1b1;
+  --color-border-default: #3b4a40;
+  --color-error: #f0a397;
+}
+
+/* ============================================
+   Base styles
+   ============================================ */
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-size: 14px; /* body/MD */
+    line-height: 21px;
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Focus ring: ۳ پیکسل، همیشه قابل مشاهده (WCAG) */
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .text-display-xl {
+    font-size: 40px;
+    line-height: 44px;
+    font-weight: 700;
+  }
+  .text-title-xl {
+    font-size: 32px;
+    line-height: 38px;
+    font-weight: 700;
+  }
+  .text-title-lg {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 600;
+  }
+  .text-title-md {
+    font-size: 20px;
+    line-height: 28px;
+    font-weight: 600;
+  }
+  .text-title-sm {
+    font-size: 16px;
+    line-height: 22px;
+    font-weight: 600;
+  }
+  .text-body-lg {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 400;
+  }
+  .text-body-md {
+    font-size: 14px;
+    line-height: 21px;
+    font-weight: 400;
+  }
+  .text-label-lg {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 600;
+  }
+  .text-label-md {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+  }
+  .text-caption {
+    font-size: 12px;
+    line-height: 16px;
+    font-weight: 500;
+  }
+  .text-price-lg {
+    font-size: 24px;
+    line-height: 32px;
+    font-weight: 700;
+  }
+  .text-price-md {
+    font-size: 18px;
+    line-height: 24px;
+    font-weight: 700;
+  }
+}

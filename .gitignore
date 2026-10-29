@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+
+# Production and development builds
+dist/
+dist-ssr/
+.vite/
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+
+# TypeScript build metadata
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Package manager caches
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+
+# Editor settings
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*~
