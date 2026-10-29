@@ -1,5 +1,7 @@
-import { forwardRef, useId } from 'react';
+import { forwardRef, useState } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
+import { FormField, fieldClasses, useFieldMeta } from './FormField';
+import { EyeIcon, EyeOffIcon } from './icons';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -8,59 +10,11 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   success?: string;
   startIcon?: ReactNode;
   endAdornment?: ReactNode;
+  ltrValue?: boolean;
+  showPasswordLabel?: string;
+  hidePasswordLabel?: string;
   className?: string;
 }
-
-function AlertIcon() {
-  return (
-    <svg
-      className="size-4 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" y1="8" x2="12" y2="12" />
-      <line x1="12" y1="16" x2="12.01" y2="16" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg
-      className="size-4 shrink-0"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-type FieldStatus = 'default' | 'error' | 'success' | 'disabled';
-
-const fieldStyles: Record<FieldStatus, string> = {
-  default:
-    'border-border-input bg-surface ' +
-    'hover:not-focus-within:border-primary hover:not-focus-within:shadow-[inset_0_0_0_0.5px_var(--color-primary)]',
-  error: 'border-error bg-surface shadow-[inset_0_0_0_0.5px_var(--color-error)]',
-  success: 'border-success bg-surface shadow-[inset_0_0_0_0.5px_var(--color-success)]',
-  disabled: 'border-border-default bg-surface-secondary',
-};
-
-const focusStyles =
-  'focus-within:border-focus focus-within:shadow-[inset_0_0_0_2px_var(--color-focus)]';
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   {
@@ -70,6 +24,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     success,
     startIcon,
     endAdornment,
+    ltrValue,
+    showPasswordLabel = 'نمایش رمز عبور',
+    hidePasswordLabel = 'پنهان کردن رمز عبور',
+    type = 'text',
     required = false,
     disabled = false,
     id,
@@ -78,84 +36,60 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   },
   ref,
 ) {
-  const generatedId = useId();
-  const inputId = id ?? generatedId;
-  const messageId = `${inputId}-message`;
+  const meta = useFieldMeta({ id, disabled, error, success, helperText });
+  const [passwordVisible, setPasswordVisible] = useState(false);
 
-  const status: FieldStatus = disabled ? 'disabled' : error ? 'error' : success ? 'success' : 'default';
+  const isPassword = type === 'password';
+  const inputType = isPassword && passwordVisible ? 'text' : type;
+  const isLtr = ltrValue ?? (isPassword || type === 'email' || type === 'url');
 
-  // غیرفعال بودن همه چیز را خنثی می‌کند؛ بعد خطا، بعد موفقیت، بعد راهنما
-  const message = disabled ? helperText : (error ?? success ?? helperText);
-  const messageColor =
-    status === 'error'
-      ? 'text-error'
-      : status === 'success'
-        ? 'text-success'
-        : status === 'disabled'
-          ? 'text-text-disabled'
-          : 'text-text-secondary';
-
-  const fieldClasses = [
-    'flex h-12 w-full items-center gap-2 rounded-md border px-4 transition-colors duration-150',
-    fieldStyles[status],
-    !disabled && focusStyles,
-  ]
-    .filter(Boolean)
-    .join(' ');
+  const passwordToggle = isPassword && (
+    <button
+      type="button"
+      onClick={() => setPasswordVisible((v) => !v)}
+      disabled={disabled}
+      className="flex min-h-11 items-center gap-2 self-start rounded-md text-label-md text-text-primary disabled:cursor-not-allowed disabled:text-text-disabled"
+    >
+      {passwordVisible ? <EyeOffIcon /> : <EyeIcon />}
+      {passwordVisible ? hidePasswordLabel : showPasswordLabel}
+    </button>
+  );
 
   return (
-    <div className={['flex w-full flex-col gap-2', className].filter(Boolean).join(' ')}>
-      <label
-        htmlFor={inputId}
-        className={['text-label-md', disabled ? 'text-text-disabled' : 'text-text-primary'].join(' ')}
-      >
-        {label}
-        {required && (
-          <span className="ms-1 text-error" aria-hidden="true">
-            *
-          </span>
-        )}
-      </label>
-
-      <div className={fieldClasses}>
+    <FormField
+      meta={meta}
+      label={label}
+      required={required}
+      disabled={disabled}
+      afterField={passwordToggle}
+      className={className}
+    >
+      <div className={fieldClasses(meta.status, 'flex h-12 w-full items-center gap-2 rounded-md px-4')}>
         {startIcon && (
-          <span
-            className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(' ')}
-            aria-hidden="true"
-          >
+          <span className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(' ')} aria-hidden="true">
             {startIcon}
           </span>
         )}
 
         <input
           ref={ref}
-          id={inputId}
+          id={meta.id}
+          type={inputType}
           required={required}
           disabled={disabled}
-          aria-invalid={status === 'error' || undefined}
-          aria-describedby={message ? messageId : undefined}
+          aria-invalid={meta.status === 'error' || undefined}
+          aria-describedby={meta.messageId}
           className={
             'h-full min-w-0 flex-1 bg-transparent text-start text-body-lg text-text-primary ' +
             'placeholder:text-text-secondary focus-visible:outline-none ' +
-            'disabled:cursor-not-allowed disabled:text-text-disabled disabled:placeholder:text-text-disabled'
+            'disabled:cursor-not-allowed disabled:text-text-disabled disabled:placeholder:text-text-disabled ' +
+            (isLtr ? '[&:not(:placeholder-shown)]:[direction:ltr]' : '')
           }
           {...rest}
         />
 
         {endAdornment}
       </div>
-
-      {message && (
-        <p
-          id={messageId}
-          role={status === 'error' ? 'alert' : undefined}
-          className={['flex items-center gap-1 text-caption', messageColor].join(' ')}
-        >
-          {status === 'error' && <AlertIcon />}
-          {status === 'success' && <CheckIcon />}
-          <span>{message}</span>
-        </p>
-      )}
-    </div>
+    </FormField>
   );
 });
