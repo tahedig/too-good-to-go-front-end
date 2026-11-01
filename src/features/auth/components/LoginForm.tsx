@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Button from '@/components/ui/Button'
+import {Button} from '@/components/ui/Button'
 import { ApiError } from '@/lib/api/client'
 import { authApi } from '../api/authApi'
 import { emailPattern, getErrorMessage } from '../utils'

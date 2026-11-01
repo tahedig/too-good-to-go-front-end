@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import Button from '@/components/ui/Button'
+import {Button} from '@/components/ui/Button'
 import { authApi } from '../api/authApi'
 import { emailPattern, getErrorMessage } from '../utils'
 import AuthAlert from './AuthAlert'
