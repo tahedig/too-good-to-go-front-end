@@ -1,5 +1,6 @@
 import { forwardRef } from 'react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { LoaderCircle } from 'lucide-react';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
@@ -49,22 +50,7 @@ const variantStyles: Record<ButtonVariant, Record<ButtonState, string>> = {
   },
 };
 
-function Spinner() {
-  return (
-    <svg
-      className="size-6 shrink-0 animate-spin"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
-    </svg>
-  );
-}
+<LoaderCircle className="size-6 shrink-0 animate-spin" strokeWidth={1.75} />
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -104,7 +90,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {...rest}
     >
       {isLoading ? (
-        <Spinner />
+        <LoaderCircle />
       ) : (
         icon && (
           <span className="size-6 shrink-0" aria-hidden="true">

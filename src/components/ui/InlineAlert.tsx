@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { AlertIcon, CheckCircleIcon, InfoIcon } from './icons';
+import { CircleAlert, CircleCheck, Info } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 export type AlertTone = 'info' | 'success' | 'warning' | 'error';
 
@@ -9,11 +10,11 @@ export interface InlineAlertProps {
   className?: string;
 }
 
-const tones: Record<AlertTone, { background: string; Icon: (p: { className?: string }) => ReactNode }> = {
-  info: { background: 'bg-primary-subtle', Icon: InfoIcon },
-  success: { background: 'bg-success-subtle', Icon: CheckCircleIcon },
-  warning: { background: 'bg-warning-subtle', Icon: AlertIcon },
-  error: { background: 'bg-error-subtle', Icon: AlertIcon },
+const tones: Record<AlertTone, { background: string; Icon: LucideIcon }> = {
+  info: { background: 'bg-primary-subtle', Icon: Info },
+  success: { background: 'bg-success-subtle', Icon: CircleCheck },
+  warning: { background: 'bg-warning-subtle', Icon: CircleAlert },
+  error: { background: 'bg-error-subtle', Icon: CircleAlert },
 };
 
 export function InlineAlert({ tone = 'info', children, className }: InlineAlertProps) {
@@ -26,7 +27,7 @@ export function InlineAlert({ tone = 'info', children, className }: InlineAlertP
         .filter(Boolean)
         .join(' ')}
     >
-      <Icon className="size-6 shrink-0" />
+      <Icon className="size-6 shrink-0" strokeWidth={1.75} />
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );

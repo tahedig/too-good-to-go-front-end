@@ -1,7 +1,7 @@
 import { forwardRef, useState } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
 import { FormField, fieldClasses, useFieldMeta } from './FormField';
-import { EyeIcon, EyeOffIcon } from './icons';
+import { Eye, EyeOff } from 'lucide-react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -50,7 +50,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       disabled={disabled}
       className="flex min-h-11 items-center gap-2 self-start rounded-md text-label-md text-text-primary disabled:cursor-not-allowed disabled:text-text-disabled"
     >
-      {passwordVisible ? <EyeOffIcon /> : <EyeIcon />}
+      {passwordVisible ? (
+        <EyeOff className="shrink-0" strokeWidth={1.75} />
+      ) : (
+        <Eye className="shrink-0" strokeWidth={1.75} />
+      )}
       {passwordVisible ? hidePasswordLabel : showPasswordLabel}
     </button>
   );

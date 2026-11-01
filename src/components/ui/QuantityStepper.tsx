@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MinusIcon, PlusIcon } from './icons';
+import { Minus, Plus } from 'lucide-react';
 import { toPersianDigits } from '../../lib/digits';
 
 export interface QuantityStepperProps {
@@ -50,7 +50,7 @@ export function QuantityStepper({
         onClick={() => update(current - 1)}
         className={[buttonBase, buttonEnabled, buttonDisabled].join(' ')}
       >
-        <MinusIcon />
+        <Minus strokeWidth={1.75} />
       </button>
 
       <output
@@ -67,7 +67,7 @@ export function QuantityStepper({
         onClick={() => update(current + 1)}
         className={[buttonBase, buttonEnabled, buttonDisabled].join(' ')}
       >
-        <PlusIcon />
+        <Plus strokeWidth={1.75} />
       </button>
     </div>
   );
