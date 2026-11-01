@@ -188,7 +188,7 @@ function ReadyCard({
         </p>
 
         <p className="flex items-center gap-2 text-body-md text-text-primary">
-          <ClockIcon className="size-6 shrink-0 text-primary" />
+          <Clock />
           {pickup}
         </p>
 
