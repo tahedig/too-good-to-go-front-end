@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import type { SelectHTMLAttributes } from 'react';
 import { FormField, fieldClasses, useFieldMeta } from './FormField';
-import { ChevronDownIcon } from './icons';
+import { ChevronDown } from 'lucide-react';
 
 export interface SelectOption {
   value: string;
@@ -72,7 +72,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           ))}
         </select>
 
-        <ChevronDownIcon
+        <ChevronDown
+          strokeWidth={1.75}
           className={[
             'pointer-events-none absolute end-4 top-1/2 size-6 -translate-y-1/2',
             disabled ? 'text-text-disabled' : 'text-primary',

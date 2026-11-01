@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
-import { AlertIcon, CheckCircleIcon } from './icons';
+import { CircleAlert, CircleCheck } from 'lucide-react';
 
 export type FieldStatus = 'default' | 'error' | 'success' | 'disabled';
 
@@ -87,8 +87,8 @@ export function FormField({ meta, label, required, disabled, afterField, classNa
           role={status === 'error' ? 'alert' : undefined}
           className={['flex items-center gap-1 text-caption', messageColor].join(' ')}
         >
-          {status === 'error' && <AlertIcon className="size-4 shrink-0" />}
-          {status === 'success' && <CheckCircleIcon className="size-4 shrink-0" />}
+          {status === 'error' && <CircleAlert className="size-4 shrink-0" strokeWidth={1.75} />}
+          {status === 'success' && <CircleCheck className="size-4 shrink-0" strokeWidth={1.75} />}
           <span>{message}</span>
         </p>
       )}

@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import type { MouseEvent, ReactNode } from 'react';
-import { CloseIcon } from './icons';
+import { X } from 'lucide-react';
 
 export type ModalVariant = 'dialog' | 'sheet';
 
@@ -137,7 +137,7 @@ export function Modal({
                   'disabled:cursor-not-allowed disabled:bg-surface-secondary disabled:text-text-disabled'
                 }
               >
-                <CloseIcon />
+                <X strokeWidth={1.75} />
               </button>
             )}
           </div>

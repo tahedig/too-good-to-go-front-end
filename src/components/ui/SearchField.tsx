@@ -1,7 +1,7 @@
 import { forwardRef, useRef, useState } from 'react';
 import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react';
 import { fieldClasses } from './FormField';
-import { CloseIcon, SearchIcon } from './icons';
+import { Search, X } from 'lucide-react';
 
 export interface SearchFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label?: string;
@@ -64,7 +64,10 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         ['flex h-13 w-full items-center gap-3 rounded-lg ps-4 pe-0.5', className].filter(Boolean).join(' '),
       )}
     >
-      <SearchIcon className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(' ')} />
+      <Search
+        className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(' ')}
+        strokeWidth={1.75}
+      />
 
       <input
         ref={setRefs}
@@ -92,7 +95,7 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
           aria-label={clearLabel}
           className="grid size-11 shrink-0 place-items-center rounded-full text-text-secondary transition-colors hover:text-primary"
         >
-          <CloseIcon />
+          <X strokeWidth={1.75} />
         </button>
       )}
     </div>
