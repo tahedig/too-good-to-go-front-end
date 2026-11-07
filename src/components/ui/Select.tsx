@@ -1,22 +1,22 @@
-import { forwardRef } from 'react';
-import type { SelectHTMLAttributes } from 'react';
-import { FormField, fieldClasses, useFieldMeta } from './FormField';
-import { ChevronDown } from 'lucide-react';
+import { forwardRef } from 'react'
+import type { SelectHTMLAttributes } from 'react'
+import { FormField, fieldClasses, useFieldMeta } from './FormField'
+import { ChevronDown } from 'lucide-react'
 
 export interface SelectOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
+  value: string
+  label: string
+  disabled?: boolean
 }
 
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
-  label: string;
-  options: SelectOption[];
-  placeholder?: string;
-  helperText?: string;
-  error?: string;
-  success?: string;
-  className?: string;
+  label: string
+  options: SelectOption[]
+  placeholder?: string
+  helperText?: string
+  error?: string
+  success?: string
+  className?: string
 }
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
@@ -37,12 +37,19 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   },
   ref,
 ) {
-  const meta = useFieldMeta({ id, disabled, error, success, helperText });
+  const meta = useFieldMeta({ id, disabled, error, success, helperText })
 
-  const initial = value === undefined && defaultValue === undefined && placeholder ? '' : defaultValue;
+  const initial =
+    value === undefined && defaultValue === undefined && placeholder ? '' : defaultValue
 
   return (
-    <FormField meta={meta} label={label} required={required} disabled={disabled} className={className}>
+    <FormField
+      meta={meta}
+      label={label}
+      required={required}
+      disabled={disabled}
+      className={className}
+    >
       <div className={fieldClasses(meta.status, 'relative h-13 w-full rounded-md')}>
         <select
           ref={ref}
@@ -81,5 +88,5 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         />
       </div>
     </FormField>
-  );
-});
+  )
+})

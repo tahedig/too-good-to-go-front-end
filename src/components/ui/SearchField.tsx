@@ -1,13 +1,13 @@
-import { forwardRef, useRef, useState } from 'react';
-import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react';
-import { fieldClasses } from './FormField';
-import { Search, X } from 'lucide-react';
+import { forwardRef, useRef, useState } from 'react'
+import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react'
+import { fieldClasses } from './FormField'
+import { Search, X } from 'lucide-react'
 
 export interface SearchFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  label?: string;
-  clearLabel?: string;
-  onClear?: () => void;
-  className?: string;
+  label?: string
+  clearLabel?: string
+  onClear?: () => void
+  className?: string
 }
 
 export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(function SearchField(
@@ -25,43 +25,45 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
   },
   ref,
 ) {
-  const innerRef = useRef<HTMLInputElement | null>(null);
-  const [typed, setTyped] = useState(() => String(defaultValue ?? '').length > 0);
-  const hasValue = value !== undefined ? String(value).length > 0 : typed;
+  const innerRef = useRef<HTMLInputElement | null>(null)
+  const [typed, setTyped] = useState(() => String(defaultValue ?? '').length > 0)
+  const hasValue = value !== undefined ? String(value).length > 0 : typed
 
   function setRefs(node: HTMLInputElement | null) {
-    innerRef.current = node;
-    if (typeof ref === 'function') ref(node);
-    else if (ref) ref.current = node;
+    innerRef.current = node
+    if (typeof ref === 'function') ref(node)
+    else if (ref) ref.current = node
   }
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
-    setTyped(e.target.value.length > 0);
-    onChange?.(e);
+    setTyped(e.target.value.length > 0)
+    onChange?.(e)
   }
 
   function clear() {
-    const input = innerRef.current;
-    if (!input) return;
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '');
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    onClear?.();
-    input.focus();
+    const input = innerRef.current
+    if (!input) return
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, '')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+    onClear?.()
+    input.focus()
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Escape' && hasValue) {
-      e.preventDefault();
-      clear();
+      e.preventDefault()
+      clear()
     }
-    onKeyDown?.(e);
+    onKeyDown?.(e)
   }
 
   return (
     <div
       className={fieldClasses(
         disabled ? 'disabled' : 'default',
-        ['flex h-13 w-full items-center gap-3 rounded-lg ps-4 pe-0.5', className].filter(Boolean).join(' '),
+        ['flex h-13 w-full items-center gap-3 rounded-lg ps-4 pe-0.5', className]
+          .filter(Boolean)
+          .join(' '),
       )}
     >
       <Search
@@ -99,5 +101,5 @@ export const SearchField = forwardRef<HTMLInputElement, SearchFieldProps>(functi
         </button>
       )}
     </div>
-  );
-});
+  )
+})

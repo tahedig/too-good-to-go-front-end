@@ -1,18 +1,18 @@
-import { Button } from './Button';
-import { InlineAlert } from './InlineAlert';
-import { Modal } from './Modal';
+import { Button } from './Button'
+import { InlineAlert } from './InlineAlert'
+import { Modal } from './Modal'
 
 export interface ConfirmDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  description?: string;
-  confirmLabel: string;
-  cancelLabel?: string;
-  tone?: 'default' | 'destructive';
-  isLoading?: boolean;
-  error?: string;
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+  description?: string
+  confirmLabel: string
+  cancelLabel?: string
+  tone?: 'default' | 'destructive'
+  isLoading?: boolean
+  error?: string
 }
 
 export function ConfirmDialog({
@@ -52,5 +52,5 @@ export function ConfirmDialog({
     >
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
     </Modal>
-  );
+  )
 }
