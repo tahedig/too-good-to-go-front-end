@@ -8,4 +8,9 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  server: {
+    host: true,
+    // اجازه‌ی دسترسی از هاست‌های پیش‌نمایش (مثلاً sandboxها) در حالت توسعه
+    allowedHosts: ['.e2b.app'],
+  },
 })

@@ -1,18 +1,23 @@
-import { useState } from 'react';
-import type { ReactNode } from 'react';
-import { Button } from '@/components/ui/Button';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
-import { FoodListingCard } from '@/components/ui/FoodListingCard';
-import { InlineAlert } from '@/components/ui/InlineAlert';
-import { Input } from '@/components/ui/Input';
-import { Modal } from '@/components/ui/Modal';
-import { PhoneInput } from '@/components/ui/PhoneInput';
-import { QuantityStepper } from '@/components/ui/QuantityStepper';
-import { Radio } from '@/components/ui/Radio';
-import { SearchField } from '@/components/ui/SearchField';
-import { Select } from '@/components/ui/Select';
-import { TextArea } from '@/components/ui/TextArea';
-import { toEnglishDigits } from '@/lib/digits';
+import { useState } from 'react'
+import type { ReactNode } from 'react'
+import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { FoodListingCard } from '@/components/ui/FoodListingCard'
+import { InlineAlert } from '@/components/ui/InlineAlert'
+import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
+import { PhoneInput } from '@/components/ui/PhoneInput'
+import { ProductRecordCard } from '@/components/ui/ProductRecordCard'
+import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { Radio } from '@/components/ui/Radio'
+import { SearchField } from '@/components/ui/SearchField'
+import { NavDrawer } from '@/components/ui/NavDrawer'
+import { Select } from '@/components/ui/Select'
+import { SidebarNav } from '@/components/ui/SidebarNav'
+import { TextArea } from '@/components/ui/TextArea'
+import { Menu } from 'lucide-react'
+import { adminNavItems, customerNavItems, vendorNavItems } from '@/config/navigation'
+import { toEnglishDigits } from '@/lib/digits'
 
 const DEMO_IMAGE =
   'data:image/svg+xml;utf8,' +
@@ -20,24 +25,56 @@ const DEMO_IMAGE =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
       '<stop offset="0" stop-color="#e8b477"/><stop offset="1" stop-color="#b9824a"/></linearGradient></defs>' +
       '<rect width="400" height="300" fill="url(#g)"/></svg>',
-  );
+  )
 
 const offer = {
   merchantName: 'نان صبحگاهی',
   category: 'نانوایی',
   distanceKm: 0.6,
-  description: 'ترکیبی از نان‌ها و شیرینی‌های باقی‌مانده‌ی پخت امروز. محتویات دقیق ممکن است متفاوت باشد.',
-  price: 4,
-  referenceValue: 11.5,
+  price: 40000,
+  referenceValue: 115000,
   pickup: 'امروز، ۱۸:۰۰–۱۹:۰۰',
   imageSrc: DEMO_IMAGE,
-} as const;
+} as const
+
+const records = [
+  {
+    status: 'active',
+    name: 'بسته‌ی نان صبحگاهی',
+    store: 'نان صبحگاهی',
+    category: 'نانوایی',
+    price: 40000,
+    referenceValue: 115000,
+    amount: '۵ کیسه باقی‌مانده',
+  },
+  {
+    status: 'pending',
+    name: 'بسته‌ی شیرینی عصرانه',
+    store: 'نان صبحگاهی',
+    category: 'نانوایی',
+    price: 32000,
+    referenceValue: 96000,
+    amount: '۳ کیسه باقی‌مانده',
+  },
+  {
+    status: 'completed',
+    name: 'بسته‌ی نان و شیرینی آخر هفته',
+    store: 'نان صبحگاهی',
+    category: 'نانوایی',
+    price: 45000,
+    referenceValue: 130000,
+    amount: 'تحویل‌شده: ۸ کیسه',
+  },
+] as const
 
 const sortOptions = [
   { value: 'distance', label: 'فاصله' },
   { value: 'price', label: 'قیمت' },
   { value: 'time', label: 'زمان تحویل' },
-];
+]
+
+/** مقصدهای فروشنده از پیش‌فرض‌های پروژه (src/config/navigation.ts) */
+const navItems = vendorNavItems
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -45,57 +82,68 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
       <h2 className="text-title-md">{title}</h2>
       {children}
     </section>
-  );
+  )
 }
 
 export default function HomePage() {
   // رزرو (نمونه‌ی ConfirmDialog)
-  const [reserveOpen, setReserveOpen] = useState(false);
-  const [isPending, setIsPending] = useState(false);
-  const [reserveError, setReserveError] = useState<string>();
-  const [failedOnce, setFailedOnce] = useState(false);
-  const [reserved, setReserved] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [reserveOpen, setReserveOpen] = useState(false)
+  const [isPending, setIsPending] = useState(false)
+  const [reserveError, setReserveError] = useState<string>()
+  const [failedOnce, setFailedOnce] = useState(false)
+  const [reserved, setReserved] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   // فیلترها (نمونه‌ی Modal به‌صورت sheet)
-  const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sort, setSort] = useState('distance');
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [sort, setSort] = useState('distance')
+
+  // ناوبری (نمونه‌ی SidebarNav)
+  const [activeNav, setActiveNav] = useState('products')
+  const [activeCustomerNav, setActiveCustomerNav] = useState('explore')
+  const [activeAdminNav, setActiveAdminNav] = useState('finance')
+  const [activeAdminSub, setActiveAdminSub] = useState('commission')
+  const [adminDrawerOpen, setAdminDrawerOpen] = useState(false)
 
   // فرم
-  const [phone, setPhone] = useState('');
-  const [phoneTouched, setPhoneTouched] = useState(false);
-  const [qty, setQty] = useState(1);
-  const [query, setQuery] = useState('');
+  const [phone, setPhone] = useState('')
+  const [phoneTouched, setPhoneTouched] = useState(false)
+  const [qty, setQty] = useState(1)
+  const [query, setQuery] = useState('')
 
-  const phoneInvalid = phoneTouched && phone !== '' && !/^09\d{9}$/.test(toEnglishDigits(phone));
+  const phoneInvalid = phoneTouched && phone !== '' && !/^09\d{9}$/.test(toEnglishDigits(phone))
 
   function closeReserve() {
-    setReserveOpen(false);
-    setReserveError(undefined);
+    setReserveOpen(false)
+    setReserveError(undefined)
   }
 
   // شبیه‌سازی درخواست: بار اول خطا می‌دهد تا حالت error دیده شود، بار دوم موفق می‌شود
   function handleReserve() {
-    setIsPending(true);
-    setReserveError(undefined);
+    setIsPending(true)
+    setReserveError(undefined)
     window.setTimeout(() => {
-      setIsPending(false);
+      setIsPending(false)
       if (!failedOnce) {
-        setFailedOnce(true);
-        setReserveError('رزرو انجام نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.');
-        return;
+        setFailedOnce(true)
+        setReserveError('رزرو انجام نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.')
+        return
       }
-      setReserveOpen(false);
-      setReserved(true);
-      setFailedOnce(false);
-    }, 1200);
+      setReserveOpen(false)
+      setReserved(true)
+      setFailedOnce(false)
+    }, 1200)
   }
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <h1 className="text-title-xl">صفحه اصلی</h1>
 
-      {reserved && <InlineAlert tone="success">رزرو شما ثبت شد. در بازه‌ی تحویل به نانوایی مراجعه کنید.</InlineAlert>}
+      {reserved && (
+        <InlineAlert tone="success">
+          رزرو شما ثبت شد. در بازه‌ی تحویل به نانوایی مراجعه کنید.
+        </InlineAlert>
+      )}
 
       <Section title="کارت پیشنهاد و مودال تأیید">
         <p className="text-body-md text-text-secondary">
@@ -107,9 +155,15 @@ export default function HomePage() {
             {...offer}
             saved={saved}
             onSaveChange={setSaved}
+            onAction={() => setReserveOpen(true)}
             // کل کارت یک دکمه می‌شود که مودال را باز می‌کند
             renderLink={(p) => (
-              <button type="button" {...p} className={`${p.className} text-start`} onClick={() => setReserveOpen(true)}>
+              <button
+                type="button"
+                {...p}
+                className={`${p.className} text-start`}
+                onClick={() => setReserveOpen(true)}
+              >
                 {p.children}
               </button>
             )}
@@ -131,6 +185,147 @@ export default function HomePage() {
         </div>
       </Section>
 
+      <Section title="کارت رکورد فروشنده / ادمین">
+        <p className="text-body-md text-text-secondary">
+          سه حالت <code className="text-caption">active</code>،{' '}
+          <code className="text-caption">pending</code> و{' '}
+          <code className="text-caption">completed</code> با یک کامپوننت و پارامتر{' '}
+          <code className="text-caption">status</code>.
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {records.map((record) => (
+            <ProductRecordCard
+              key={record.name}
+              {...record}
+              imageSrc={DEMO_IMAGE}
+              onAction={() => setReserveOpen(true)}
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="ناوبری فروشنده (سایدبار دسکتاپ / نوار پایین موبایل)">
+        <p className="text-body-md text-text-secondary">
+          یک آرایه‌ی <code className="text-caption">items</code> برای هر دو حالت؛ با{' '}
+          <code className="text-caption">variant</code> بین «responsive»، «sidebar» و «bottom»
+          جابه‌جا شو.
+        </p>
+
+        <div className="flex h-[420px] overflow-hidden rounded-lg border border-border-default bg-background">
+          <SidebarNav
+            variant="sidebar"
+            fullHeight={false}
+            brand="ته‌دیگ"
+            items={navItems}
+            activeId={activeNav}
+            onSelect={setActiveNav}
+          />
+          <div className="flex-1 p-5 text-body-md text-text-secondary">
+            مقصد انتخاب‌شده: <b className="text-text-primary">{activeNav}</b>
+          </div>
+        </div>
+
+        <div className="h-32 overflow-hidden rounded-lg border border-border-default bg-background p-4">
+          <SidebarNav
+            variant="bottom"
+            items={navItems.slice(0, 5)}
+            activeId={activeNav}
+            onSelect={setActiveNav}
+          />
+        </div>
+      </Section>
+
+      <Section title="ناوبری مشتری (سایدبار دسکتاپ / نوار پایین موبایل)">
+        <p className="text-body-md text-text-secondary">
+          چهار مقصد ثابت بدون زیرمنو؛ همان هندسه‌ی سایدبار فروشنده.
+        </p>
+
+        <div className="flex h-[420px] overflow-hidden rounded-lg border border-border-default bg-background">
+          <SidebarNav
+            variant="sidebar"
+            fullHeight={false}
+            brand="ته‌دیگ"
+            items={customerNavItems}
+            activeId={activeCustomerNav}
+            onSelect={setActiveCustomerNav}
+          />
+          <div className="flex-1 p-5 text-body-md text-text-secondary">
+            مقصد انتخاب‌شده: <b className="text-text-primary">{activeCustomerNav}</b>
+          </div>
+        </div>
+
+        <div className="h-32 overflow-hidden rounded-lg border border-border-default bg-background p-4">
+          <SidebarNav
+            variant="bottom"
+            items={customerNavItems}
+            activeId={activeCustomerNav}
+            onSelect={setActiveCustomerNav}
+          />
+        </div>
+      </Section>
+
+      <Section title="ناوبری ادمین (سایدبار دسکتاپ + کشوی موبایل)">
+        <p className="text-body-md text-text-secondary">
+          نه مقصد با زیرمنوی «مالی»؛ در موبایل به‌جای نوار پایین، یک کشو از سمت راست با دکمه‌ی
+          همبرگریِ هدر باز می‌شود.
+        </p>
+
+        <div className="flex h-[520px] overflow-hidden rounded-lg border border-border-default bg-background">
+          <SidebarNav
+            variant="sidebar"
+            fullHeight={false}
+            brand="ته‌دیگ · مدیریت"
+            items={adminNavItems}
+            activeId={activeAdminNav}
+            activeSubId={activeAdminSub}
+            onSelect={(id, subId) => {
+              setActiveAdminNav(id)
+              if (subId) setActiveAdminSub(subId)
+            }}
+          />
+          <div className="flex-1 p-5 text-body-md text-text-secondary">
+            مقصد انتخاب‌شده:{' '}
+            <b className="text-text-primary">
+              {activeAdminNav}
+              {activeAdminNav === 'finance' && ` / ${activeAdminSub}`}
+            </b>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-border-default bg-background">
+          {/* هدر موبایل ادمین: همبرگر در ابتدای خوانش (سمت راست)، عنوان بعد از آن */}
+          <div className="flex h-16 w-full flex-row items-center justify-between gap-3 border-b border-border-default px-4">
+            <button
+              type="button"
+              onClick={() => setAdminDrawerOpen(true)}
+              aria-label="باز کردن منو"
+              className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface-secondary text-primary"
+            >
+              <Menu className="size-5" strokeWidth={2} />
+            </button>
+            <span className="min-w-0 flex-1 text-start text-title-md">پنل مدیریت</span>
+          </div>
+          <div className="p-5 text-body-md text-text-secondary">
+            روی همبرگر بزن تا کشوی ناوبری از سمت راست باز شود.
+          </div>
+        </div>
+
+        <NavDrawer
+          open={adminDrawerOpen}
+          onClose={() => setAdminDrawerOpen(false)}
+          title="ته‌دیگ · مدیریت"
+          items={adminNavItems}
+          activeId={activeAdminNav}
+          activeSubId={activeAdminSub}
+          onSelect={(id, subId) => {
+            setActiveAdminNav(id)
+            if (subId) setActiveAdminSub(subId)
+            setAdminDrawerOpen(false)
+          }}
+        />
+      </Section>
+
       <Section title="فیلترها (مودال پایینی)">
         <Button variant="secondary" onClick={() => setFiltersOpen(true)}>
           باز کردن فیلترها
@@ -150,7 +345,12 @@ export default function HomePage() {
           />
           <Input label="ایمیل" type="email" placeholder="ایمیل خود را وارد کنید" />
           <Input label="رمز عبور" type="password" helperText="حداقل ۱۲ نویسه" />
-          <Input label="ایمیل (خطا)" type="email" defaultValue="leyla@" error="ایمیلی مانند name@example.com وارد کنید." />
+          <Input
+            label="ایمیل (خطا)"
+            type="email"
+            defaultValue="leyla@"
+            error="ایمیلی مانند name@example.com وارد کنید."
+          />
           <Input label="برچسب (غیرفعال)" placeholder="در دسترس نیست" disabled />
           <Select
             label="تاریخ تحویل"
@@ -163,9 +363,17 @@ export default function HomePage() {
           />
         </div>
 
-        <TextArea label="یادداشت تحویل (اختیاری)" placeholder="یادداشت کوتاهی اضافه کنید…" helperText="از یادداشت برای درخواست حساسیت غذایی استفاده نکنید." />
+        <TextArea
+          label="یادداشت تحویل (اختیاری)"
+          placeholder="یادداشت کوتاهی اضافه کنید…"
+          helperText="از یادداشت برای درخواست حساسیت غذایی استفاده نکنید."
+        />
 
-        <SearchField placeholder="جستجوی نانوایی، غذا، خواربار…" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <SearchField
+          placeholder="جستجوی نانوایی، غذا، خواربار…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
 
         <div className="flex items-center justify-between gap-4">
           <span className="text-label-md">تعداد کیسه</span>
@@ -177,8 +385,12 @@ export default function HomePage() {
         <div className="space-y-3">
           <InlineAlert tone="info">محتویات دقیق ممکن است متفاوت باشد.</InlineAlert>
           <InlineAlert tone="success">ترجیحات به‌روز شد.</InlineAlert>
-          <InlineAlert tone="warning">حساسیت‌زاها نامشخص‌اند. پیش از رزرو با فروشنده تماس بگیرید.</InlineAlert>
-          <InlineAlert tone="error">پرداخت ناموفق بود. رزروی انجام نشد؛ دوباره تلاش کنید.</InlineAlert>
+          <InlineAlert tone="warning">
+            حساسیت‌زاها نامشخص‌اند. پیش از رزرو با فروشنده تماس بگیرید.
+          </InlineAlert>
+          <InlineAlert tone="error">
+            پرداخت ناموفق بود. رزروی انجام نشد؛ دوباره تلاش کنید.
+          </InlineAlert>
         </div>
       </Section>
 
@@ -213,10 +425,16 @@ export default function HomePage() {
         <fieldset>
           <legend className="mb-1 text-label-md">مرتب‌سازی بر اساس</legend>
           {sortOptions.map((o) => (
-            <Radio key={o.value} name="sort" label={o.label} checked={sort === o.value} onChange={() => setSort(o.value)} />
+            <Radio
+              key={o.value}
+              name="sort"
+              label={o.label}
+              checked={sort === o.value}
+              onChange={() => setSort(o.value)}
+            />
           ))}
         </fieldset>
       </Modal>
     </div>
-  );
+  )
 }
