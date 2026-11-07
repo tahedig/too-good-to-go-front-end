@@ -1,6 +1,6 @@
-import { Fragment } from 'react'
+import { Fragment, useId, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { UserRound } from 'lucide-react'
+import { ChevronDown, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cx } from '@/lib/cx'
 
@@ -22,7 +22,11 @@ export type SidebarNavItem = {
   icon: LucideIcon
   /** نشان کوچک روی آیتم، مثلاً تعداد سفارش‌های جدید */
   badge?: string | number
-  /** زیرمنو (مثل زیرمنوی «مالی» در پنل ادمین) — فقط وقتی مقصد فعال است باز می‌شود */
+  /**
+   * زیرمنو (مثل زیرمنوی «مالی» در پنل ادمین). مقصدی که زیرمنو دارد با کلیک فقط
+   * باز/بسته می‌شود و `onSelect` را صدا نمی‌زند؛ انتخاب نهایی فقط با کلیک روی
+   * یکی از زیرآیتم‌ها انجام می‌شود و `onSelect(id, subId)` را اجرا می‌کند.
+   */
   children?: SidebarNavSubItem[]
   href?: string
   onClick?: () => void
@@ -50,6 +54,7 @@ export interface SidebarNavListProps {
   activeId?: string
   /** id زیرصفحه‌ی فعال (مثلاً «کمیسیون» زیرِ «مالی») */
   activeSubId?: string
+  /** فقط برای مقصدهای بدون زیرمنو و برای زیرآیتم‌ها صدا زده می‌شود */
   onSelect?: (id: string, subId?: string) => void
   /** برای مسیریاب: renderLink={({ item, className, children }) => <Link to={item.href} className={className}>{children}</Link>} */
   renderLink?: (props: SidebarNavLinkProps) => ReactNode
@@ -64,6 +69,25 @@ const SIDEBAR_FRAME =
 const BOTTOM_FRAME =
   'sticky bottom-0 z-40 flex flex-row items-center gap-1 rounded-t-[12px] border-t ' +
   'border-border-default bg-surface p-2 shadow-3'
+
+/** breakpoint `lg` در src/index.css برابر ۶۴rem (۱۰۲۴px) است */
+const LG_QUERY = '(min-width: 64rem)'
+
+/**
+ * فقط برای حالت responsive لازم است: در موبایل زیرمنو جایی برای نمایش ندارد،
+ * بنابراین مقصدِ والد باید مثل قبل «انتخاب» شود تا دکمه بی‌اثر نماند.
+ */
+function useIsLg(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const mql = window.matchMedia(LG_QUERY)
+      mql.addEventListener('change', onChange)
+      return () => mql.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia(LG_QUERY).matches,
+    () => false,
+  )
+}
 
 function containerClasses(variant: SidebarNavLayout, fullHeight: boolean): string {
   if (variant === 'bottom') return BOTTOM_FRAME
@@ -137,6 +161,15 @@ function badgeClasses(layout: SidebarNavLayout): string {
   )
 }
 
+/** فلش باز/بسته شدن زیرمنو — در انتهای خوانش (سمت چپ در RTL) قرار می‌گیرد */
+function chevronClasses(layout: SidebarNavLayout, expanded: boolean): string {
+  return cx(
+    'size-6 shrink-0 text-text-secondary transition-transform motion-reduce:transition-none',
+    expanded && 'rotate-180',
+    layout === 'sidebar' ? 'order-4' : 'hidden lg:order-4 lg:block',
+  )
+}
+
 /* زیرمنو: padding ۴/۱۲/۸/۰ (فاصله از لبه‌ی شروع ۱۲)، آیتم ۳۶ با متن ۱۳/۶۰۰ */
 function subItemClasses(active: boolean): string {
   return cx(
@@ -160,32 +193,65 @@ export function SidebarNavList({
   renderSubLink,
   layout = 'sidebar',
 }: SidebarNavListProps) {
+  const uid = useId()
+  const isLg = useIsLg()
+
+  // زیرمنو در نوار پایین و در موبایلِ حالت responsive جایی برای نمایش ندارد
+  const submenusVisible = layout === 'sidebar' || (layout === 'responsive' && isLg)
+
+  const activeWithChildren = (id?: string) =>
+    items.find((item) => item.id === id && item.children?.length)?.id
+
+  // زیرمنوی مقصدِ فعال به‌طور پیش‌فرض باز است
+  const [expandedId, setExpandedId] = useState<string | undefined>(() =>
+    activeWithChildren(activeId),
+  )
+
+  // اگر مقصدِ فعال از بیرون عوض شد (مثلاً از روی URL)، زیرمنوی آن را باز کن
+  const [lastActiveId, setLastActiveId] = useState(activeId)
+  if (activeId !== lastActiveId) {
+    setLastActiveId(activeId)
+    setExpandedId(activeWithChildren(activeId))
+  }
+
   return (
     <>
       {items.map((item) => {
         const Icon = item.icon
         const active = item.id === activeId
+        const expandable = Boolean(item.children?.length) && submenusVisible
+        const expanded = expandable && expandedId === item.id
+        const subNavId = `${uid}-${item.id}`
 
         const content = (
           <>
             <Icon className={iconClasses(layout, active)} strokeWidth={1.75} />
             {item.badge !== undefined && <span className={badgeClasses(layout)}>{item.badge}</span>}
             <span className={labelClasses(layout, active)}>{item.label}</span>
+            {expandable && (
+              <ChevronDown className={chevronClasses(layout, expanded)} strokeWidth={1.75} />
+            )}
           </>
         )
 
         const shared = {
           className: itemClasses(layout, active, Boolean(item.disabled)),
           'aria-current': active ? ('page' as const) : undefined,
+          'aria-expanded': expandable ? expanded : undefined,
+          'aria-controls': expandable ? subNavId : undefined,
           onClick: () => {
             if (item.disabled) return
             item.onClick?.()
+
+            // مقصدِ زیرمنودار فقط باز/بسته می‌شود؛ انتخاب نهایی با زیرآیتم‌هاست
+            if (expandable) {
+              setExpandedId((current) => (current === item.id ? undefined : item.id))
+              return
+            }
+
             onSelect?.(item.id)
           },
         }
-
-        const hasChildren = Boolean(item.children?.length)
-        const showChildren = hasChildren && layout !== 'bottom' && active
 
         return (
           <Fragment key={item.id}>
@@ -201,13 +267,8 @@ export function SidebarNavList({
               </button>
             )}
 
-            {showChildren && (
-              <div
-                className={cx(
-                  'flex w-full flex-col gap-1 pb-2 ps-3 pt-1',
-                  layout === 'responsive' && 'hidden lg:flex',
-                )}
-              >
+            {expanded && (
+              <div id={subNavId} className="flex w-full flex-col gap-1 pb-2 ps-3 pt-1">
                 {item.children?.map((sub) => {
                   const subActive = sub.id === activeSubId
                   const subLabel = <span className="min-w-0 flex-1 text-start">{sub.label}</span>
@@ -217,6 +278,7 @@ export function SidebarNavList({
                     onClick: () => {
                       if (sub.disabled) return
                       sub.onClick?.()
+                      setExpandedId(item.id)
                       onSelect?.(item.id, sub.id)
                     },
                   }
