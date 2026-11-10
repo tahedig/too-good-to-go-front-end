@@ -9,6 +9,7 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import VendorDashboardPage from '@/pages/vendor/DashboardPage'
 import VendorProductsPage from '@/pages/vendor/ProductsPage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
+import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 
@@ -44,8 +45,9 @@ export const router = createBrowserRouter([
       },
       { 
         path: 'orders', 
-        element: <VendorComingSoonPage title="سفارشات" /> 
+        element: <ReservationsPages daily /> 
       },
+      { path: 'orders/reservations', element: <ReservationsPages /> },
       { 
         path: 'stores', 
         element: <VendorComingSoonPage title="فروشگاه‌ها" /> 
