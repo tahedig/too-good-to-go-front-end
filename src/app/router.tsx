@@ -11,6 +11,7 @@ import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
+import OrdersPage from '@/pages/OrdersPage'
 
 export const router = createBrowserRouter([
   {
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'today', element: <OfferCollectionPage /> },
       { path: 'favorites', element: <OfferCollectionPage /> },
       { path: 'last-chance', element: <OfferCollectionPage /> },
+      { path: 'orders', element: <OrdersPage /> },
     ],
   },
   {

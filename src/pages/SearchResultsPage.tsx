@@ -230,7 +230,7 @@ function MobileNavigation() {
         ذخیره‌ها
       </Link>
       <Link
-        to="/login"
+        to="/orders"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
       >
         <ShoppingBag className="size-6" strokeWidth={1.75} />

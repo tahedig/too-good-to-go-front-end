@@ -109,7 +109,7 @@ function DiscoveryHeader() {
           <a href="#favorites" className="text-body-md text-text-secondary hover:text-primary">
             ذخیره‌ها
           </a>
-          <Link to="/login" className="text-body-md text-text-secondary hover:text-primary">
+          <Link to="/orders" className="text-body-md text-text-secondary hover:text-primary">
             سفارش‌ها
           </Link>
           <a href="#discover" className="text-body-md text-primary">
@@ -134,7 +134,7 @@ function DesktopSidebar() {
       <nav aria-label="ناوبری مشتری" className="flex flex-col gap-2">
         <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active />
         <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Heart} />
-        <NavigationLink href="/login" label="سفارش‌ها" Icon={ShoppingBag} />
+        <NavigationLink href="/orders" label="سفارش‌ها" Icon={ShoppingBag} />
         <NavigationLink href="/login" label="پروفایل" Icon={UserRound} />
       </nav>
       <a href="mailto:support@example.com" className="mt-auto px-4 py-3 text-body-md text-text-secondary">
@@ -349,7 +349,7 @@ export default function HomePage() {
       >
         <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active compact />
         <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Bookmark} compact />
-        <NavigationLink href="/login" label="سفارش‌ها" Icon={ShoppingBag} compact />
+        <NavigationLink href="/orders" label="سفارش‌ها" Icon={ShoppingBag} compact />
         <NavigationLink href="/login" label="پروفایل" Icon={UserRound} compact />
         <div aria-hidden="true" className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary" />
       </nav>
