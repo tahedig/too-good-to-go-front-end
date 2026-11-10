@@ -7,8 +7,8 @@ import { ChevronDown, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Select } from '@/components/ui/Select'
-import { VendorProductCard } from './components/VendorProductCard'
-import type { VendorProduct } from './components/VendorProductCard'
+import { VendorProductCard } from '@/components/vendor/VendorProductCard'
+import type { VendorProduct } from '@/components/vendor/VendorProductCard'
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'draft' | 'ended'
 
