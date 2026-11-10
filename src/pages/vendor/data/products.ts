@@ -1,4 +1,4 @@
-import type { VendorProduct } from '../components/VendorProductCard'
+import type { VendorProduct } from '@/components/vendor/VendorProductCard'
 
 export type ProductDetails = {
   description: string
