@@ -4,7 +4,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { toPersianDigits } from '@/lib/digits'
 import { formatPrice } from '@/lib/format'
 
-export type VendorProductStatus = 'active' | 'draft' | 'ended'
+export type VendorProductStatus = 'active' | 'inactive' | 'draft' | 'ended'
 
 export interface VendorProduct {
   id: string
@@ -21,6 +21,7 @@ export interface VendorProduct {
 function inventoryText(product: VendorProduct): string {
   const { total, reserved, available } = product.inventory
   if (product.status === 'draft') return 'پیش‌نویس · قابل رزرو نیست'
+  if (product.status === 'inactive') return `${toPersianDigits(reserved)} رزرو · غیرفعال`
   if (product.status === 'ended') return `${toPersianDigits(available)} موجود`
   return `${toPersianDigits(total)} کل · ${toPersianDigits(reserved)} رزرو · ${toPersianDigits(available)} موجود`
 }
@@ -41,9 +42,11 @@ function PriceRow({ product }: { product: VendorProduct }) {
 export function VendorProductCard({
   product,
   onEdit,
+  onUnpublish,
 }: {
   product: VendorProduct
   onEdit: () => void
+  onUnpublish: () => void
 }) {
   const inventory = inventoryText(product)
   const inventoryTone = product.status === 'active' ? 'text-text-primary' : 'text-text-secondary'
@@ -80,6 +83,11 @@ export function VendorProductCard({
         <Button variant="secondary" fullWidth className="mt-auto" onClick={onEdit}>
           ویرایش محصول
         </Button>
+        {product.status === 'active' && (
+          <Button variant="tertiary" size="md" fullWidth onClick={onUnpublish}>
+            لغو انتشار
+          </Button>
+        )}
       </div>
 
       {/* Desktop */}
@@ -122,6 +130,11 @@ export function VendorProductCard({
         >
           ویرایش محصول
         </button>
+        {product.status === 'active' && (
+          <Button variant="tertiary" size="md" fullWidth onClick={onUnpublish}>
+            لغو انتشار
+          </Button>
+        )}
       </div>
     </article>
   )

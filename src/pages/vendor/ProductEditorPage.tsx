@@ -3,6 +3,7 @@ import type { ChangeEvent, FormEvent, ReactNode } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, ChevronDown, MoreHorizontal, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
@@ -90,10 +91,21 @@ function validate(v: FormValues, draft: boolean): Errors {
   return errors
 }
 
-function Section({ title, children }: { title: string; children: ReactNode }) {
+function Section({
+  title,
+  children,
+  accessory,
+}: {
+  title: string
+  children: ReactNode
+  accessory?: ReactNode
+}) {
   return (
     <section className="flex flex-col gap-4 rounded-[12px] bg-surface p-5">
-      <h2 className="text-label-lg font-bold">{title}</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-label-lg font-bold">{title}</h2>
+        {accessory}
+      </div>
       {children}
     </section>
   )
@@ -142,6 +154,9 @@ export default function ProductEditorPage() {
   const [errors, setErrors] = useState<Errors>({})
   const [alert, setAlert] = useState('')
   const [preview, setPreview] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const [saveFailed, setSaveFailed] = useState(false)
   const [menu, setMenu] = useState<number | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -193,8 +208,10 @@ export default function ProductEditorPage() {
       return next
     })
   }
-  async function save(draft: boolean) {
+  async function save(mode: 'draft' | 'publish' | 'edit') {
+    const draft = mode === 'draft' || (mode === 'edit' && original?.status === 'draft')
     if (saving) return
+    setSaveFailed(false)
     const nextErrors = validate(values, draft)
     if (original && values.quantity < original.inventory.reserved)
       nextErrors.quantity = 'تعداد نمی‌تواند کمتر از تعداد رزرو باشد.'
@@ -209,7 +226,7 @@ export default function ProductEditorPage() {
       name: values.name.trim(),
       originalPrice: priceNumber(values.originalPrice) || 0,
       price: priceNumber(values.price) || 0,
-      status: draft ? 'draft' : 'active',
+      status: mode === 'edit' ? (original?.status ?? 'draft') : draft ? 'draft' : 'active',
       imageSrc: values.images[0],
     }
     setSaving(true)
@@ -217,12 +234,42 @@ export default function ProductEditorPage() {
       await productRepository.save(input, id)
       navigate('/vendor/products', {
         replace: true,
-        state: { message: draft ? 'پیش‌نویس ذخیره شد.' : 'محصول منتشر شد.' },
+        state: {
+          message:
+            mode === 'edit'
+              ? 'تغییرات محصول ذخیره شد.'
+              : draft
+                ? 'پیش‌نویس ذخیره شد.'
+                : 'محصول منتشر شد.',
+        },
       })
       window.scrollTo({ top: 0 })
     } catch (error) {
-      setAlert(error instanceof Error ? error.message : 'ذخیره محصول ممکن نیست.')
+      setSaveFailed(true)
+      setAlert(
+        id
+          ? 'ذخیره نشد. دوباره تلاش کنید.'
+          : error instanceof Error
+            ? error.message
+            : 'ذخیره محصول ممکن نیست.',
+      )
       window.scrollTo({ top: 0, behavior: 'smooth' })
+    } finally {
+      setSaving(false)
+    }
+  }
+  async function deleteProduct() {
+    if (!id || saving) return
+    setSaving(true)
+    setDeleteError('')
+    try {
+      await productRepository.remove(id)
+      navigate('/vendor/products', { replace: true, state: { message: 'محصول حذف شد.' } })
+      window.scrollTo({ top: 0 })
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : 'حذف محصول ممکن نیست. دوباره تلاش کنید.',
+      )
     } finally {
       setSaving(false)
     }
@@ -328,13 +375,11 @@ export default function ProductEditorPage() {
           <ArrowRight size={24} />
         </Link>
         <h1 className="text-title-lg font-bold lg:text-title-xl">
-          {Object.keys(errors).length ? 'اصلاح اطلاعات محصول' : id ? 'ویرایش محصول' : 'ساخت محصول'}
+          {id ? 'ویرایش محصول' : Object.keys(errors).length ? 'اصلاح اطلاعات محصول' : 'ساخت محصول'}
         </h1>
       </div>
       {alert && (
-        <div
-          className="flex items-center gap-2 rounded-md border border-error bg-surface shadow-2"
-        >
+        <div className="flex items-center gap-2 rounded-md border border-error bg-surface shadow-2">
           <InlineAlert tone="error" className="flex-1 bg-surface">
             {alert}
           </InlineAlert>
@@ -348,15 +393,25 @@ export default function ProductEditorPage() {
           </button>
         </div>
       )}
-      <span className="self-start rounded-[12px] bg-warning-subtle px-3 py-2 text-caption text-warning">
-        {original?.status === 'active' ? 'فعال' : 'پیش‌نویس'}
+      <span
+        className={`self-start rounded-[12px] px-3 py-2 text-caption ${original?.status === 'active' ? 'bg-primary-subtle text-text-primary' : original?.status === 'ended' || original?.status === 'inactive' ? 'bg-surface-secondary text-text-primary' : 'bg-warning-subtle text-warning'}`}
+      >
+        {original?.status === 'active'
+          ? 'منتشرشده'
+          : original?.status === 'inactive'
+            ? 'غیرفعال'
+            : original?.status === 'ended'
+              ? 'پایان‌یافته'
+              : 'پیش‌نویس'}
       </span>
-      <p className="text-caption font-bold">برای انتشار، همه فیلدها به‌جز تصاویر الزامی هستند.</p>
+      {!id && (
+        <p className="text-caption font-bold">برای انتشار، همه فیلدها به‌جز تصاویر الزامی هستند.</p>
+      )}
       <form
         noValidate
         onSubmit={(event: FormEvent) => {
           event.preventDefault()
-          void save(false)
+          void save(id ? 'edit' : 'publish')
         }}
         className="flex flex-col gap-6"
       >
@@ -404,6 +459,13 @@ export default function ProductEditorPage() {
                 />
                 {errors.quantity && <p className="text-caption text-error">{errors.quantity}</p>}
               </div>
+              {original && (
+                <span className="self-start rounded-[12px] bg-primary-subtle p-2 text-caption font-bold">
+                  {toPersianDigits(original.inventory.reserved)} رزرو ·{' '}
+                  {toPersianDigits(Math.max(0, values.quantity - original.inventory.reserved))}{' '}
+                  موجود
+                </span>
+              )}
             </Section>
             <Section title="زمان تحویل">
               <Field id="pickupDate" label="تاریخ تحویل" error={errors.pickupDate}>
@@ -436,10 +498,16 @@ export default function ProductEditorPage() {
             </Section>
           </div>
           <div className="flex min-w-0 flex-col gap-5">
-            <Section title="تصاویر محصول">
+            <Section
+              title="تصاویر محصول"
+              accessory={
+                <span className="text-caption text-text-secondary">
+                  {toPersianDigits(values.images.length)} تصویر
+                </span>
+              }
+            >
               <p className="text-caption text-text-secondary">
-                برای تغییر ترتیب، از منوی تصویر استفاده کنید.{' '}
-                {toPersianDigits(values.images.length)} تصویر
+                برای تغییر ترتیب، از منوی تصویر استفاده کنید.
               </p>
               {values.images.length ? (
                 <div className="grid grid-cols-2 gap-3">
@@ -532,43 +600,91 @@ export default function ProductEditorPage() {
                 className="sr-only"
                 onChange={(e) => void addImages(e)}
               />
-              <Button
-                variant="secondary"
-                size="md"
-                fullWidth
-                onClick={() => fileRef.current?.click()}
-              >
-                <Plus size={20} /> افزودن تصویر
-              </Button>
+              <div className="border-t border-surface-secondary pt-4">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  fullWidth
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Plus size={20} /> افزودن تصویر
+                </Button>
+              </div>
             </Section>
-            <Button variant="secondary" size="md" fullWidth onClick={() => setPreview(true)}>
+            <Button
+              variant="secondary"
+              size="md"
+              className="w-full lg:w-55 lg:self-start"
+              onClick={() => setPreview(true)}
+            >
               پیش‌نمایش
             </Button>
           </div>
         </div>
-        <div className="flex flex-col gap-2 lg:flex-row-reverse lg:justify-end lg:gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row-reverse lg:justify-end">
           <Button type="submit" size="md" disabled={saving} className="lg:w-55">
-            انتشار محصول
+            {saveFailed ? 'تلاش مجدد' : id ? 'ذخیره تغییرات' : 'انتشار محصول'}
           </Button>
+          {!id && (
+            <Button
+              variant="secondary"
+              size="md"
+              disabled={saving}
+              onClick={() => void save('draft')}
+              className="lg:w-55"
+            >
+              ذخیره پیش‌نویس
+            </Button>
+          )}
+          {id && (original?.status === 'draft' || original?.status === 'inactive') && (
+            <Button
+              variant="secondary"
+              size="md"
+              disabled={saving}
+              onClick={() => void save('publish')}
+              className="lg:w-55"
+            >
+              انتشار محصول
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="md"
             disabled={saving}
-            onClick={() => void save(true)}
-            className="lg:w-55"
-          >
-            ذخیره پیش‌نویس
-          </Button>
-          <Button
-            size="md"
-            disabled={saving}
             onClick={() => navigate('/vendor/products')}
-            className="border border-error bg-error-subtle text-error hover:bg-error-subtle lg:w-55"
+            className="!border-error !bg-error-subtle !text-error hover:!bg-error-subtle lg:w-55"
           >
             انصراف
           </Button>
         </div>
+        {id && !saveFailed && (
+          <Button
+            variant="secondary"
+            size="md"
+            disabled={saving}
+            onClick={() => {
+              setDeleteError('')
+              setDeleteOpen(true)
+            }}
+            className="w-full !border-error !bg-error-subtle !text-error hover:!bg-error-subtle"
+          >
+            حذف محصول
+          </Button>
+        )}
       </form>
+      <ConfirmDialog
+        className="!max-w-[560px] !rounded-lg"
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => void deleteProduct()}
+        title="حذف محصول؟"
+        description="محصول برای همیشه حذف می‌شود. این عمل قابل بازگشت نیست. محصولات دارای رزرو قابل حذف نیستند."
+        cancelLabel="خیر"
+        confirmLabel="حذف محصول"
+        tone="destructive"
+        isLoading={saving}
+        error={deleteError}
+      />
       <Modal open={preview} onClose={() => setPreview(false)} title="پیش‌نمایش محصول">
         {values.images[0] && (
           <img src={values.images[0]} alt="" className="h-40 w-full rounded-md object-cover" />

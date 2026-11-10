@@ -19,6 +19,13 @@
  *     const { data } = await api.get<StoredProduct>(`/vendor/products/${encodeURIComponent(id)}`)
  *     return data
  *   },
+ *   // Illustrative only: confirm delete/unpublish paths and reservation policies with backend.
+ *   async remove(id: string): Promise<void> {
+ *     await api.delete(`/vendor/products/${encodeURIComponent(id)}`)
+ *   },
+ *   async unpublish(id: string): Promise<void> {
+ *     await api.post(`/vendor/products/${encodeURIComponent(id)}/unpublish`)
+ *   },
  *   async save(input: ProductInput, id?: string): Promise<StoredProduct> {
  *     // First upload new image files and map their IDs/URLs according to the API contract.
  *     const { data } = id

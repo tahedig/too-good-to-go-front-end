@@ -76,8 +76,25 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function VendorLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [headerHidden, setHeaderHidden] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    let anchorY = Math.max(0, window.scrollY)
+    function onScroll() {
+      const y = Math.max(0, window.scrollY)
+      if (y <= 10) {
+        setHeaderHidden(false)
+        anchorY = y
+      } else if (Math.abs(y - anchorY) >= 12) {
+        setHeaderHidden(y > anchorY && y > 76)
+        anchorY = y
+      }
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     if (!menuOpen) return
@@ -126,7 +143,9 @@ export default function VendorLayout() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header */}
-        <header className="flex items-center justify-between px-5 py-4 lg:hidden">
+        <header
+          className={`sticky top-0 z-30 flex items-center justify-between bg-background px-5 py-4 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none lg:hidden ${headerHidden && !menuOpen ? '-translate-y-full opacity-0 focus-within:translate-y-0 focus-within:opacity-100' : 'translate-y-0 opacity-100'}`}
+        >
           <span className="text-title-md text-text-primary">ته‌دیگ</span>
           <button
             type="button"

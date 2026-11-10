@@ -14,6 +14,8 @@ export type ProductInput = Omit<StoredProduct, 'id' | 'inventory'> & { quantity:
 
 const KEY = 'tahedig.vendor.products.v1'
 const image = '/vendor-bakery.jpg'
+const now = new Date()
+const mockPickupDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
 const initial: StoredProduct[] = [
   {
     id: '1',
@@ -43,7 +45,7 @@ const initial: StoredProduct[] = [
   imageSrc: image,
   description:
     'ترکیبی از نان‌ها و شیرینی‌های باقی‌ماندهٔ پخت امروز. محتویات دقیق ممکن است متفاوت باشد.',
-  pickupDate: '',
+  pickupDate: mockPickupDate,
   startTime: '18:00',
   endTime: '19:00',
   cancellationTime: '16:00',
@@ -74,6 +76,28 @@ export const productRepository = {
   },
   async get(id: string): Promise<StoredProduct | undefined> {
     return read().find((item) => item.id === id)
+  },
+  async remove(id: string): Promise<void> {
+    const items = read()
+    const product = items.find((item) => item.id === id)
+    if (!product) throw new Error('محصول پیدا نشد.')
+    // In the mock, preserve products that have reservations until those reservations are resolved.
+    if (product.inventory.reserved > 0)
+      throw new Error('محصول دارای رزرو است و قابل حذف نیست. ابتدا رزروها را تعیین تکلیف کنید.')
+    localStorage.setItem(KEY, JSON.stringify(items.filter((item) => item.id !== id)))
+  },
+  async unpublish(id: string): Promise<void> {
+    const items = read()
+    const product = items.find((item) => item.id === id)
+    if (!product) throw new Error('محصول پیدا نشد.')
+    if (product.status !== 'active') throw new Error('این محصول منتشرشده نیست.')
+    // Existing reservations remain intact; no new reservations are represented by the mock.
+    localStorage.setItem(
+      KEY,
+      JSON.stringify(
+        items.map((item) => (item.id === id ? { ...item, status: 'inactive' } : item)),
+      ),
+    )
   },
   async save(input: ProductInput, id?: string): Promise<StoredProduct> {
     const items = read()

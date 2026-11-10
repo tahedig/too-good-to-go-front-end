@@ -13,6 +13,7 @@ export interface ConfirmDialogProps {
   tone?: 'default' | 'destructive';
   isLoading?: boolean;
   error?: string;
+  className?: string;
 }
 
 export function ConfirmDialog({
@@ -26,9 +27,11 @@ export function ConfirmDialog({
   tone = 'default',
   isLoading = false,
   error,
+  className,
 }: ConfirmDialogProps) {
   return (
     <Modal
+      className={className}
       open={open}
       onClose={onClose}
       title={title}

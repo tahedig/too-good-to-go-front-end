@@ -5,6 +5,7 @@ import { InlineAlert } from '@/components/ui/InlineAlert'
 import { productRepository } from './data/products'
 import { ChevronDown, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Select } from '@/components/ui/Select'
 import { VendorProductCard } from './components/VendorProductCard'
 import type { VendorProduct } from './components/VendorProductCard'
@@ -62,9 +63,10 @@ function MobileFilterSelect({
   )
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ onCreate, message }: { onCreate: () => void; message: string | null }) {
   return (
     <div className="flex flex-col gap-4 p-4 lg:px-20 lg:py-6">
+      {message && <InlineAlert tone="success">{message}</InlineAlert>}
       <h1 className="text-title-lg text-text-primary lg:text-title-xl">محصولات</h1>
       <p className="text-body-lg text-text-secondary">نان صبحگاهی</p>
 
@@ -95,6 +97,9 @@ export default function ProductsPage() {
   const location = useLocation()
   const [products, setProducts] = useState<VendorProduct[] | null>(null)
   const [loadError, setLoadError] = useState('')
+  const [unpublishId, setUnpublishId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState('')
+  const [acting, setActing] = useState(false)
   const [message, setMessage] = useState<string | null>(
     () => (location.state as { message?: string } | null)?.message ?? null,
   )
@@ -128,17 +133,36 @@ export default function ProductsPage() {
         در حال دریافت محصولات...
       </p>
     )
-  if (products.length === 0) return <EmptyState onCreate={() => navigate('/vendor/products/new')} />
+  if (products.length === 0)
+    return <EmptyState onCreate={() => navigate('/vendor/products/new')} message={message} />
 
   const visibleProducts = products.filter((product) => {
     if (statusFilter === 'active' && product.status !== 'active') return false
     if (statusFilter === 'draft' && product.status !== 'draft') return false
     if (statusFilter === 'ended' && product.status !== 'ended') return false
-    if (statusFilter === 'inactive' && product.status === 'active') return false
+    if (statusFilter === 'inactive' && product.status !== 'inactive') return false
     if (categoryFilter !== 'all' && product.category !== categoryFilter) return false
     if (storeFilter !== 'all' && product.store !== storeFilter) return false
     return true
   })
+
+  async function unpublish() {
+    if (!unpublishId || acting) return
+    setActing(true)
+    setActionError('')
+    try {
+      await productRepository.unpublish(unpublishId)
+      setProducts(await productRepository.list())
+      setUnpublishId(null)
+      setMessage('انتشار محصول لغو شد.')
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'لغو انتشار ممکن نیست. دوباره تلاش کنید.',
+      )
+    } finally {
+      setActing(false)
+    }
+  }
 
   function scrollTrack(direction: 'prev' | 'next') {
     const track = trackRef.current
@@ -298,6 +322,10 @@ export default function ProductsPage() {
                 key={product.id}
                 product={product}
                 onEdit={() => navigate(`/vendor/products/${product.id}/edit`)}
+                onUnpublish={() => {
+                  setActionError('')
+                  setUnpublishId(product.id)
+                }}
               />
             ))}
             {!showAll && (
@@ -324,6 +352,19 @@ export default function ProductsPage() {
           {showAll ? 'نمایش چرخشی' : 'مشاهده همه'}
         </button>
       </div>
+      <ConfirmDialog
+        className="!max-w-[560px] !rounded-lg"
+        open={unpublishId !== null}
+        onClose={() => setUnpublishId(null)}
+        onConfirm={() => void unpublish()}
+        title="انتشار محصول لغو شود؟"
+        description="محصول از دید مشتریان پنهان می‌شود. رزروهای موجود معتبر می‌مانند و باید تحویل داده شوند."
+        confirmLabel="لغو انتشار"
+        cancelLabel="انصراف"
+        tone="destructive"
+        isLoading={acting}
+        error={actionError}
+      />
     </>
   )
 }

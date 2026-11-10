@@ -1,7 +1,7 @@
 import { Check, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-export type ListingStatus = 'available' | 'soldOut' | 'active' | 'draft' | 'ended'
+export type ListingStatus = 'available' | 'soldOut' | 'active' | 'inactive' | 'draft' | 'ended'
 
 export interface StatusBadgeProps {
   status: ListingStatus
@@ -26,6 +26,12 @@ const statuses: Record<
     Icon: X,
   },
   active: { label: 'فعال', background: 'bg-success-subtle', text: 'text-success', Icon: Check },
+  inactive: {
+    label: 'غیرفعال',
+    background: 'bg-surface-secondary',
+    text: 'text-text-secondary',
+    Icon: X,
+  },
   draft: { label: 'پیش‌نویس', background: 'bg-warning-subtle', text: 'text-warning', Icon: Check },
   ended: { label: 'پایان‌یافته', background: 'bg-error-subtle', text: 'text-error', Icon: Check },
 }
