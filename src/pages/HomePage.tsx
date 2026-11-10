@@ -133,7 +133,7 @@ function DesktopSidebar() {
       </Link>
       <nav aria-label="ناوبری مشتری" className="flex flex-col gap-2">
         <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active />
-        <NavigationLink href="#favorites" label="ذخیره‌ها" Icon={Heart} />
+        <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Heart} />
         <NavigationLink href="/login" label="سفارش‌ها" Icon={ShoppingBag} />
         <NavigationLink href="/login" label="پروفایل" Icon={UserRound} />
       </nav>
@@ -228,17 +228,19 @@ function OfferCarousel({
   onSaveChange: (id: string, value: boolean) => void
   id: string
 }) {
+  const collectionPath = id === 'today' ? '/today' : id === 'favorites' ? '/favorites' : '/last-chance'
+
   return (
     <section id={id} className="min-w-0 space-y-4">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-title-md text-primary sm:text-title-lg">{title}</h2>
-        <a
-          href={`#${id}-offers`}
+        <Link
+          to={collectionPath}
           className="inline-flex shrink-0 items-center gap-1 text-label-md text-primary hover:text-primary-hover"
         >
           مشاهده همه
           <ArrowLeft className="size-5" strokeWidth={1.75} />
-        </a>
+        </Link>
       </div>
 
       {offers.length > 0 ? (
@@ -346,7 +348,7 @@ export default function HomePage() {
         className="fixed inset-x-0 bottom-0 z-30 flex h-24 items-start gap-1 border-t border-border-default bg-surface px-2 pt-1 pb-7 sm:hidden"
       >
         <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active compact />
-        <NavigationLink href="#favorites" label="ذخیره‌ها" Icon={Bookmark} compact />
+        <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Bookmark} compact />
         <NavigationLink href="/login" label="سفارش‌ها" Icon={ShoppingBag} compact />
         <NavigationLink href="/login" label="پروفایل" Icon={UserRound} compact />
         <div aria-hidden="true" className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary" />
