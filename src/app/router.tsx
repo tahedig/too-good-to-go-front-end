@@ -26,14 +26,38 @@ export const router = createBrowserRouter([
     path: '/vendor',
     element: <VendorLayout />,
     children: [
-      { index: true, element: <VendorDashboardPage /> },
-      { path: 'products', element: <VendorProductsPage /> },
-      { path: 'products/new', element: <ProductEditorPage /> },
-      { path: 'products/:id/edit', element: <ProductEditorPage /> },
-      { path: 'orders', element: <VendorComingSoonPage title="سفارشات" /> },
-      { path: 'stores', element: <VendorComingSoonPage title="فروشگاه‌ها" /> },
-      { path: 'finance', element: <VendorComingSoonPage title="مالی" /> },
-      { path: 'account', element: <VendorComingSoonPage title="حساب فروشنده" /> },
+      { 
+        index: true, 
+        element: <VendorDashboardPage /> 
+      },
+      { 
+        path: 'products', 
+        element: <VendorProductsPage /> 
+      },
+      { 
+        path: 'products/new', 
+        element: <ProductEditorPage /> 
+      },
+      { 
+        path: 'products/:id/edit', 
+        element: <ProductEditorPage /> 
+      },
+      { 
+        path: 'orders', 
+        element: <VendorComingSoonPage title="سفارشات" /> 
+      },
+      { 
+        path: 'stores', 
+        element: <VendorComingSoonPage title="فروشگاه‌ها" /> 
+      },
+      { 
+        path: 'finance', 
+        element: <VendorComingSoonPage title="مالی" /> 
+      },
+      { 
+        path: 'account', 
+        element: <VendorComingSoonPage title="حساب فروشنده" /> 
+      },
     ],
   },
   {
