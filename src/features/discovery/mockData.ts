@@ -22,9 +22,10 @@ export interface DiscoveryOffer {
   referenceValue: number
   pickup: string
   imageSrc: string
+  allergens: string[]
 }
 
-const offers: DiscoveryOffer[] = [
+export const discoveryOffers: DiscoveryOffer[] = [
   {
     id: 'morning-bakery',
     merchantName: 'نان صبحگاهی',
@@ -35,6 +36,7 @@ const offers: DiscoveryOffer[] = [
     referenceValue: 115000,
     pickup: 'امروز، ۱۸:۰۰–۱۹:۰۰',
     imageSrc: createIllustration('#d9b17c', '#b86d3e', '#76906b'),
+    allergens: ['gluten', 'dairy', 'sesame'],
   },
   {
     id: 'green-kitchen',
@@ -46,6 +48,7 @@ const offers: DiscoveryOffer[] = [
     referenceValue: 140000,
     pickup: 'امروز، ۱۹:۰۰–۲۰:۰۰',
     imageSrc: createIllustration('#b7c7a6', '#d0804d', '#567e54'),
+    allergens: ['dairy', 'nuts'],
   },
   {
     id: 'corner-cafe',
@@ -57,6 +60,7 @@ const offers: DiscoveryOffer[] = [
     referenceValue: 100000,
     pickup: 'امروز، ۱۷:۳۰–۱۸:۳۰',
     imageSrc: createIllustration('#c6ad91', '#815c46', '#bd8352'),
+    allergens: ['dairy', 'nuts'],
   },
   {
     id: 'seasonal-market',
@@ -68,6 +72,7 @@ const offers: DiscoveryOffer[] = [
     referenceValue: 150000,
     pickup: 'امروز، ۲۰:۰۰–۲۱:۰۰',
     imageSrc: createIllustration('#c3d0aa', '#d89a50', '#6f8e5c'),
+    allergens: [],
   },
   {
     id: 'oven-stories',
@@ -79,6 +84,7 @@ const offers: DiscoveryOffer[] = [
     referenceValue: 120000,
     pickup: 'امروز، ۱۸:۳۰–۱۹:۳۰',
     imageSrc: createIllustration('#d6b79c', '#aa6545', '#819269'),
+    allergens: ['gluten', 'dairy'],
   },
   {
     id: 'homemade-table',
@@ -90,6 +96,7 @@ const offers: DiscoveryOffer[] = [
     referenceValue: 160000,
     pickup: 'امروز، ۲۰:۰۰–۲۱:۰۰',
     imageSrc: createIllustration('#c9c4a4', '#b9754a', '#7b8a53'),
+    allergens: ['gluten', 'dairy'],
   },
 ]
 
@@ -97,16 +104,16 @@ export const discoverySections = [
   {
     id: 'today',
     title: 'فرصت‌های خوشمزه امروز',
-    offers: offers.slice(0, 3),
+    offers: discoveryOffers.slice(0, 3),
   },
   {
     id: 'favorites',
     title: 'محبوب‌های اطراف شما',
-    offers: [offers[1], offers[0], offers[3]],
+    offers: [discoveryOffers[1], discoveryOffers[0], discoveryOffers[3]],
   },
   {
     id: 'last-chance',
     title: 'آخرین فرصت‌های نجات غذا',
-    offers: [offers[4], offers[5], offers[2]],
+    offers: [discoveryOffers[4], discoveryOffers[5], discoveryOffers[2]],
   },
 ]

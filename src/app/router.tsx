@@ -9,6 +9,7 @@ import NotFoundPage from '@/pages/NotFoundPage'
 import VendorDashboardPage from '@/pages/vendor/DashboardPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import MapPage from '@/pages/MapPage'
+import SearchResultsPage from '@/pages/SearchResultsPage'
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'map', element: <MapPage /> },
+      { path: 'search', element: <SearchResultsPage /> },
     ],
   },
   {

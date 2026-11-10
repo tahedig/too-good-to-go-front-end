@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Bookmark,
@@ -148,13 +148,21 @@ function SearchAndFilters({
   query,
   onQueryChange,
   onOpenFilters,
+  onSubmitSearch,
 }: {
   query: string
   onQueryChange: (value: string) => void
   onOpenFilters: () => void
+  onSubmitSearch: () => void
 }) {
   return (
-    <div className="flex items-center gap-2">
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        onSubmitSearch()
+      }}
+    >
       <SearchField
         label="جستجوی پیشنهادها"
         placeholder="جستجوی غذا یا فروشگاه محلی"
@@ -171,7 +179,7 @@ function SearchAndFilters({
       >
         فیلترها
       </Button>
-    </div>
+    </form>
   )
 }
 
@@ -258,6 +266,7 @@ function OfferCarousel({
 }
 
 export default function HomePage() {
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('همه')
   const [sortOrder, setSortOrder] = useState<SortOrder>('distance')
@@ -307,6 +316,9 @@ export default function HomePage() {
                 query={query}
                 onQueryChange={setQuery}
                 onOpenFilters={() => setFiltersOpen(true)}
+                onSubmitSearch={() =>
+                  navigate(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search')
+                }
               />
               <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
             </section>
