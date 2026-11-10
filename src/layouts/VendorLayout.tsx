@@ -76,25 +76,45 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function VendorLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
-  const [headerHidden, setHeaderHidden] = useState(false)
+  const headerRef = useRef<HTMLElement>(null)
+  const headerOffset = useRef(0)
   const drawerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
 
+  // Move one pixel for each pixel scrolled, rather than toggling a hidden state.
+  // Keeping the sticky header in the layout avoids content jumping as it moves.
   useEffect(() => {
-    let anchorY = Math.max(0, window.scrollY)
+    let previousY = Math.max(0, window.scrollY)
+    const desktop = window.matchMedia('(min-width: 64rem)')
     function onScroll() {
-      const y = Math.max(0, window.scrollY)
-      if (y <= 10) {
-        setHeaderHidden(false)
-        anchorY = y
-      } else if (Math.abs(y - anchorY) >= 12) {
-        setHeaderHidden(y > anchorY && y > 76)
-        anchorY = y
-      }
+      const header = headerRef.current
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+      const y = Math.min(maxScroll, Math.max(0, window.scrollY))
+      const delta = y - previousY
+      previousY = y
+      if (!header || desktop.matches) return
+      const height = header.offsetHeight
+      headerOffset.current =
+        y === 0 ? 0 : Math.max(0, Math.min(height, headerOffset.current + delta))
+      header.style.transform = `translateY(-${headerOffset.current}px)`
+    }
+    function resetOnResize() {
+      if (headerRef.current) headerRef.current.style.transform = ''
+      headerOffset.current = 0
+      previousY = Math.max(0, window.scrollY)
     }
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    desktop.addEventListener('change', resetOnResize)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      desktop.removeEventListener('change', resetOnResize)
+    }
   }, [])
+
+  function revealHeader() {
+    headerOffset.current = 0
+    if (headerRef.current) headerRef.current.style.transform = ''
+  }
 
   useEffect(() => {
     if (!menuOpen) return
@@ -144,7 +164,9 @@ export default function VendorLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header */}
         <header
-          className={`sticky top-0 z-30 flex items-center justify-between bg-background px-5 py-4 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none lg:hidden ${headerHidden && !menuOpen ? '-translate-y-full opacity-0 focus-within:translate-y-0 focus-within:opacity-100' : 'translate-y-0 opacity-100'}`}
+          ref={headerRef}
+          onFocus={revealHeader}
+          className="sticky top-0 z-30 flex items-center justify-between bg-background px-5 py-4 will-change-transform lg:hidden"
         >
           <span className="text-title-md text-text-primary">ته‌دیگ</span>
           <button
