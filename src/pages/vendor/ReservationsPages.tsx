@@ -1,14 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { useEffect, useId, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
-import { Select } from '@/components/ui/Select'
 import { VendorReservationCard } from '@/components/vendor/VendorReservationCard'
 import { formatPrice } from '@/lib/format'
 import { toPersianDigits } from '@/lib/digits'
 import { listReservations } from './data/reservations'
-import { formatPickupDate, localDate, STATUS_LABELS } from '@/lib/vendorReservations'
+import { formatPickupDate, isValidDate, localDate, STATUS_LABELS } from '@/lib/vendorReservations'
 import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
 
 type Filter = 'all' | ReservationStatus
@@ -96,23 +95,44 @@ function ReviewDialog({
     </Modal>
   )
 }
-function DateControl({
-  dates,
-  selected,
-  onChange,
-}: {
-  dates: string[]
-  selected: string
-  onChange: (date: string) => void
-}) {
+function DateInput({ value, onChange }: { value: string; onChange: (date: string) => void }) {
+  const id = useId()
   return (
-    <Select
-      label="تاریخ تحویل"
-      className="w-full lg:w-70"
-      value={selected}
-      onChange={(event) => onChange(event.target.value)}
-      options={dates.map((date) => ({ value: date, label: formatPickupDate(date) }))}
-    />
+    <div className="flex w-full flex-col gap-2">
+      <label htmlFor={id} className="text-label-md">
+        تاریخ تحویل
+      </label>
+      <input
+        id={id}
+        type="date"
+        min="0001-01-01"
+        max="9999-12-31"
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-13 w-full rounded-md border border-border-input bg-surface px-4 text-body-lg text-text-primary"
+      />
+    </div>
+  )
+}
+function DateSearch({ initialDate }: { initialDate: string }) {
+  const [date, setDate] = useState(initialDate)
+  const navigate = useNavigate()
+  return (
+    <form
+      className="flex flex-col gap-3 lg:flex-row lg:items-end"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (date) navigate(`/vendor/orders/daily?date=${date}`)
+      }}
+    >
+      <div className="w-full lg:w-70">
+        <DateInput value={date} onChange={setDate} />
+      </div>
+      <Button type="submit" size="md" disabled={!date} className="lg:w-55">
+        نمایش سفارشات روز
+      </Button>
+    </form>
   )
 }
 function DailySummary({
@@ -142,7 +162,7 @@ function DailySummary({
       </div>
       <div className="hidden grid-cols-3 gap-4 lg:grid">
         {[
-          ['مبلغ رزروهای روز', formatPrice(amount)],
+          ['مبلغ رزروها', formatPrice(amount)],
           ['تحویل‌شده', `${toPersianDigits(delivered)} بسته`],
           ['بسته‌های رزروشده', `${toPersianDigits(packs)} بسته`],
         ].map(([label, value]) => (
@@ -174,7 +194,7 @@ function ReservationsSummary({
   return (
     <>
       <div className="flex flex-col gap-3 lg:hidden">
-        <h2 className="text-label-md">خلاصه رزروهای روز انتخاب‌شده</h2>
+        <h2 className="text-label-md">خلاصه رزروها</h2>
         <div className="flex flex-col gap-3 rounded-lg border border-border-default bg-surface p-4">
           {stats.map(([label, value]) => (
             <div key={label} className="flex justify-between gap-2">
@@ -208,13 +228,22 @@ function ReservationsSummary({
   )
 }
 
-export default function ReservationsPages({ daily = false }: { daily?: boolean }) {
+export default function ReservationsPages({
+  view = 'reservations',
+}: {
+  view?: 'orders' | 'reservations' | 'daily'
+}) {
   const [items, setItems] = useState<Reservation[] | null>(null)
   const [error, setError] = useState(false)
   const [filter, setFilter] = useState<Filter>('all')
   const [selected, setSelected] = useState<Reservation | null>(null)
+  const [dateDialog, setDateDialog] = useState(false)
+  const [draftDate, setDraftDate] = useState(localDate)
   const [params, setParams] = useSearchParams()
-  const date = params.get('date') || localDate()
+  const rawDate = params.get('date') ?? ''
+  const validDate = isValidDate(rawDate) ? rawDate : ''
+  const selectedDate =
+    view === 'daily' ? validDate || localDate() : view === 'reservations' ? validDate : ''
   useEffect(() => {
     let live = true
     listReservations()
@@ -228,128 +257,187 @@ export default function ReservationsPages({ daily = false }: { daily?: boolean }
       live = false
     }
   }, [])
-  const dates = useMemo(
-    () =>
-      Array.from(new Set([localDate(), ...(items ?? []).map((item) => item.pickupDate)]))
-        .sort()
-        .reverse(),
-    [items],
-  )
-  const selectedDate = dates.includes(date) ? date : localDate()
-  const day = (items ?? []).filter((item) => item.pickupDate === selectedDate)
-  const visible = day.filter((item) => filter === 'all' || item.status === filter)
-  // Cancelled reservations contribute neither revenue nor reserved packages.
-  const booked = day.filter((item) => item.status !== 'cancelled')
+  // Orders defaults to every date. Reservations can optionally be narrowed to a date.
+  const scoped = (items ?? []).filter((item) => !selectedDate || item.pickupDate === selectedDate)
+  const visible = scoped.filter((item) => filter === 'all' || item.status === filter)
+  const booked = scoped.filter((item) => item.status !== 'cancelled')
   const packs = booked.reduce((sum, item) => sum + item.quantity, 0)
-  const delivered = day
+  const delivered = scoped
     .filter((item) => item.status === 'delivered')
     .reduce((sum, item) => sum + item.quantity, 0)
   const amount = booked.reduce((sum, item) => sum + item.amount, 0)
-  const active = day.filter((item) => item.status === 'active' || item.status === 'pending').length
-  const dateControl = (
-    <DateControl
-      dates={dates}
-      selected={selectedDate}
-      onChange={(value) => setParams({ date: value })}
-    />
+  const active = scoped.filter(
+    (item) => item.status === 'active' || item.status === 'pending',
+  ).length
+  const noDayOrders = view === 'daily' && items !== null && !error && scoped.length === 0
+  const filters = (
+    <FilterButtons value={filter} onChange={setFilter} daily={view !== 'reservations'} />
   )
-  const filters = <FilterButtons value={filter} onChange={setFilter} daily={daily} />
+  const title = view === 'daily' ? 'سفارشات روز' : view === 'orders' ? 'سفارشات' : 'رزروها'
+  function openDateDialog() {
+    setDraftDate(selectedDate || localDate())
+    setDateDialog(true)
+  }
   return (
     <div
-      className={`flex flex-col gap-5 p-4 pb-8 lg:gap-6 ${daily ? 'lg:p-12' : 'lg:px-20 lg:py-6'}`}
+      className={`flex flex-col gap-5 p-4 pb-8 lg:gap-6 ${view === 'orders' ? 'lg:p-12' : 'lg:px-20 lg:py-6'}`}
     >
-      <header className={`flex flex-col gap-3 ${daily ? 'lg:gap-6' : ''}`}>
-        <div
-          className={
-            daily ? 'flex flex-col gap-3 lg:flex-row lg:items-center' : 'flex flex-col gap-3'
-          }
-        >
+      <header className="flex flex-col gap-3">
+        {!noDayOrders && (
           <Link
-            to={daily ? '/vendor' : '/vendor/orders'}
-            aria-label={daily ? 'بازگشت به داشبورد' : 'بازگشت به سفارشات'}
+            to={view === 'orders' ? '/vendor' : '/vendor/orders'}
+            aria-label={view === 'orders' ? 'بازگشت به داشبورد' : 'بازگشت به سفارشات'}
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface"
           >
             <ArrowRight size={24} strokeWidth={1.75} />
           </Link>
-          <h1 className="text-title-xl lg:text-title-xl">{daily ? 'سفارشات' : 'رزروها'}</h1>
-        </div>
-        <p className="text-body-md text-text-secondary lg:text-body-lg">
-          نان صبحگاهی ·{' '}
-          <span className={daily ? 'lg:hidden' : ''}>تهران، خیابان ولیعصر، پلاک ۱۲</span>
-          {daily && <span className="hidden lg:inline">{formatPickupDate(selectedDate)}</span>}
+        )}
+        <h1 className={view === 'daily' ? 'text-title-lg lg:text-title-xl' : 'text-title-xl'}>
+          {title}
+        </h1>
+        <p className="text-body-lg text-text-secondary">
+          نان صبحگاهی{view !== 'daily' && ' · تهران، خیابان ولیعصر، پلاک ۱۲'}
         </p>
       </header>
-      {daily ? (
+      {noDayOrders ? (
         <>
-          <div className="flex flex-col gap-3">
-            <div className="lg:hidden">{dateControl}</div>
-            {filters}
-            <div className="hidden lg:block">{dateControl}</div>
+          <div className="flex flex-col gap-4 rounded-lg bg-surface p-4">
+            <p className="text-label-lg">{formatPickupDate(selectedDate)}</p>
+            <p className="text-body-lg">۰ رزرو · ۰ بسته · ۰ تحویل‌شده</p>
           </div>
-          <DailySummary packs={packs} delivered={delivered} amount={amount} />
+          <div role="status" className="flex flex-col gap-3 rounded-lg bg-surface p-6">
+            <div className="flex items-center gap-3">
+              <Heart className="size-6 shrink-0" strokeWidth={1.75} />
+              <p className="text-title-md font-normal">برای این تاریخ سفارشی ندارید</p>
+            </div>
+            <p className="text-body-md text-text-secondary">تاریخ دیگری را انتخاب کنید.</p>
+          </div>
+          <Button fullWidth onClick={openDateDialog}>
+            تغییر تاریخ
+          </Button>
+          <Link
+            to="/vendor/products"
+            className="flex h-13 w-full items-center justify-center rounded-md border-[1.5px] border-primary bg-surface text-label-lg hover:bg-primary-subtle"
+          >
+            محصولات
+          </Link>
         </>
       ) : (
         <>
-          <div className="flex flex-col gap-3 lg:hidden">
-            <h2 className="text-label-md">فیلترها</h2>
-            {filters}
-            {dateControl}
-          </div>
-          <ReservationsSummary
-            packs={packs}
-            delivered={delivered}
-            amount={amount}
-            active={active}
-          />
-          <div className="hidden flex-wrap items-end justify-between gap-4 lg:flex">
-            {filters}
-            {dateControl}
-          </div>
+          {view === 'orders' && (
+            <>
+              <DateSearch initialDate={localDate()} />
+              {filters}
+              <DailySummary packs={packs} delivered={delivered} amount={amount} />
+            </>
+          )}
+          {view === 'reservations' && (
+            <>
+              <div className="flex flex-col gap-3 lg:hidden">
+                <h2 className="text-label-md">فیلترها</h2>
+                {filters}
+              </div>
+              <ReservationsSummary
+                packs={packs}
+                delivered={delivered}
+                amount={amount}
+                active={active}
+              />
+              <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between lg:gap-4">
+                <div className="hidden lg:block">{filters}</div>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                  <div className="w-full sm:w-70">
+                    <DateInput
+                      value={selectedDate}
+                      onChange={(value) => (value ? setParams({ date: value }) : setParams({}))}
+                    />
+                  </div>
+                  {selectedDate && (
+                    <Button variant="secondary" size="md" onClick={() => setParams({})}>
+                      همه تاریخ‌ها
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+          {view === 'daily' && (
+            <>
+              <div className="flex flex-col gap-4 rounded-lg bg-surface p-4">
+                <p className="text-label-lg">{formatPickupDate(selectedDate)}</p>
+                <p className="text-body-lg">
+                  {toPersianDigits(scoped.length)} رزرو · {toPersianDigits(packs)} بسته ·{' '}
+                  {toPersianDigits(delivered)} تحویل‌شده
+                </p>
+              </div>
+              <Button variant="secondary" size="md" className="self-start" onClick={openDateDialog}>
+                تغییر تاریخ
+              </Button>
+              {filters}
+            </>
+          )}
+          <section className="flex flex-col gap-4" aria-label="فهرست رزروها">
+            <div className="flex items-center justify-between lg:hidden">
+              <h2 className="text-label-lg">
+                {view === 'daily' ? 'رزروهای این روز' : view === 'orders' ? 'سفارشات' : 'رزروها'}
+              </h2>
+              <span className="text-body-md text-text-secondary">
+                {toPersianDigits(visible.length)} رزرو
+              </span>
+            </div>
+            {error ? (
+              <p role="alert" className="rounded-lg bg-surface p-5">
+                دریافت رزروها ممکن نیست.
+              </p>
+            ) : !items ? (
+              <p role="status" className="rounded-lg bg-surface p-5">
+                در حال دریافت رزروها...
+              </p>
+            ) : visible.length === 0 ? (
+              <p
+                role="status"
+                className="rounded-lg border border-border-default bg-surface p-5 text-text-secondary"
+              >
+                رزروی با این فیلترها پیدا نشد.
+              </p>
+            ) : (
+              visible.map((reservation) => (
+                <VendorReservationCard
+                  key={reservation.id}
+                  reservation={reservation}
+                  onReview={setSelected}
+                />
+              ))
+            )}
+          </section>
+          {view === 'orders' && (
+            <Link
+              to="/vendor/orders/reservations"
+              className="flex h-13 w-full items-center justify-center rounded-md border-[1.5px] border-primary bg-surface text-label-lg hover:bg-primary-subtle lg:h-12 lg:w-60 lg:self-start"
+            >
+              همه رزروها
+            </Link>
+          )}
         </>
       )}
-      <section className="flex flex-col gap-4" aria-label="فهرست رزروها">
-        <div className="flex items-center justify-between lg:hidden">
-          <h2 className="text-label-lg">
-            {daily ? 'رزروهای روز انتخاب‌شده' : 'سفارشات روز انتخاب‌شده'}
-          </h2>
-          <span className="text-body-md text-text-secondary">
-            {toPersianDigits(visible.length)} رزرو
-          </span>
-        </div>
-        {error ? (
-          <p role="alert" className="rounded-lg bg-surface p-5">
-            دریافت رزروها ممکن نیست.
-          </p>
-        ) : !items ? (
-          <p role="status" className="rounded-lg bg-surface p-5">
-            در حال دریافت رزروها...
-          </p>
-        ) : visible.length === 0 ? (
-          <p
-            role="status"
-            className="rounded-lg border border-border-default bg-surface p-5 text-text-secondary"
-          >
-            برای این تاریخ و وضعیت رزروی پیدا نشد.
-          </p>
-        ) : (
-          visible.map((reservation) => (
-            <VendorReservationCard
-              key={reservation.id}
-              reservation={reservation}
-              onReview={setSelected}
-            />
-          ))
-        )}
-      </section>
-      {daily && (
-        <Link
-          to={`/vendor/orders/reservations?date=${selectedDate}`}
-          className="flex h-13 w-full items-center justify-center rounded-md border-[1.5px] border-primary bg-surface text-label-lg hover:bg-primary-subtle lg:h-12 lg:w-60 lg:self-start"
-        >
-          همه رزروها
-        </Link>
-      )}
       <ReviewDialog reservation={selected} onClose={() => setSelected(null)} />
+      <Modal open={dateDialog} onClose={() => setDateDialog(false)} title="تغییر تاریخ">
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!draftDate) return
+            setParams({ date: draftDate })
+            setFilter('all')
+            setDateDialog(false)
+          }}
+        >
+          <DateInput value={draftDate} onChange={setDraftDate} />
+          <Button type="submit" fullWidth disabled={!draftDate}>
+            نمایش سفارشات روز
+          </Button>
+        </form>
+      </Modal>
     </div>
   )
 }

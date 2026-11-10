@@ -45,9 +45,10 @@ export const router = createBrowserRouter([
       },
       { 
         path: 'orders', 
-        element: <ReservationsPages daily /> 
+        element: <ReservationsPages key="orders" view="orders" /> 
       },
-      { path: 'orders/reservations', element: <ReservationsPages /> },
+      { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
+      { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
       { 
         path: 'stores', 
         element: <VendorComingSoonPage title="فروشگاه‌ها" /> 
