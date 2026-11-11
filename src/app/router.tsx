@@ -12,12 +12,24 @@ import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
+import MapPage from '@/pages/MapPage'
+import SearchResultsPage from '@/pages/SearchResultsPage'
+import OfferCollectionPage from '@/pages/OfferCollectionPage'
+import OrdersPage from '@/pages/OrdersPage'
 
 export const router = createBrowserRouter([
   {
     path: '/',
     element: <PublicLayout />,
-    children: [{ index: true, element: <HomePage /> }],
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'map', element: <MapPage /> },
+      { path: 'search', element: <SearchResultsPage /> },
+      { path: 'today', element: <OfferCollectionPage /> },
+      { path: 'favorites', element: <OfferCollectionPage /> },
+      { path: 'last-chance', element: <OfferCollectionPage /> },
+      { path: 'orders', element: <OrdersPage /> },
+    ],
   },
   {
     element: <AuthLayout />,
