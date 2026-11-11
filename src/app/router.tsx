@@ -16,6 +16,9 @@ import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
 import OrdersPage from '@/pages/OrdersPage'
+import PublicStorePage from '@/pages/PublicStorePage'
+import ProfilePage from '@/pages/ProfilePage'
+import PersonalInfoPage from '@/pages/PersonalInfoPage'
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +32,9 @@ export const router = createBrowserRouter([
       { path: 'favorites', element: <OfferCollectionPage /> },
       { path: 'last-chance', element: <OfferCollectionPage /> },
       { path: 'orders', element: <OrdersPage /> },
+      { path: 'stores/:storeId', element: <PublicStorePage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'profile/personal', element: <PersonalInfoPage /> },
     ],
   },
   {
@@ -39,39 +45,39 @@ export const router = createBrowserRouter([
     path: '/vendor',
     element: <VendorLayout />,
     children: [
-      { 
-        index: true, 
-        element: <VendorDashboardPage /> 
+      {
+        index: true,
+        element: <VendorDashboardPage />,
       },
-      { 
-        path: 'products', 
-        element: <VendorProductsPage /> 
+      {
+        path: 'products',
+        element: <VendorProductsPage />,
       },
-      { 
-        path: 'products/new', 
-        element: <ProductEditorPage /> 
+      {
+        path: 'products/new',
+        element: <ProductEditorPage />,
       },
-      { 
-        path: 'products/:id/edit', 
-        element: <ProductEditorPage /> 
+      {
+        path: 'products/:id/edit',
+        element: <ProductEditorPage />,
       },
-      { 
-        path: 'orders', 
-        element: <ReservationsPages key="orders" view="orders" /> 
+      {
+        path: 'orders',
+        element: <ReservationsPages key="orders" view="orders" />,
       },
       { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
       { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
-      { 
-        path: 'stores', 
-        element: <VendorComingSoonPage title="فروشگاه‌ها" /> 
+      {
+        path: 'stores',
+        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
       },
-      { 
-        path: 'finance', 
-        element: <VendorComingSoonPage title="مالی" /> 
+      {
+        path: 'finance',
+        element: <VendorComingSoonPage title="مالی" />,
       },
-      { 
-        path: 'account', 
-        element: <VendorComingSoonPage title="حساب فروشنده" /> 
+      {
+        path: 'account',
+        element: <VendorComingSoonPage title="حساب فروشنده" />,
       },
     ],
   },

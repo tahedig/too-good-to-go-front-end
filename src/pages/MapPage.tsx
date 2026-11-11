@@ -67,7 +67,7 @@ function MapHeader({
         </Link>
 
         <Link
-          to="/login"
+          to="/profile"
           aria-label="پروفایل"
           className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
         >
@@ -174,7 +174,7 @@ function MobileNavigation() {
         سفارش‌ها
       </Link>
       <Link
-        to="/login"
+        to="/profile"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
       >
         <UserRound className="size-6" strokeWidth={1.75} />

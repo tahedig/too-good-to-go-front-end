@@ -160,7 +160,8 @@ function filterOffers(
 
   return filtered.sort((first, second) => {
     if (filters.sort === 'price') return first.price - second.price
-    if (filters.sort === 'time') return parsePickupHour(first.pickup) - parsePickupHour(second.pickup)
+    if (filters.sort === 'time')
+      return parsePickupHour(first.pickup) - parsePickupHour(second.pickup)
     return first.distanceKm - second.distanceKm
   })
 }
@@ -197,7 +198,7 @@ function SearchHeader() {
             نقشه
           </Link>
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >
@@ -237,7 +238,7 @@ function MobileNavigation() {
         سفارش‌ها
       </Link>
       <Link
-        to="/login"
+        to="/profile"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
       >
         <UserRound className="size-6" strokeWidth={1.75} />
@@ -251,13 +252,7 @@ function MobileNavigation() {
   )
 }
 
-function ActiveFilter({
-  label,
-  onClear,
-}: {
-  label: string
-  onClear: () => void
-}) {
+function ActiveFilter({ label, onClear }: { label: string; onClear: () => void }) {
   return (
     <button
       type="button"
@@ -333,10 +328,7 @@ export default function SearchResultsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [savedOffers, setSavedOffers] = useState<Record<string, boolean>>({})
 
-  const results = useMemo(
-    () => filterOffers(discoveryOffers, query, filters),
-    [query, filters],
-  )
+  const results = useMemo(() => filterOffers(discoveryOffers, query, filters), [query, filters])
   const draftResultCount = useMemo(
     () => filterOffers(discoveryOffers, query, draftFilters).length,
     [query, draftFilters],
@@ -385,9 +377,13 @@ export default function SearchResultsPage() {
 
   const activeFilterCount =
     Number(filters.category !== 'همه') +
-    Number(filters.minPrice !== defaultFilters.minPrice || filters.maxPrice !== defaultFilters.maxPrice) +
+    Number(
+      filters.minPrice !== defaultFilters.minPrice || filters.maxPrice !== defaultFilters.maxPrice,
+    ) +
     Number(filters.maxDistance !== defaultFilters.maxDistance) +
-    Number(filters.startHour !== defaultFilters.startHour || filters.endHour !== defaultFilters.endHour) +
+    Number(
+      filters.startHour !== defaultFilters.startHour || filters.endHour !== defaultFilters.endHour,
+    ) +
     filters.excludedAllergens.length
 
   return (
@@ -495,7 +491,9 @@ export default function SearchResultsPage() {
             {filters.maxDistance !== defaultFilters.maxDistance && (
               <ActiveFilter
                 label={`تا ${filters.maxDistance.toLocaleString('fa-IR')} کیلومتر`}
-                onClear={() => updateFilters({ ...filters, maxDistance: defaultFilters.maxDistance })}
+                onClear={() =>
+                  updateFilters({ ...filters, maxDistance: defaultFilters.maxDistance })
+                }
               />
             )}
             {(filters.startHour !== defaultFilters.startHour ||
@@ -580,6 +578,11 @@ export default function SearchResultsPage() {
               <FoodListingCard
                 key={offer.id}
                 {...offer}
+                renderLink={
+                  offer.storeId
+                    ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                    : undefined
+                }
                 headingLevel={2}
                 saved={Boolean(savedOffers[offer.id])}
                 onSaveChange={(saved) =>
@@ -673,7 +676,9 @@ export default function SearchResultsPage() {
               step="5000"
               value={draftFilters.minPrice}
               onChange={(event) =>
-                updateDraft({ minPrice: Math.min(Number(event.target.value), draftFilters.maxPrice) })
+                updateDraft({
+                  minPrice: Math.min(Number(event.target.value), draftFilters.maxPrice),
+                })
               }
               className="block min-h-11 w-full accent-primary"
             />
@@ -688,7 +693,9 @@ export default function SearchResultsPage() {
               step="5000"
               value={draftFilters.maxPrice}
               onChange={(event) =>
-                updateDraft({ maxPrice: Math.max(Number(event.target.value), draftFilters.minPrice) })
+                updateDraft({
+                  maxPrice: Math.max(Number(event.target.value), draftFilters.minPrice),
+                })
               }
               className="block min-h-11 w-full accent-primary"
             />
@@ -725,7 +732,9 @@ export default function SearchResultsPage() {
               step="1"
               value={draftFilters.startHour}
               onChange={(event) =>
-                updateDraft({ startHour: Math.min(Number(event.target.value), draftFilters.endHour) })
+                updateDraft({
+                  startHour: Math.min(Number(event.target.value), draftFilters.endHour),
+                })
               }
               className="block min-h-11 w-full accent-primary"
             />
@@ -740,7 +749,9 @@ export default function SearchResultsPage() {
               step="1"
               value={draftFilters.endHour}
               onChange={(event) =>
-                updateDraft({ endHour: Math.max(Number(event.target.value), draftFilters.startHour) })
+                updateDraft({
+                  endHour: Math.max(Number(event.target.value), draftFilters.startHour),
+                })
               }
               className="block min-h-11 w-full accent-primary"
             />

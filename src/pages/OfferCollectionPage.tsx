@@ -80,7 +80,7 @@ function CollectionHeader({ title }: { title: string }) {
             نقشه
           </Link>
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >
@@ -127,11 +127,13 @@ function CollectionFilters({
       <fieldset className="mt-4 space-y-2">
         <legend className="mb-2 text-label-md text-primary">زمان دریافت</legend>
         <div className="flex flex-wrap gap-2">
-          {([
-            ['all', 'هر زمان'],
-            ['today', 'امروز'],
-            ['tomorrow', 'فردا'],
-          ] as const).map(([value, label]) => (
+          {(
+            [
+              ['all', 'هر زمان'],
+              ['today', 'امروز'],
+              ['tomorrow', 'فردا'],
+            ] as const
+          ).map(([value, label]) => (
             <OptionChip
               key={value}
               label={label}
@@ -188,7 +190,7 @@ function CollectionNavigation() {
         سفارش‌ها
       </Link>
       <Link
-        to="/login"
+        to="/profile"
         className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
       >
         <UserRound className="size-6" strokeWidth={1.75} />
@@ -304,7 +306,10 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
               <h2 id="collection-results-heading" className="text-title-sm text-primary">
                 پیشنهادهای نزدیک شما
               </h2>
-              <p aria-live="polite" className="shrink-0 text-caption text-text-secondary sm:text-body-md">
+              <p
+                aria-live="polite"
+                className="shrink-0 text-caption text-text-secondary sm:text-body-md"
+              >
                 {offers.length.toLocaleString('fa-IR')} پیشنهاد
               </p>
             </div>
@@ -315,6 +320,11 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
                   <FoodListingCard
                     key={offer.id}
                     {...offer}
+                    renderLink={
+                      offer.storeId
+                        ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                        : undefined
+                    }
                     headingLevel={2}
                     saved={Boolean(savedOffers[offer.id])}
                     onSaveChange={(saved) =>

@@ -51,8 +51,12 @@ function NavigationLink({
 }) {
   const className = [
     'flex items-center rounded-md transition-colors',
-    compact ? 'min-w-0 flex-1 flex-col justify-center gap-1 px-2 py-2 text-caption' : 'gap-3 px-4 py-3 text-body-md',
-    active ? 'bg-primary-subtle font-semibold text-primary' : 'text-text-secondary hover:bg-surface-secondary hover:text-primary',
+    compact
+      ? 'min-w-0 flex-1 flex-col justify-center gap-1 px-2 py-2 text-caption'
+      : 'gap-3 px-4 py-3 text-body-md',
+    active
+      ? 'bg-primary-subtle font-semibold text-primary'
+      : 'text-text-secondary hover:bg-surface-secondary hover:text-primary',
   ].join(' ')
 
   const content = (
@@ -93,13 +97,16 @@ function DiscoveryHeader() {
       <header className="hidden h-20 items-center justify-between border-b border-border-default px-8 sm:flex">
         <div className="flex items-center gap-3">
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >
             <UserRound strokeWidth={1.75} />
           </Link>
-          <button type="button" className="flex min-h-11 items-center gap-2 px-2 text-body-md text-primary">
+          <button
+            type="button"
+            className="flex min-h-11 items-center gap-2 px-2 text-body-md text-primary"
+          >
             <MapPin className="size-6" strokeWidth={1.75} />
             تهران، ولیعصر
           </button>
@@ -135,9 +142,12 @@ function DesktopSidebar() {
         <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active />
         <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Heart} />
         <NavigationLink href="/orders" label="سفارش‌ها" Icon={ShoppingBag} />
-        <NavigationLink href="/login" label="پروفایل" Icon={UserRound} />
+        <NavigationLink href="/profile" label="پروفایل" Icon={UserRound} />
       </nav>
-      <a href="mailto:support@example.com" className="mt-auto px-4 py-3 text-body-md text-text-secondary">
+      <a
+        href="mailto:support@example.com"
+        className="mt-auto px-4 py-3 text-body-md text-text-secondary"
+      >
         راهنمایی و پشتیبانی
       </a>
     </aside>
@@ -228,7 +238,8 @@ function OfferCarousel({
   onSaveChange: (id: string, value: boolean) => void
   id: string
 }) {
-  const collectionPath = id === 'today' ? '/today' : id === 'favorites' ? '/favorites' : '/last-chance'
+  const collectionPath =
+    id === 'today' ? '/today' : id === 'favorites' ? '/favorites' : '/last-chance'
 
   return (
     <section id={id} className="min-w-0 space-y-4">
@@ -252,6 +263,11 @@ function OfferCarousel({
             <FoodListingCard
               key={offer.id}
               {...offer}
+              renderLink={
+                offer.storeId
+                  ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                  : undefined
+              }
               saved={Boolean(saved[offer.id])}
               onSaveChange={(value) => onSaveChange(offer.id, value)}
               className="w-[270px] shrink-0 snap-start"
@@ -279,20 +295,23 @@ export default function HomePage() {
     () =>
       discoverySections.map((section) => {
         const offers = section.offers
-            .filter((offer) => {
-              if (selectedCategory === 'همه') return true
-              if (selectedCategory === 'تخفیف ویژه') return offer.referenceValue >= offer.price * 1.5
-              return offer.category === selectedCategory
-            })
+          .filter((offer) => {
+            if (selectedCategory === 'همه') return true
+            if (selectedCategory === 'تخفیف ویژه') return offer.referenceValue >= offer.price * 1.5
+            return offer.category === selectedCategory
+          })
           .filter((offer) => {
             const search = query.trim().toLocaleLowerCase()
             return (
               !search ||
-              `${offer.merchantName} ${offer.category} ${offer.description}`.toLocaleLowerCase().includes(search)
+              `${offer.merchantName} ${offer.category} ${offer.description}`
+                .toLocaleLowerCase()
+                .includes(search)
             )
           })
         if (sortOrder === 'price') offers.sort((a, b) => a.price - b.price)
-        if (sortOrder === 'distance') offers.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+        if (sortOrder === 'distance')
+          offers.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
         if (sortOrder === 'time') offers.sort((a, b) => pickupTime(a.pickup) - pickupTime(b.pickup))
         return { ...section, offers }
       }),
@@ -319,7 +338,9 @@ export default function HomePage() {
                 onQueryChange={setQuery}
                 onOpenFilters={() => setFiltersOpen(true)}
                 onSubmitSearch={() =>
-                  navigate(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search')
+                  navigate(
+                    query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search',
+                  )
                 }
               />
               <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
@@ -350,8 +371,11 @@ export default function HomePage() {
         <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active compact />
         <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Bookmark} compact />
         <NavigationLink href="/orders" label="سفارش‌ها" Icon={ShoppingBag} compact />
-        <NavigationLink href="/login" label="پروفایل" Icon={UserRound} compact />
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary" />
+        <NavigationLink href="/profile" label="پروفایل" Icon={UserRound} compact />
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary"
+        />
       </nav>
 
       <Modal

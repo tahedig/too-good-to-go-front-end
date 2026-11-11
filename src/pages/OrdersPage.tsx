@@ -62,11 +62,12 @@ const orderFilters: Array<{ value: OrderFilter; label: string }> = [
   { value: 'past', label: 'سفارش‌های گذشته' },
 ]
 
-const statusDetails: Record<OrderStatus, { label: string; className: string; Icon: typeof Check }> = {
-  reserved: { label: 'رزرو شده', className: 'bg-success-subtle text-primary', Icon: Check },
-  completed: { label: 'تکمیل شده', className: 'bg-success-subtle text-primary', Icon: Check },
-  cancelled: { label: 'لغو شده', className: 'bg-error-subtle text-error', Icon: X },
-}
+const statusDetails: Record<OrderStatus, { label: string; className: string; Icon: typeof Check }> =
+  {
+    reserved: { label: 'رزرو شده', className: 'bg-success-subtle text-primary', Icon: Check },
+    completed: { label: 'تکمیل شده', className: 'bg-success-subtle text-primary', Icon: Check },
+    cancelled: { label: 'لغو شده', className: 'bg-error-subtle text-error', Icon: X },
+  }
 
 function CustomerHeader() {
   return (
@@ -86,7 +87,7 @@ function CustomerHeader() {
       <header className="hidden h-20 items-center justify-between border-b border-border-default px-8 sm:flex">
         <div className="flex items-center gap-3">
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >
@@ -114,11 +115,17 @@ function CustomerSidebar() {
         ته‌دیگ
       </Link>
       <nav aria-label="ناوبری مشتری" className="flex flex-col gap-2">
-        <Link to="/" className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}>
+        <Link
+          to="/"
+          className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}
+        >
           <Compass className="size-6" strokeWidth={1.75} />
           اکتشاف
         </Link>
-        <Link to="/favorites" className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}>
+        <Link
+          to="/favorites"
+          className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}
+        >
           <Bookmark className="size-6" strokeWidth={1.75} />
           ذخیره‌ها
         </Link>
@@ -130,12 +137,18 @@ function CustomerSidebar() {
           <ShoppingBag className="size-6" strokeWidth={1.75} />
           سفارشات
         </Link>
-        <Link to="/login" className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}>
+        <Link
+          to="/profile"
+          className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}
+        >
           <UserRound className="size-6" strokeWidth={1.75} />
           پروفایل
         </Link>
       </nav>
-      <a href="mailto:support@example.com" className="mt-auto px-4 py-3 text-body-md text-text-secondary">
+      <a
+        href="mailto:support@example.com"
+        className="mt-auto px-4 py-3 text-body-md text-text-secondary"
+      >
         راهنمایی و پشتیبانی
       </a>
     </aside>
@@ -143,7 +156,8 @@ function CustomerSidebar() {
 }
 
 function MobileNavigation() {
-  const itemClass = 'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption'
+  const itemClass =
+    'flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption'
 
   return (
     <nav
@@ -162,7 +176,7 @@ function MobileNavigation() {
         <ShoppingBag className="size-6" strokeWidth={1.75} />
         سفارشات
       </Link>
-      <Link to="/login" className={`${itemClass} text-text-secondary`}>
+      <Link to="/profile" className={`${itemClass} text-text-secondary`}>
         <UserRound className="size-6" strokeWidth={1.75} />
         پروفایل
       </Link>
@@ -191,7 +205,9 @@ function OrderCard({
     <article className="rounded-2xl border border-border-default bg-surface p-4 sm:p-5">
       <div className="flex items-center justify-between gap-3">
         <p className="text-caption text-text-secondary">شماره سفارش {order.id}</p>
-        <span className={`inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-caption ${status.className}`}>
+        <span
+          className={`inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-caption ${status.className}`}
+        >
           <StatusIcon className="size-4" strokeWidth={1.75} />
           {status.label}
         </span>
@@ -205,8 +221,12 @@ function OrderCard({
         />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-title-sm text-primary">{offer.merchantName}</h3>
-          <p className="mt-1 truncate text-body-md text-text-secondary">{offer.category} · ولیعصر</p>
-          <p className="mt-1 text-caption text-text-secondary">تعداد بسته: {order.quantity.toLocaleString('fa-IR')}</p>
+          <p className="mt-1 truncate text-body-md text-text-secondary">
+            {offer.category} · ولیعصر
+          </p>
+          <p className="mt-1 text-caption text-text-secondary">
+            تعداد بسته: {order.quantity.toLocaleString('fa-IR')}
+          </p>
         </div>
       </div>
 
@@ -271,7 +291,8 @@ export default function OrdersPage() {
     : undefined
 
   const visibleOrders = useMemo(() => {
-    if (selectedFilter === 'upcoming') return demoOrders.filter((order) => order.status === 'reserved')
+    if (selectedFilter === 'upcoming')
+      return demoOrders.filter((order) => order.status === 'reserved')
     if (selectedFilter === 'past') return demoOrders.filter((order) => order.status !== 'reserved')
     return demoOrders
   }, [selectedFilter])
@@ -330,62 +351,77 @@ export default function OrdersPage() {
                 <EmptyOrders />
               ) : (
                 <div className="space-y-8">
-                  {(selectedFilter !== 'past' &&
-                    visibleOrders.some((order) => order.status === 'reserved')) && (
-                    <section aria-labelledby="upcoming-orders-title" className="space-y-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <h2 id="upcoming-orders-title" className="text-title-md text-primary sm:text-title-lg">
-                          سفارش‌های در انتظار دریافت
-                        </h2>
-                        <p className="text-caption text-text-secondary">
-                          {visibleOrders.filter((order) => order.status === 'reserved').length.toLocaleString('fa-IR')} سفارش
-                        </p>
-                      </div>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        {visibleOrders
-                          .filter((order) => order.status === 'reserved')
-                          .map((order) => (
-                            <OrderCard
-                              key={order.id}
-                              order={order}
-                              onViewDetails={setSelectedOrderId}
-                            />
-                          ))}
-                      </div>
-                    </section>
-                  )}
+                  {selectedFilter !== 'past' &&
+                    visibleOrders.some((order) => order.status === 'reserved') && (
+                      <section aria-labelledby="upcoming-orders-title" className="space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h2
+                            id="upcoming-orders-title"
+                            className="text-title-md text-primary sm:text-title-lg"
+                          >
+                            سفارش‌های در انتظار دریافت
+                          </h2>
+                          <p className="text-caption text-text-secondary">
+                            {visibleOrders
+                              .filter((order) => order.status === 'reserved')
+                              .length.toLocaleString('fa-IR')}{' '}
+                            سفارش
+                          </p>
+                        </div>
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          {visibleOrders
+                            .filter((order) => order.status === 'reserved')
+                            .map((order) => (
+                              <OrderCard
+                                key={order.id}
+                                order={order}
+                                onViewDetails={setSelectedOrderId}
+                              />
+                            ))}
+                        </div>
+                      </section>
+                    )}
 
-                  {(selectedFilter !== 'upcoming' &&
-                    visibleOrders.some((order) => order.status !== 'reserved')) && (
-                    <section aria-labelledby="past-orders-title" className="space-y-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <h2 id="past-orders-title" className="text-title-md text-primary sm:text-title-lg">
-                          سفارش‌های گذشته
-                        </h2>
-                        <p className="text-caption text-text-secondary">
-                          {visibleOrders.filter((order) => order.status !== 'reserved').length.toLocaleString('fa-IR')} سفارش
-                        </p>
-                      </div>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        {visibleOrders
-                          .filter((order) => order.status !== 'reserved')
-                          .map((order) => (
-                            <OrderCard
-                              key={order.id}
-                              order={order}
-                              onViewDetails={setSelectedOrderId}
-                            />
-                          ))}
-                      </div>
-                    </section>
-                  )}
+                  {selectedFilter !== 'upcoming' &&
+                    visibleOrders.some((order) => order.status !== 'reserved') && (
+                      <section aria-labelledby="past-orders-title" className="space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h2
+                            id="past-orders-title"
+                            className="text-title-md text-primary sm:text-title-lg"
+                          >
+                            سفارش‌های گذشته
+                          </h2>
+                          <p className="text-caption text-text-secondary">
+                            {visibleOrders
+                              .filter((order) => order.status !== 'reserved')
+                              .length.toLocaleString('fa-IR')}{' '}
+                            سفارش
+                          </p>
+                        </div>
+                        <div className="grid gap-4 xl:grid-cols-2">
+                          {visibleOrders
+                            .filter((order) => order.status !== 'reserved')
+                            .map((order) => (
+                              <OrderCard
+                                key={order.id}
+                                order={order}
+                                onViewDetails={setSelectedOrderId}
+                              />
+                            ))}
+                        </div>
+                      </section>
+                    )}
                 </div>
               )}
             </section>
 
             <footer className="mt-10 hidden items-center justify-between border-t border-border-default pt-5 text-caption text-text-secondary sm:flex">
               <span>ته‌دیگ · غذای خوب، دورریز کمتر.</span>
-              <a href="mailto:support@example.com" className="inline-flex items-center gap-2 hover:text-primary">
+              <a
+                href="mailto:support@example.com"
+                className="inline-flex items-center gap-2 hover:text-primary"
+              >
                 راهنمایی و پشتیبانی
               </a>
             </footer>
@@ -402,7 +438,11 @@ export default function OrdersPage() {
         {selectedOrder && selectedOffer && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-lg bg-surface-secondary p-4">
-              <img src={selectedOffer.imageSrc} alt="" className="size-16 rounded-md object-cover" />
+              <img
+                src={selectedOffer.imageSrc}
+                alt=""
+                className="size-16 rounded-md object-cover"
+              />
               <div>
                 <h3 className="text-title-sm text-primary">{selectedOffer.merchantName}</h3>
                 <p className="mt-1 text-body-md text-text-secondary">
@@ -411,7 +451,8 @@ export default function OrdersPage() {
               </div>
             </div>
             <p className="text-body-md text-text-primary">
-              برای دریافت بسته در بازه‌ی <strong>{selectedOrder.pickup}</strong> به فروشگاه مراجعه کن.
+              برای دریافت بسته در بازه‌ی <strong>{selectedOrder.pickup}</strong> به فروشگاه مراجعه
+              کن.
             </p>
             <p className="text-caption text-text-secondary">
               نمونه‌ی نمایشی · رزرو یا پرداخت واقعی انجام نشده است.
