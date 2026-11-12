@@ -8,6 +8,8 @@ import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import VendorDashboardPage from '@/pages/vendor/DashboardPage'
 import VendorProductsPage from '@/pages/vendor/ProductsPage'
+import VendorStoresPage from '@/pages/vendor/StoresPage'
+import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
@@ -64,7 +66,15 @@ export const router = createBrowserRouter([
       { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
       {
         path: 'stores',
-        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
+        element: <VendorStoresPage />,
+      },
+      {
+        path: 'stores/new',
+        element: <VendorStoreProfilePage storeId="new" />,
+      },
+      {
+        path: 'stores/:id',
+        element: <VendorStoreProfilePage />,
       },
       {
         path: 'finance',
