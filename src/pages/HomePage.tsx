@@ -1,15 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import {
-  ArrowLeft,
-  Bookmark,
-  Compass,
-  Heart,
-  MapPin,
-  ShoppingBag,
-  SlidersHorizontal,
-  UserRound,
-} from 'lucide-react'
+import { ArrowLeft, MapPin, SlidersHorizontal, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FoodListingCard } from '@/components/ui/FoodListingCard'
 import { Modal } from '@/components/ui/Modal'
@@ -34,43 +25,6 @@ function pickupTime(pickup: string): number {
   if (!time) return Infinity
   const [hours, minutes] = toEnglishDigits(time).split(':').map(Number)
   return hours * 60 + minutes
-}
-
-function NavigationLink({
-  href,
-  label,
-  Icon,
-  active = false,
-  compact = false,
-}: {
-  href: string
-  label: string
-  Icon: typeof Compass
-  active?: boolean
-  compact?: boolean
-}) {
-  const className = [
-    'flex items-center rounded-md transition-colors',
-    compact ? 'min-w-0 flex-1 flex-col justify-center gap-1 px-2 py-2 text-caption' : 'gap-3 px-4 py-3 text-body-md',
-    active ? 'bg-primary-subtle font-semibold text-primary' : 'text-text-secondary hover:bg-surface-secondary hover:text-primary',
-  ].join(' ')
-
-  const content = (
-    <>
-      <Icon className="size-6 shrink-0" strokeWidth={1.75} />
-      <span>{label}</span>
-    </>
-  )
-
-  return href.startsWith('/') ? (
-    <Link to={href} className={className} aria-current={active ? 'page' : undefined}>
-      {content}
-    </Link>
-  ) : (
-    <a href={href} className={className} aria-current={active ? 'page' : undefined}>
-      {content}
-    </a>
-  )
 }
 
 function DiscoveryHeader() {
@@ -99,7 +53,10 @@ function DiscoveryHeader() {
           >
             <UserRound strokeWidth={1.75} />
           </Link>
-          <button type="button" className="flex min-h-11 items-center gap-2 px-2 text-body-md text-primary">
+          <button
+            type="button"
+            className="flex min-h-11 items-center gap-2 px-2 text-body-md text-primary"
+          >
             <MapPin className="size-6" strokeWidth={1.75} />
             تهران، ولیعصر
           </button>
@@ -122,25 +79,6 @@ function DiscoveryHeader() {
         </Link>
       </header>
     </>
-  )
-}
-
-function DesktopSidebar() {
-  return (
-    <aside className="sticky top-0 hidden h-screen w-65 shrink-0 flex-col border-e border-border-default bg-background px-6 py-8 lg:flex">
-      <Link to="/" className="mb-10 px-4 text-title-xl font-bold text-primary">
-        ته‌دیگ
-      </Link>
-      <nav aria-label="ناوبری مشتری" className="flex flex-col gap-2">
-        <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active />
-        <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Heart} />
-        <NavigationLink href="/orders" label="سفارش‌ها" Icon={ShoppingBag} />
-        <NavigationLink href="/login" label="پروفایل" Icon={UserRound} />
-      </nav>
-      <a href="mailto:support@example.com" className="mt-auto px-4 py-3 text-body-md text-text-secondary">
-        راهنمایی و پشتیبانی
-      </a>
-    </aside>
   )
 }
 
@@ -228,7 +166,8 @@ function OfferCarousel({
   onSaveChange: (id: string, value: boolean) => void
   id: string
 }) {
-  const collectionPath = id === 'today' ? '/today' : id === 'favorites' ? '/favorites' : '/last-chance'
+  const collectionPath =
+    id === 'today' ? '/today' : id === 'favorites' ? '/favorites' : '/last-chance'
 
   return (
     <section id={id} className="min-w-0 space-y-4">
@@ -279,20 +218,23 @@ export default function HomePage() {
     () =>
       discoverySections.map((section) => {
         const offers = section.offers
-            .filter((offer) => {
-              if (selectedCategory === 'همه') return true
-              if (selectedCategory === 'تخفیف ویژه') return offer.referenceValue >= offer.price * 1.5
-              return offer.category === selectedCategory
-            })
+          .filter((offer) => {
+            if (selectedCategory === 'همه') return true
+            if (selectedCategory === 'تخفیف ویژه') return offer.referenceValue >= offer.price * 1.5
+            return offer.category === selectedCategory
+          })
           .filter((offer) => {
             const search = query.trim().toLocaleLowerCase()
             return (
               !search ||
-              `${offer.merchantName} ${offer.category} ${offer.description}`.toLocaleLowerCase().includes(search)
+              `${offer.merchantName} ${offer.category} ${offer.description}`
+                .toLocaleLowerCase()
+                .includes(search)
             )
           })
         if (sortOrder === 'price') offers.sort((a, b) => a.price - b.price)
-        if (sortOrder === 'distance') offers.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+        if (sortOrder === 'distance')
+          offers.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
         if (sortOrder === 'time') offers.sort((a, b) => pickupTime(a.pickup) - pickupTime(b.pickup))
         return { ...section, offers }
       }),
@@ -306,7 +248,6 @@ export default function HomePage() {
   return (
     <div dir="rtl" className="min-h-screen bg-background text-text-primary">
       <div className="mx-auto flex min-h-screen max-w-[1440px]">
-        <DesktopSidebar />
         <div className="min-w-0 flex-1">
           <DiscoveryHeader />
           <main
@@ -319,7 +260,9 @@ export default function HomePage() {
                 onQueryChange={setQuery}
                 onOpenFilters={() => setFiltersOpen(true)}
                 onSubmitSearch={() =>
-                  navigate(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search')
+                  navigate(
+                    query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search',
+                  )
                 }
               />
               <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
@@ -342,17 +285,6 @@ export default function HomePage() {
           </main>
         </div>
       </div>
-
-      <nav
-        aria-label="ناوبری پایین"
-        className="fixed inset-x-0 bottom-0 z-30 flex h-24 items-start gap-1 border-t border-border-default bg-surface px-2 pt-1 pb-7 sm:hidden"
-      >
-        <NavigationLink href="#discover" label="اکتشاف" Icon={Compass} active compact />
-        <NavigationLink href="/favorites" label="ذخیره‌ها" Icon={Bookmark} compact />
-        <NavigationLink href="/orders" label="سفارش‌ها" Icon={ShoppingBag} compact />
-        <NavigationLink href="/login" label="پروفایل" Icon={UserRound} compact />
-        <div aria-hidden="true" className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary" />
-      </nav>
 
       <Modal
         open={filtersOpen}

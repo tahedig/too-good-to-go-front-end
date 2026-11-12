@@ -1,15 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  Bookmark,
-  Compass,
-  Map as MapIcon,
-  MapPin,
-  ShoppingBag,
-  SlidersHorizontal,
-  UserRound,
-} from 'lucide-react'
+import { ArrowRight, Map as MapIcon, MapPin, SlidersHorizontal, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Radio } from '@/components/ui/Radio'
@@ -142,49 +133,6 @@ function SelectedOffer({ offer }: { offer: DiscoveryOffer }) {
         </Link>
       </div>
     </section>
-  )
-}
-
-function MobileNavigation() {
-  return (
-    <nav
-      aria-label="ناوبری پایین"
-      className="fixed inset-x-0 bottom-0 z-30 flex h-20 items-start gap-1 border-t border-border-default bg-surface px-2 pt-1 pb-5 sm:hidden"
-    >
-      <Link
-        to="/"
-        aria-current="page"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-primary"
-      >
-        <Compass className="size-6" strokeWidth={1.75} />
-        اکتشاف
-      </Link>
-      <Link
-        to="/#favorites"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
-      >
-        <Bookmark className="size-6" strokeWidth={1.75} />
-        ذخیره‌ها
-      </Link>
-      <Link
-        to="/orders"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
-      >
-        <ShoppingBag className="size-6" strokeWidth={1.75} />
-        سفارش‌ها
-      </Link>
-      <Link
-        to="/login"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
-      >
-        <UserRound className="size-6" strokeWidth={1.75} />
-        پروفایل
-      </Link>
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary"
-      />
-    </nav>
   )
 }
 
@@ -348,8 +296,6 @@ export default function MapPage() {
           </div>
         </main>
       )}
-
-      <MobileNavigation />
 
       <Modal
         open={filtersOpen}

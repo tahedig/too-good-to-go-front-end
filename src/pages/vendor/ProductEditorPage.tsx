@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { VendorDatePicker, VendorTimePicker } from '@/components/vendor/VendorDateTimePicker'
 import { toEnglishDigits, toPersianDigits } from '@/lib/digits'
 import { formatPrice } from '@/lib/format'
 import { productRepository } from './data/products'
@@ -346,17 +347,7 @@ export default function ProductEditorPage() {
       <ChevronDown className="pointer-events-none absolute end-3 top-3 size-5" />
     </div>
   )
-  const text = (
-    key:
-      | 'name'
-      | 'originalPrice'
-      | 'price'
-      | 'pickupDate'
-      | 'startTime'
-      | 'endTime'
-      | 'cancellationTime',
-    type = 'text',
-  ) => (
+  const text = (key: 'name' | 'originalPrice' | 'price', type = 'text') => (
     <input
       {...attrs(key, errors[key])}
       type={type}
@@ -457,6 +448,10 @@ export default function ProductEditorPage() {
                   value={values.quantity}
                   onChange={(value) => update('quantity', value)}
                 />
+                <p className="text-body-md font-semibold">
+                  حداقل تعداد بسته:{' '}
+                  {toPersianDigits(Math.max(1, original?.inventory.reserved ?? 0))}
+                </p>
                 {errors.quantity && <p className="text-caption text-error">{errors.quantity}</p>}
               </div>
               {original && (
@@ -469,20 +464,44 @@ export default function ProductEditorPage() {
             </Section>
             <Section title="زمان تحویل">
               <Field id="pickupDate" label="تاریخ تحویل" error={errors.pickupDate}>
-                {text('pickupDate', 'date')}
+                <VendorDatePicker
+                  id="pickupDate"
+                  label="تاریخ تحویل"
+                  value={values.pickupDate}
+                  error={errors.pickupDate}
+                  onChange={(value) => update('pickupDate', value)}
+                />
               </Field>
               <Field id="startTime" label="ساعت شروع" error={errors.startTime}>
-                {text('startTime', 'time')}
+                <VendorTimePicker
+                  id="startTime"
+                  label="ساعت شروع"
+                  value={values.startTime}
+                  error={errors.startTime}
+                  onChange={(value) => update('startTime', value)}
+                />
               </Field>
               <Field id="endTime" label="ساعت پایان" error={errors.endTime}>
-                {text('endTime', 'time')}
+                <VendorTimePicker
+                  id="endTime"
+                  label="ساعت پایان"
+                  value={values.endTime}
+                  error={errors.endTime}
+                  onChange={(value) => update('endTime', value)}
+                />
               </Field>
               <Field
                 id="cancellationTime"
                 label="قانون لغو · مهلت لغو"
                 error={errors.cancellationTime}
               >
-                {text('cancellationTime', 'time')}
+                <VendorTimePicker
+                  id="cancellationTime"
+                  label="مهلت لغو"
+                  value={values.cancellationTime}
+                  error={errors.cancellationTime}
+                  onChange={(value) => update('cancellationTime', value)}
+                />
               </Field>
             </Section>
             <Section title="مواد اولیه و حساسیت‌زاها">

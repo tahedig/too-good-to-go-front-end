@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowRight, Compass, Heart, MapPin, ShoppingBag, UserRound } from 'lucide-react'
+import { ArrowRight, MapPin, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FoodListingCard } from '@/components/ui/FoodListingCard'
 import { SearchField } from '@/components/ui/SearchField'
@@ -127,11 +127,13 @@ function CollectionFilters({
       <fieldset className="mt-4 space-y-2">
         <legend className="mb-2 text-label-md text-primary">زمان دریافت</legend>
         <div className="flex flex-wrap gap-2">
-          {([
-            ['all', 'هر زمان'],
-            ['today', 'امروز'],
-            ['tomorrow', 'فردا'],
-          ] as const).map(([value, label]) => (
+          {(
+            [
+              ['all', 'هر زمان'],
+              ['today', 'امروز'],
+              ['tomorrow', 'فردا'],
+            ] as const
+          ).map(([value, label]) => (
             <OptionChip
               key={value}
               label={label}
@@ -156,49 +158,6 @@ function CollectionFilters({
         </div>
       </fieldset>
     </aside>
-  )
-}
-
-function CollectionNavigation() {
-  return (
-    <nav
-      aria-label="ناوبری پایین"
-      className="fixed inset-x-0 bottom-0 z-30 flex h-20 items-start gap-1 border-t border-border-default bg-surface px-2 pt-1 pb-5 sm:hidden"
-    >
-      <Link
-        to="/"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
-      >
-        <Compass className="size-6" strokeWidth={1.75} />
-        اکتشاف
-      </Link>
-      <Link
-        to="/favorites"
-        aria-current="page"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-primary"
-      >
-        <Heart className="size-6" strokeWidth={1.75} />
-        محبوب‌ها
-      </Link>
-      <Link
-        to="/orders"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
-      >
-        <ShoppingBag className="size-6" strokeWidth={1.75} />
-        سفارش‌ها
-      </Link>
-      <Link
-        to="/login"
-        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-md py-2 text-caption text-text-secondary"
-      >
-        <UserRound className="size-6" strokeWidth={1.75} />
-        پروفایل
-      </Link>
-      <div
-        aria-hidden="true"
-        className="absolute inset-x-0 bottom-2 mx-auto h-1 w-[134px] rounded-full bg-primary"
-      />
-    </nav>
   )
 }
 
@@ -304,7 +263,10 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
               <h2 id="collection-results-heading" className="text-title-sm text-primary">
                 پیشنهادهای نزدیک شما
               </h2>
-              <p aria-live="polite" className="shrink-0 text-caption text-text-secondary sm:text-body-md">
+              <p
+                aria-live="polite"
+                className="shrink-0 text-caption text-text-secondary sm:text-body-md"
+              >
                 {offers.length.toLocaleString('fa-IR')} پیشنهاد
               </p>
             </div>
@@ -340,8 +302,6 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
           </section>
         </div>
       </main>
-
-      <CollectionNavigation />
     </div>
   )
 }
