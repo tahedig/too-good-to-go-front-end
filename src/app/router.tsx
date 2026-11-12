@@ -71,6 +71,10 @@ export const router = createBrowserRouter([
         element: <VendorComingSoonPage title="مالی" />,
       },
       {
+        path: 'finance/:section',
+        element: <VendorComingSoonPage title="مالی" />,
+      },
+      {
         path: 'account',
         element: <VendorComingSoonPage title="حساب فروشنده" />,
       },

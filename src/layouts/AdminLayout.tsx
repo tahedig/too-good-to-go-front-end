@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
+  ChevronDown,
   CircleHelp,
   LayoutDashboard,
   Menu,
@@ -61,13 +62,51 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation()
-  const financeOpen = pathname.startsWith('/admin/finance')
+  const onFinanceRoute = pathname.startsWith('/admin/finance')
+  const [financeExpanded, setFinanceExpanded] = useState(onFinanceRoute)
 
   return (
     <nav aria-label="ناوبری مدیریت" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-        <div key={to}>
+      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+        if (to === '/admin/finance') {
+          return (
+            <div key={to}>
+              <button
+                type="button"
+                aria-expanded={financeExpanded}
+                onClick={() => setFinanceExpanded((expanded) => !expanded)}
+                className={`flex h-12 w-full items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold transition-colors ${onFinanceRoute ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
+              >
+                <Icon className="size-6 shrink-0" strokeWidth={1.75} />
+                <span className="flex-1 text-start">{label}</span>
+                <ChevronDown
+                  className={`size-5 transition-transform ${financeExpanded ? 'rotate-180' : ''}`}
+                  strokeWidth={1.75}
+                />
+              </button>
+              {financeExpanded && (
+                <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
+                  {FINANCE_ITEMS.map(([path, subLabel]) => (
+                    <NavLink
+                      key={path}
+                      to={`/admin/finance/${path}`}
+                      onClick={onNavigate}
+                      className={({ isActive }) =>
+                        `flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
+                      }
+                    >
+                      {subLabel}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        return (
           <NavLink
+            key={to}
             to={to}
             end={end}
             onClick={onNavigate}
@@ -78,24 +117,8 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             <Icon className="size-6 shrink-0" strokeWidth={1.75} />
             <span className="flex-1 text-start">{label}</span>
           </NavLink>
-          {to === '/admin/finance' && financeOpen && (
-            <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
-              {FINANCE_ITEMS.map(([path, subLabel]) => (
-                <NavLink
-                  key={path}
-                  to={`/admin/finance/${path}`}
-                  onClick={onNavigate}
-                  className={({ isActive }) =>
-                    `flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
-                  }
-                >
-                  {subLabel}
-                </NavLink>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </nav>
   )
 }
