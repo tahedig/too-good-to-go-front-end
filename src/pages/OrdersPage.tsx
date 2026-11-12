@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowRight,
-  Bookmark,
   Check,
   Clock3,
   Compass,
@@ -103,55 +102,6 @@ function CustomerHeader() {
         </Link>
       </header>
     </>
-  )
-}
-
-function CustomerSidebar() {
-  const navClass = 'flex items-center gap-3 rounded-md px-4 py-3 text-body-md transition-colors'
-
-  return (
-    <aside className="sticky top-0 hidden h-screen w-65 shrink-0 flex-col border-e border-border-default bg-background px-6 py-8 lg:flex">
-      <Link to="/" className="mb-10 px-4 text-title-xl font-bold text-primary">
-        ته‌دیگ
-      </Link>
-      <nav aria-label="ناوبری مشتری" className="flex flex-col gap-2">
-        <Link
-          to="/"
-          className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}
-        >
-          <Compass className="size-6" strokeWidth={1.75} />
-          اکتشاف
-        </Link>
-        <Link
-          to="/favorites"
-          className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}
-        >
-          <Bookmark className="size-6" strokeWidth={1.75} />
-          ذخیره‌ها
-        </Link>
-        <Link
-          to="/orders"
-          aria-current="page"
-          className={`${navClass} bg-primary-subtle font-semibold text-primary`}
-        >
-          <ShoppingBag className="size-6" strokeWidth={1.75} />
-          سفارشات
-        </Link>
-        <Link
-          to="/login"
-          className={`${navClass} text-text-secondary hover:bg-surface-secondary hover:text-primary`}
-        >
-          <UserRound className="size-6" strokeWidth={1.75} />
-          پروفایل
-        </Link>
-      </nav>
-      <a
-        href="mailto:support@example.com"
-        className="mt-auto px-4 py-3 text-body-md text-text-secondary"
-      >
-        راهنمایی و پشتیبانی
-      </a>
-    </aside>
   )
 }
 
@@ -269,7 +219,6 @@ export default function OrdersPage() {
   return (
     <div dir="rtl" className="min-h-screen bg-background text-text-primary">
       <div className="mx-auto flex min-h-screen max-w-[1440px]">
-        <CustomerSidebar />
         <div className="min-w-0 flex-1">
           <CustomerHeader />
 
