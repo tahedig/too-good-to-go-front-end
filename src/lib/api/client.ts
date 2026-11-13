@@ -6,15 +6,38 @@ type ApiErrorBody = {
   errors?: Record<string, string[] | string>
 }
 
+/** Error envelope used by the Go backend. */
+type ApiErrorEnvelope = {
+  error: {
+    code?: string
+    message?: string
+    details?: { field?: string; message: string }[]
+    request_id?: string
+  }
+}
+
+// The backend's 401/403 messages are shared English strings, so they are replaced here.
+const STATUS_MESSAGES: Record<number, string> = {
+  401: 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.',
+  403: 'شما به این بخش دسترسی ندارید.',
+}
+
 export class ApiError extends Error {
   readonly status: number
   readonly fieldErrors: Record<string, string[]>
+  readonly requestId?: string
 
-  constructor(message: string, status: number, fieldErrors: Record<string, string[]> = {}) {
+  constructor(
+    message: string,
+    status: number,
+    fieldErrors: Record<string, string[]> = {},
+    requestId?: string,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
+    this.requestId = requestId
   }
 }
 
@@ -26,6 +49,29 @@ function normaliseFieldErrors(errors?: ApiErrorBody['errors']) {
       field,
       Array.isArray(messages) ? messages : [messages],
     ]),
+  )
+}
+
+function toApiError(body: unknown, status: number) {
+  const fallback = 'در انجام درخواست مشکلی پیش آمد. لطفاً دوباره تلاش کنید.'
+  if (body && typeof body === 'object' && 'error' in body && typeof body.error === 'object') {
+    const { message, details, request_id } = (body as ApiErrorEnvelope).error
+    const fieldErrors: Record<string, string[]> = {}
+    for (const detail of details ?? []) {
+      if (detail.field) (fieldErrors[detail.field] ??= []).push(detail.message)
+    }
+    return new ApiError(
+      STATUS_MESSAGES[status] ?? message ?? fallback,
+      status,
+      fieldErrors,
+      request_id,
+    )
+  }
+  const errorBody = (body ?? {}) as ApiErrorBody
+  return new ApiError(
+    errorBody.message ?? STATUS_MESSAGES[status] ?? fallback,
+    status,
+    normaliseFieldErrors(errorBody.errors),
   )
 }
 
@@ -49,16 +95,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     throw new ApiError('ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت را بررسی کنید.', 0)
   }
 
-  const body = (await response.json().catch(() => null)) as ApiErrorBody | T | null
+  const body = (await response.json().catch(() => null)) as unknown
 
-  if (!response.ok) {
-    const errorBody = (body ?? {}) as ApiErrorBody
-    throw new ApiError(
-      errorBody.message ?? 'در انجام درخواست مشکلی پیش آمد. لطفاً دوباره تلاش کنید.',
-      response.status,
-      normaliseFieldErrors(errorBody.errors),
-    )
-  }
+  if (!response.ok) throw toApiError(body, response.status)
 
   return body as T
 }
