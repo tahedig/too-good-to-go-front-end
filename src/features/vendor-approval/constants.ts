@@ -3,11 +3,26 @@ import type { VendorDecisionType, VendorStatus } from './types'
 export const DECISION_MESSAGE_MIN_LENGTH = 20
 export const DECISION_MESSAGE_MAX_LENGTH = 500
 
-export const STATUS_META: Record<VendorStatus, { label: string; className: string }> = {
-  pending: { label: 'در انتظار بررسی', className: 'bg-accent-subtle text-warning' },
-  approved: { label: 'تأییدشده', className: 'bg-surface-sage text-success' },
-  rejected: { label: 'ردشده', className: 'bg-error-subtle text-error' },
-  suspended: { label: 'تعلیق‌شده', className: 'bg-surface-secondary text-text-secondary' },
+export const STATUS_META: Record<
+  VendorStatus,
+  { label: string; className: string; textClass: string }
+> = {
+  pending: {
+    label: 'در انتظار بررسی',
+    className: 'bg-accent-subtle text-warning',
+    textClass: 'text-warning',
+  },
+  approved: {
+    label: 'تأییدشده',
+    className: 'bg-surface-sage text-success',
+    textClass: 'text-success',
+  },
+  rejected: { label: 'ردشده', className: 'bg-error-subtle text-error', textClass: 'text-error' },
+  suspended: {
+    label: 'تعلیق‌شده',
+    className: 'bg-surface-secondary text-text-secondary',
+    textClass: 'text-text-secondary',
+  },
 }
 
 export type ReasonOption = { value: string; label: string }
