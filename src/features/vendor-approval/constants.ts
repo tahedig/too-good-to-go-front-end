@@ -64,3 +64,9 @@ export function formatVendorDate(iso: string | null) {
   const date = new Date(iso)
   return Number.isNaN(date.getTime()) ? '—' : dateFormat.format(date)
 }
+
+/** +989120000011 or 09120000011 → 0912 000 0011 */
+export function formatPhone(phone: string) {
+  const local = phone.replace(/^\+98/, '0')
+  return local.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 $2 $3')
+}
