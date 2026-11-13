@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { ApiError } from '@/lib/api/client'
 import { authApi } from '../api/authApi'
+import { saveAuthSession } from '../session'
 import { emailPattern, getErrorMessage } from '../utils'
 import AuthAlert from './AuthAlert'
 import PasswordInput from './PasswordInput'
@@ -39,7 +40,7 @@ export default function LoginForm({ onRecovery }: LoginFormProps) {
     setSubmitting(true)
     try {
       const session = await authApi.login({ email: email.trim(), password })
-      sessionStorage.setItem('auth_session', JSON.stringify(session))
+      saveAuthSession(session)
       await navigate(
         session.user.role === 'admin' ? '/admin' : session.user.role === 'vendor' ? '/vendor' : '/',
       )

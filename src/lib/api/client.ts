@@ -1,4 +1,5 @@
 import { env } from '@/config/env'
+import { getAuthSession } from '@/features/auth/session'
 
 type ApiErrorBody = {
   message?: string
@@ -32,12 +33,15 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   let response: Response
   const baseUrl = env.apiBaseUrl.replace(/\/$/, '')
 
+  const accessToken = getAuthSession()?.accessToken
+
   try {
     response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...init.headers,
       },
     })
