@@ -1,10 +1,7 @@
 import type { AuthSession } from './types'
 
+// Same key the login form writes to.
 const SESSION_KEY = 'auth_session'
-
-export function saveAuthSession(session: AuthSession) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session))
-}
 
 export function getAuthSession(): AuthSession | null {
   try {
@@ -16,8 +13,4 @@ export function getAuthSession(): AuthSession | null {
   } catch {
     return null
   }
-}
-
-export function clearAuthSession() {
-  sessionStorage.removeItem(SESSION_KEY)
 }
