@@ -3,7 +3,7 @@ import type { Vendor, VendorApprovalApi, VendorListResponse } from '../types'
 
 const vendorPath = (id: string) => `/admin/vendors/${encodeURIComponent(id)}`
 
-// Contract: docs/vendor-approval-backend.md. Map DTOs here if the backend shape differs.
+// Admin vendor-approval endpoints. Map DTOs here if the backend shape differs.
 export const httpVendorApprovalApi: VendorApprovalApi = {
   list({ statuses, search, page = 1, pageSize = 20 }) {
     const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
