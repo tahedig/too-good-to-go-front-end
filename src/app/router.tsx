@@ -112,16 +112,48 @@ export const router = createBrowserRouter([
       </RequireRole>
     ),
     children: [
-      { index: true, element: <AdminDashboardPage /> },
-      { path: 'store-requests', element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" /> },
-      { path: 'stores', element: <AdminComingSoonPage title="فروشگاه‌ها" /> },
-      { path: 'customers', element: <AdminComingSoonPage title="مشتریان" /> },
-      { path: 'products', element: <AdminComingSoonPage title="محصولات" /> },
-      { path: 'orders', element: <AdminComingSoonPage title="سفارشات" /> },
-      { path: 'finance', element: <AdminComingSoonPage title="مالی" /> },
-      { path: 'finance/:section', element: <AdminComingSoonPage title="مالی" /> },
-      { path: 'support', element: <AdminComingSoonPage title="پشتیبانی" /> },
-      { path: 'settings', element: <AdminComingSoonPage title="تنظیمات" /> },
+      { index: true, element: <AdminDashboardPage />, handle: { title: 'داشبورد' } },
+      {
+        path: 'store-requests',
+        element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" />,
+        handle: { title: 'درخواست فروشگاه‌ها' },
+      },
+      {
+        path: 'stores',
+        element: <AdminComingSoonPage title="فروشگاه‌ها" />,
+        handle: { title: 'فروشگاه‌ها' },
+      },
+      {
+        path: 'customers',
+        element: <AdminComingSoonPage title="مشتریان" />,
+        handle: { title: 'مشتریان' },
+      },
+      {
+        path: 'products',
+        element: <AdminComingSoonPage title="محصولات" />,
+        handle: { title: 'محصولات' },
+      },
+      {
+        path: 'orders',
+        element: <AdminComingSoonPage title="سفارشات" />,
+        handle: { title: 'سفارشات' },
+      },
+      { path: 'finance', element: <AdminComingSoonPage title="مالی" />, handle: { title: 'مالی' } },
+      {
+        path: 'finance/:section',
+        element: <AdminComingSoonPage title="مالی" />,
+        handle: { title: 'مالی' },
+      },
+      {
+        path: 'support',
+        element: <AdminComingSoonPage title="پشتیبانی" />,
+        handle: { title: 'پشتیبانی' },
+      },
+      {
+        path: 'settings',
+        element: <AdminComingSoonPage title="تنظیمات" />,
+        handle: { title: 'تنظیمات' },
+      },
     ],
   },
   { path: '*', element: <NotFoundPage /> },
