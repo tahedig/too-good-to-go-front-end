@@ -16,6 +16,8 @@ import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
+import VendorListPage from '@/pages/admin/VendorListPage'
+import VendorReviewPage from '@/pages/admin/VendorReviewPage'
 import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
@@ -115,13 +117,23 @@ export const router = createBrowserRouter([
       { index: true, element: <AdminDashboardPage />, handle: { title: 'داشبورد' } },
       {
         path: 'store-requests',
-        element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" />,
+        element: <VendorListPage key="requests" mode="requests" />,
         handle: { title: 'درخواست فروشگاه‌ها' },
       },
       {
+        path: 'store-requests/:vendorId',
+        element: <VendorReviewPage key="request-review" mode="requests" />,
+        handle: { title: 'بررسی درخواست', backTo: '/admin/store-requests' },
+      },
+      {
         path: 'stores',
-        element: <AdminComingSoonPage title="فروشگاه‌ها" />,
+        element: <VendorListPage key="stores" mode="stores" />,
         handle: { title: 'فروشگاه‌ها' },
+      },
+      {
+        path: 'stores/:vendorId',
+        element: <VendorReviewPage key="store-details" mode="stores" />,
+        handle: { title: 'جزئیات فروشگاه', backTo: '/admin/stores' },
       },
       {
         path: 'customers',
