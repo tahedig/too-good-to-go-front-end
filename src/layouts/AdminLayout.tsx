@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useMatches } from 'react-router-dom'
 import {
+  ArrowRight,
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
@@ -123,7 +124,26 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+export type AdminRouteHandle = { title?: string; backTo?: string }
+
+const todayLabel = new Intl.DateTimeFormat('fa-IR', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
+
+function useRouteHeader() {
+  const matches = useMatches()
+  const handle = [...matches]
+    .reverse()
+    .map((match) => match.handle as AdminRouteHandle | undefined)
+    .find((item) => item?.title)
+  return { title: handle?.title ?? 'مدیریت', backTo: handle?.backTo }
+}
+
 export default function AdminLayout() {
+  const { title, backTo } = useRouteHeader()
+  const today = todayLabel.format(new Date())
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -167,18 +187,39 @@ export default function AdminLayout() {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border-default bg-background px-5 py-4 lg:hidden">
-          <span className="text-title-md">ته‌دیگ · مدیریت</span>
+        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-border-default bg-background px-4 py-2.5 sm:px-6 lg:px-8">
           <button
             ref={menuButtonRef}
             type="button"
             onClick={() => setMenuOpen(true)}
             aria-label="باز کردن منو"
             aria-expanded={menuOpen}
-            className="grid size-11 place-items-center rounded-md border border-border-default bg-surface hover:bg-surface-secondary"
+            className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface-secondary hover:bg-surface-sage lg:hidden"
           >
             <Menu className="size-6" strokeWidth={1.75} />
           </button>
+          <p className="min-w-0 flex-1 truncate text-title-md">{title}</p>
+          {backTo && (
+            <Link
+              to={backTo}
+              aria-label="بازگشت"
+              className="grid size-11 shrink-0 place-items-center rounded-md bg-surface text-primary shadow-1 hover:bg-surface-secondary"
+            >
+              <ArrowRight className="size-6" strokeWidth={1.75} />
+            </Link>
+          )}
+          <div className="hidden shrink-0 items-center gap-3 lg:flex">
+            <span
+              aria-hidden="true"
+              className="grid size-10 place-items-center rounded-md bg-primary text-label-lg text-on-primary"
+            >
+              ت
+            </span>
+            <div className="flex flex-col">
+              <span className="text-label-lg">ته‌دیگ · مدیریت</span>
+              <span className="text-caption text-text-secondary">فضای مدیریت · {today}</span>
+            </div>
+          </div>
         </header>
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
