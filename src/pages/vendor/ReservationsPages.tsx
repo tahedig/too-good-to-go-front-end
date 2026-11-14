@@ -6,7 +6,8 @@ import { Modal } from '@/components/ui/Modal'
 import { VendorReservationCard } from '@/components/vendor/VendorReservationCard'
 import { formatPrice } from '@/lib/format'
 import { toPersianDigits } from '@/lib/digits'
-import { listReservations } from './data/reservations'
+import { listVendorOrders } from '@/services/vendor/ordersService'
+import { listVendorReservations } from '@/services/vendor/reservationsService'
 import { formatPickupDate, isValidDate, localDate, STATUS_LABELS } from '@/lib/vendorReservations'
 import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
 
@@ -234,7 +235,9 @@ export default function ReservationsPages({
   view?: 'orders' | 'reservations' | 'daily'
 }) {
   const [items, setItems] = useState<Reservation[] | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState<Filter>('all')
   const [selected, setSelected] = useState<Reservation | null>(null)
   const [dateDialog, setDateDialog] = useState(false)
@@ -244,19 +247,34 @@ export default function ReservationsPages({
   const validDate = isValidDate(rawDate) ? rawDate : ''
   const selectedDate =
     view === 'daily' ? validDate || localDate() : view === 'reservations' ? validDate : ''
+
   useEffect(() => {
     let live = true
-    listReservations()
+    const load = view === 'reservations' ? listVendorReservations() : listVendorOrders()
+
+    load
       .then((data) => {
         if (live) setItems(data)
       })
       .catch(() => {
         if (live) setError(true)
       })
+      .finally(() => {
+        if (live) setLoading(false)
+      })
+
     return () => {
       live = false
     }
-  }, [])
+  }, [reloadKey, view])
+
+  function retryLoad() {
+    setItems(null)
+    setError(false)
+    setLoading(true)
+    setReloadKey((key) => key + 1)
+  }
+
   // Orders defaults to every date. Reservations can optionally be narrowed to a date.
   const scoped = (items ?? []).filter((item) => !selectedDate || item.pickupDate === selectedDate)
   const visible = scoped.filter((item) => filter === 'all' || item.status === filter)
@@ -269,7 +287,8 @@ export default function ReservationsPages({
   const active = scoped.filter(
     (item) => item.status === 'active' || item.status === 'pending',
   ).length
-  const noDayOrders = view === 'daily' && items !== null && !error && scoped.length === 0
+  const noDayOrders =
+    view === 'daily' && !loading && items !== null && !error && scoped.length === 0
   const filters = (
     <FilterButtons value={filter} onChange={setFilter} daily={view !== 'reservations'} />
   )
@@ -386,12 +405,18 @@ export default function ReservationsPages({
               </span>
             </div>
             {error ? (
-              <p role="alert" className="rounded-lg bg-surface p-5">
-                دریافت رزروها ممکن نیست.
-              </p>
-            ) : !items ? (
+              <div
+                role="alert"
+                className="flex flex-col items-start gap-4 rounded-lg bg-surface p-5"
+              >
+                <p>دریافت اطلاعات ممکن نیست.</p>
+                <Button variant="secondary" size="md" onClick={retryLoad}>
+                  تلاش دوباره
+                </Button>
+              </div>
+            ) : loading || !items ? (
               <p role="status" className="rounded-lg bg-surface p-5">
-                در حال دریافت رزروها...
+                در حال دریافت اطلاعات...
               </p>
             ) : visible.length === 0 ? (
               <p

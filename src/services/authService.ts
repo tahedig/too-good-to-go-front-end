@@ -14,7 +14,6 @@ export const verifyOtpService = async (
     endPoint: "/auth/otp/verify",
     data: payload,
   });
-  console.log(response)
   if (!response.verified || !response.access_token) {
     throw new Error("OTP verification failed");
   }

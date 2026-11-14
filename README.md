@@ -36,6 +36,16 @@ in `src/features/auth/api/authApi.ts` when the backend is ready:
 - `POST /auth/recovery/otp`
 - `POST /auth/recovery/otp/verify`
 
+## Vendor dashboard API integration
+
+The implemented vendor pages use service modules under `src/services/vendor/`:
+
+- `productsService.ts` — product listing, detail, create/edit, remove, and unpublish operations
+- `ordersService.ts` — vendor order listing
+- `reservationsService.ts` — vendor reservation listing
+
+Until the Go Swagger contract is supplied, these modules use clearly marked demo data so the current screens and form flows remain testable. No endpoint paths, response DTOs, authentication rules, or image-upload format have been guessed. Once those details are available, replace the demo adapters in these modules and map the backend DTOs to the UI types. For new endpoint integrations, use the established `apiRequest` client in `src/lib/api/client.ts`, which reads `VITE_API_BASE_URL` and the stored access token; the legacy Axios helpers in `src/services/services.ts` use the `/api` proxy and `tokenStorage`.
+
 ## Design system
 
 Tokens are defined in `src/index.css` (`@theme`) following the approved Figma

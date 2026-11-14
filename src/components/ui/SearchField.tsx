@@ -1,6 +1,6 @@
 import { forwardRef, useRef, useState } from 'react';
 import type { ChangeEvent, InputHTMLAttributes, KeyboardEvent } from 'react';
-import { fieldClasses } from './FormField';
+import { fieldClasses } from './formFieldUtils';
 import { Search, X } from 'lucide-react';
 
 export interface SearchFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
