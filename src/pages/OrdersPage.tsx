@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   ArrowRight,
   Check,
@@ -11,62 +11,71 @@ import {
   UserRound,
   X,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
-import { discoveryOffers } from '@/features/discovery/mockData'
+import { ApiError } from '@/lib/api/client'
 import { formatPrice } from '@/lib/format'
+import { orderService } from '@/services/orderService'
+import type { OrderDto, OrderGroup, OrderStatus } from '@/types/orderTypes'
 
-type OrderStatus = 'reserved' | 'completed' | 'cancelled'
-type OrderFilter = 'all' | 'upcoming' | 'past'
-
-interface CustomerOrder {
-  id: string
-  offerId: string
-  status: OrderStatus
-  quantity: number
-  placedAt: string
-  pickup: string
-}
-
-const demoOrders: CustomerOrder[] = [
-  {
-    id: 'TG-2048',
-    offerId: 'morning-bakery',
-    status: 'reserved',
-    quantity: 1,
-    placedAt: 'امروز، ساعت ۱۴:۳۲',
-    pickup: 'امروز، ۱۸:۰۰ تا ۱۹:۰۰',
-  },
-  {
-    id: 'TG-1985',
-    offerId: 'green-kitchen',
-    status: 'completed',
-    quantity: 1,
-    placedAt: 'دیروز، ساعت ۱۳:۱۵',
-    pickup: 'دیروز، ۱۹:۰۰ تا ۲۰:۰۰',
-  },
-  {
-    id: 'TG-1921',
-    offerId: 'corner-cafe',
-    status: 'cancelled',
-    quantity: 2,
-    placedAt: '۲۸ مهر ۱۴۰۵',
-    pickup: '۲۸ مهر، ۱۷:۳۰ تا ۱۸:۳۰',
-  },
-]
-
-const orderFilters: Array<{ value: OrderFilter; label: string }> = [
+const orderFilters: Array<{ value: OrderGroup; label: string }> = [
   { value: 'all', label: 'همه' },
   { value: 'upcoming', label: 'در انتظار دریافت' },
   { value: 'past', label: 'سفارش‌های گذشته' },
 ]
 
-const statusDetails: Record<OrderStatus, { label: string; className: string; Icon: typeof Check }> =
-  {
-    reserved: { label: 'رزرو شده', className: 'bg-success-subtle text-primary', Icon: Check },
-    completed: { label: 'تکمیل شده', className: 'bg-success-subtle text-primary', Icon: Check },
-    cancelled: { label: 'لغو شده', className: 'bg-error-subtle text-error', Icon: X },
+const statusDetails: Record<OrderStatus, { label: string; className: string; Icon: LucideIcon }> = {
+  pending_payment: {
+    label: 'در انتظار پرداخت',
+    className: 'bg-warning-subtle text-warning',
+    Icon: Clock3,
+  },
+  paid: { label: 'پرداخت شده', className: 'bg-success-subtle text-success', Icon: Check },
+  ready: { label: 'آماده دریافت', className: 'bg-success-subtle text-success', Icon: PackageCheck },
+  completed: { label: 'تکمیل شده', className: 'bg-success-subtle text-success', Icon: Check },
+  cancelled: { label: 'لغو شده', className: 'bg-error-subtle text-error', Icon: X },
+  expired: { label: 'منقضی شده', className: 'bg-surface-secondary text-text-secondary', Icon: X },
+  no_show: { label: 'دریافت نشده', className: 'bg-surface-secondary text-text-secondary', Icon: X },
+}
+
+const iranDateTime = new Intl.DateTimeFormat('fa-IR', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'Asia/Tehran',
+})
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return 'زمان ثبت نشده'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? 'زمان نامشخص' : iranDateTime.format(date)
+}
+
+function pickupWindow(order: OrderDto): string {
+  if (!order.pickup_start) return 'زمان دریافت مشخص نشده'
+  const start = formatDateTime(order.pickup_start)
+  if (!order.pickup_end) return start
+  const end = formatDateTime(order.pickup_end)
+  const startDate = new Date(order.pickup_start)
+  const endDate = new Date(order.pickup_end)
+  const sameDay =
+    !Number.isNaN(startDate.getTime()) &&
+    !Number.isNaN(endDate.getTime()) &&
+    startDate.toLocaleDateString('fa-IR', { timeZone: 'Asia/Tehran' }) ===
+      endDate.toLocaleDateString('fa-IR', { timeZone: 'Asia/Tehran' })
+
+  return sameDay ? `${start} تا ${end.split('، ').at(-1) ?? end}` : `${start} تا ${end}`
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return 'برای مشاهده سفارش‌ها ابتدا وارد حساب کاربری خود شوید.'
+    return error.message
   }
+  if (error instanceof Error) return error.message
+  return 'دریافت سفارش‌ها انجام نشد. لطفاً دوباره تلاش کنید.'
+}
 
 function CustomerHeader() {
   return (
@@ -109,14 +118,12 @@ function OrderCard({
   order,
   onViewDetails,
 }: {
-  order: CustomerOrder
-  onViewDetails: (orderId: string) => void
+  order: OrderDto
+  onViewDetails: (order: OrderDto) => void
 }) {
-  const offer = discoveryOffers.find((item) => item.id === order.offerId)
-  if (!offer) return null
-
   const status = statusDetails[order.status]
   const StatusIcon = status.Icon
+  const quantity = order.items.reduce((total, item) => total + item.quantity, 0)
 
   return (
     <article className="rounded-2xl border border-border-default bg-surface p-4 sm:p-5">
@@ -131,18 +138,16 @@ function OrderCard({
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <img
-          src={offer.imageSrc}
-          alt=""
-          className="size-16 shrink-0 rounded-lg bg-surface-secondary object-cover sm:size-20"
-        />
+        <div className="grid size-16 shrink-0 place-items-center rounded-lg bg-primary-subtle text-primary sm:size-20">
+          <ShoppingBag className="size-7" strokeWidth={1.75} />
+        </div>
         <div className="min-w-0 flex-1">
-          <h3 className="truncate text-title-sm text-primary">{offer.merchantName}</h3>
+          <h3 className="truncate text-title-sm text-primary">{order.store.name}</h3>
           <p className="mt-1 truncate text-body-md text-text-secondary">
-            {offer.category} · ولیعصر
+            {order.items.map((item) => item.title).join('، ')}
           </p>
           <p className="mt-1 text-caption text-text-secondary">
-            تعداد بسته: {order.quantity.toLocaleString('fa-IR')}
+            تعداد بسته: {quantity.toLocaleString('fa-IR')}
           </p>
         </div>
       </div>
@@ -150,22 +155,19 @@ function OrderCard({
       <div className="mt-4 space-y-2 border-t border-border-default pt-4">
         <p className="flex items-center gap-2 text-body-md text-primary">
           <Clock3 className="size-5 shrink-0" strokeWidth={1.75} />
-          <span>{order.pickup}</span>
+          <span>{pickupWindow(order)}</span>
         </p>
         <p className="flex items-center gap-2 text-body-md text-text-secondary">
           <PackageCheck className="size-5 shrink-0" strokeWidth={1.75} />
-          پرداخت‌شده: {formatPrice(offer.price * order.quantity)}
+          مبلغ سفارش: {formatPrice(order.total_amount)}
         </p>
-        <p className="text-caption text-text-secondary">ثبت سفارش: {order.placedAt}</p>
+        <p className="text-caption text-text-secondary">
+          ثبت سفارش: {formatDateTime(order.created_at)}
+        </p>
       </div>
 
-      {order.status === 'reserved' && (
-        <Button
-          variant="secondary"
-          fullWidth
-          className="mt-4"
-          onClick={() => onViewDetails(order.id)}
-        >
+      {order.group === 'upcoming' && (
+        <Button variant="secondary" fullWidth className="mt-4" onClick={() => onViewDetails(order)}>
           مشاهده جزئیات سفارش
         </Button>
       )}
@@ -197,24 +199,85 @@ function EmptyOrders() {
 }
 
 export default function OrdersPage() {
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const [selectedFilter, setSelectedFilter] = useState<OrderFilter>('all')
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
-  const isEmptyPreview = searchParams.get('empty') === 'true'
-  const selectedOrder = demoOrders.find((order) => order.id === selectedOrderId)
-  const selectedOffer = selectedOrder
-    ? discoveryOffers.find((offer) => offer.id === selectedOrder.offerId)
-    : undefined
+  const [selectedFilter, setSelectedFilter] = useState<OrderGroup>('all')
+  const selectedFilterRef = useRef<OrderGroup>('all')
+  const [orders, setOrders] = useState<OrderDto[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [moreError, setMoreError] = useState('')
+  const [retryCount, setRetryCount] = useState(0)
+  const [selectedOrder, setSelectedOrder] = useState<OrderDto | null>(null)
 
-  const visibleOrders = useMemo(() => {
-    if (selectedFilter === 'upcoming')
-      return demoOrders.filter((order) => order.status === 'reserved')
-    if (selectedFilter === 'past') return demoOrders.filter((order) => order.status !== 'reserved')
-    return demoOrders
-  }, [selectedFilter])
+  useEffect(() => {
+    let active = true
+    orderService
+      .listMyOrders({ group: selectedFilter, limit: 20 })
+      .then((response) => {
+        if (!active) return
+        setOrders(response.orders)
+        setNextCursor(response.next_cursor)
+        setLoadError('')
+        setLoading(false)
+      })
+      .catch((error: unknown) => {
+        if (!active) return
+        setOrders([])
+        setNextCursor(null)
+        setLoadError(errorMessage(error))
+        setLoading(false)
+      })
 
-  const emptyState = isEmptyPreview || visibleOrders.length === 0
+    return () => {
+      active = false
+    }
+  }, [retryCount, selectedFilter])
+
+  const upcomingOrders = orders.filter((order) => order.group === 'upcoming')
+  const pastOrders = orders.filter((order) => order.group === 'past')
+
+  function changeFilter(filter: OrderGroup) {
+    if (filter === selectedFilter) return
+    selectedFilterRef.current = filter
+    setLoading(true)
+    setLoadingMore(false)
+    setLoadError('')
+    setMoreError('')
+    setOrders([])
+    setNextCursor(null)
+    setSelectedFilter(filter)
+  }
+
+  async function loadNextPage() {
+    if (!nextCursor || loadingMore) return
+    const requestedFilter = selectedFilter
+    setLoadingMore(true)
+    setMoreError('')
+    try {
+      const response = await orderService.listMyOrders({
+        group: selectedFilter,
+        limit: 20,
+        cursor: nextCursor,
+      })
+      if (selectedFilterRef.current !== requestedFilter) return
+      setOrders((current) => {
+        const ids = new Set(current.map((order) => order.id))
+        const newOrders = response.orders.filter((order) => {
+          if (ids.has(order.id)) return false
+          ids.add(order.id)
+          return true
+        })
+        return [...current, ...newOrders]
+      })
+      setNextCursor(response.next_cursor)
+    } catch (error) {
+      if (selectedFilterRef.current !== requestedFilter) return
+      setMoreError(errorMessage(error))
+    } finally {
+      if (selectedFilterRef.current === requestedFilter) setLoadingMore(false)
+    }
+  }
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-text-primary">
@@ -249,7 +312,7 @@ export default function OrdersPage() {
                       key={filter.value}
                       type="button"
                       aria-pressed={active}
-                      onClick={() => setSelectedFilter(filter.value)}
+                      onClick={() => changeFilter(filter.value)}
                       className={[
                         'min-h-11 shrink-0 rounded-lg border px-4 text-label-md transition-colors',
                         active
@@ -263,71 +326,92 @@ export default function OrdersPage() {
                 })}
               </div>
 
-              {emptyState ? (
+              {loadError ? (
+                <div className="space-y-4">
+                  <InlineAlert tone="error">{loadError}</InlineAlert>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setLoading(true)
+                      setLoadError('')
+                      setRetryCount((count) => count + 1)
+                    }}
+                  >
+                    تلاش دوباره
+                  </Button>
+                </div>
+              ) : loading ? (
+                <p
+                  role="status"
+                  className="rounded-2xl border border-border-default bg-surface p-6 text-body-md text-text-secondary"
+                >
+                  در حال دریافت سفارش‌ها...
+                </p>
+              ) : orders.length === 0 ? (
                 <EmptyOrders />
               ) : (
                 <div className="space-y-8">
-                  {selectedFilter !== 'past' &&
-                    visibleOrders.some((order) => order.status === 'reserved') && (
-                      <section aria-labelledby="upcoming-orders-title" className="space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <h2
-                            id="upcoming-orders-title"
-                            className="text-title-md text-primary sm:text-title-lg"
-                          >
-                            سفارش‌های در انتظار دریافت
-                          </h2>
-                          <p className="text-caption text-text-secondary">
-                            {visibleOrders
-                              .filter((order) => order.status === 'reserved')
-                              .length.toLocaleString('fa-IR')}{' '}
-                            سفارش
-                          </p>
-                        </div>
-                        <div className="grid gap-4 xl:grid-cols-2">
-                          {visibleOrders
-                            .filter((order) => order.status === 'reserved')
-                            .map((order) => (
-                              <OrderCard
-                                key={order.id}
-                                order={order}
-                                onViewDetails={setSelectedOrderId}
-                              />
-                            ))}
-                        </div>
-                      </section>
-                    )}
+                  {selectedFilter !== 'past' && upcomingOrders.length > 0 && (
+                    <section aria-labelledby="upcoming-orders-title" className="space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h2
+                          id="upcoming-orders-title"
+                          className="text-title-md text-primary sm:text-title-lg"
+                        >
+                          سفارش‌های در انتظار دریافت
+                        </h2>
+                        <p className="text-caption text-text-secondary">
+                          {upcomingOrders.length.toLocaleString('fa-IR')} سفارش
+                        </p>
+                      </div>
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        {upcomingOrders.map((order) => (
+                          <OrderCard
+                            key={order.id}
+                            order={order}
+                            onViewDetails={setSelectedOrder}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
 
-                  {selectedFilter !== 'upcoming' &&
-                    visibleOrders.some((order) => order.status !== 'reserved') && (
-                      <section aria-labelledby="past-orders-title" className="space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <h2
-                            id="past-orders-title"
-                            className="text-title-md text-primary sm:text-title-lg"
-                          >
-                            سفارش‌های گذشته
-                          </h2>
-                          <p className="text-caption text-text-secondary">
-                            {visibleOrders
-                              .filter((order) => order.status !== 'reserved')
-                              .length.toLocaleString('fa-IR')}{' '}
-                            سفارش
-                          </p>
-                        </div>
-                        <div className="grid gap-4 xl:grid-cols-2">
-                          {visibleOrders
-                            .filter((order) => order.status !== 'reserved')
-                            .map((order) => (
-                              <OrderCard
-                                key={order.id}
-                                order={order}
-                                onViewDetails={setSelectedOrderId}
-                              />
-                            ))}
-                        </div>
-                      </section>
-                    )}
+                  {selectedFilter !== 'upcoming' && pastOrders.length > 0 && (
+                    <section aria-labelledby="past-orders-title" className="space-y-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <h2
+                          id="past-orders-title"
+                          className="text-title-md text-primary sm:text-title-lg"
+                        >
+                          سفارش‌های گذشته
+                        </h2>
+                        <p className="text-caption text-text-secondary">
+                          {pastOrders.length.toLocaleString('fa-IR')} سفارش
+                        </p>
+                      </div>
+                      <div className="grid gap-4 xl:grid-cols-2">
+                        {pastOrders.map((order) => (
+                          <OrderCard
+                            key={order.id}
+                            order={order}
+                            onViewDetails={setSelectedOrder}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  )}
+
+                  {moreError && <InlineAlert tone="error">{moreError}</InlineAlert>}
+                  {nextCursor && (
+                    <Button
+                      variant="secondary"
+                      fullWidth
+                      isLoading={loadingMore}
+                      onClick={loadNextPage}
+                    >
+                      بارگذاری سفارش‌های بیشتر
+                    </Button>
+                  )}
                 </div>
               )}
             </section>
@@ -345,36 +429,58 @@ export default function OrdersPage() {
         </div>
       </div>
       <Modal
-        open={Boolean(selectedOrder && selectedOffer)}
-        onClose={() => setSelectedOrderId(null)}
+        open={Boolean(selectedOrder)}
+        onClose={() => setSelectedOrder(null)}
         title="جزئیات سفارش"
-        description="این سفارش نمونه است و برای نمایش مراحل دریافت استفاده می‌شود."
+        description="جزئیات سفارش ثبت‌شده"
       >
-        {selectedOrder && selectedOffer && (
+        {selectedOrder && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 rounded-lg bg-surface-secondary p-4">
-              <img
-                src={selectedOffer.imageSrc}
-                alt=""
-                className="size-16 rounded-md object-cover"
-              />
-              <div>
-                <h3 className="text-title-sm text-primary">{selectedOffer.merchantName}</h3>
+              <div className="grid size-16 shrink-0 place-items-center rounded-md bg-primary-subtle text-primary">
+                <ShoppingBag className="size-7" strokeWidth={1.75} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="truncate text-title-sm text-primary">{selectedOrder.store.name}</h3>
                 <p className="mt-1 text-body-md text-text-secondary">
                   شماره سفارش {selectedOrder.id}
                 </p>
               </div>
             </div>
+            <div className="space-y-2">
+              <h4 className="text-label-md text-primary">اقلام سفارش</h4>
+              {selectedOrder.items.map((item, index) => (
+                <div
+                  key={`${item.title}-${index}`}
+                  className="flex items-start justify-between gap-4 text-body-md"
+                >
+                  <span>
+                    {item.title} × {item.quantity.toLocaleString('fa-IR')}
+                  </span>
+                  <span className="shrink-0">{formatPrice(item.unit_price * item.quantity)}</span>
+                </div>
+              ))}
+            </div>
             <p className="text-body-md text-text-primary">
-              برای دریافت بسته در بازه‌ی <strong>{selectedOrder.pickup}</strong> به فروشگاه مراجعه
-              کن.
+              زمان دریافت: <strong>{pickupWindow(selectedOrder)}</strong>
             </p>
-            <p className="text-caption text-text-secondary">
-              نمونه‌ی نمایشی · رزرو یا پرداخت واقعی انجام نشده است.
+            <p className="text-body-md text-text-secondary">
+              نشانی فروشگاه: {selectedOrder.store.pickup_address}
             </p>
-            <Button fullWidth onClick={() => navigate('/')}>
-              دیدن پیشنهادهای دیگر
-            </Button>
+            <div className="space-y-2 border-t border-border-default pt-4 text-body-md">
+              <p className="flex justify-between gap-3">
+                <span>جمع اقلام</span>
+                <span>{formatPrice(selectedOrder.items_total)}</span>
+              </p>
+              <p className="flex justify-between gap-3">
+                <span>هزینه خدمات</span>
+                <span>{formatPrice(selectedOrder.service_fee)}</span>
+              </p>
+              <p className="flex justify-between gap-3 font-semibold text-primary">
+                <span>مبلغ کل</span>
+                <span>{formatPrice(selectedOrder.total_amount)}</span>
+              </p>
+            </div>
           </div>
         )}
       </Modal>
