@@ -3,6 +3,7 @@ import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
 import AdminLayout from '@/layouts/AdminLayout'
+import RequireRole from '@/features/auth/components/RequireRole'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -105,7 +106,11 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <AdminLayout />,
+    element: (
+      <RequireRole role="admin">
+        <AdminLayout />
+      </RequireRole>
+    ),
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'store-requests', element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" /> },
