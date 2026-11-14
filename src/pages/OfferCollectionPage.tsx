@@ -80,7 +80,7 @@ function CollectionHeader({ title }: { title: string }) {
             نقشه
           </Link>
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >
@@ -277,6 +277,11 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
                   <FoodListingCard
                     key={offer.id}
                     {...offer}
+                    renderLink={
+                      offer.storeId
+                        ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                        : undefined
+                    }
                     headingLevel={2}
                     saved={Boolean(savedOffers[offer.id])}
                     onSaveChange={(saved) =>

@@ -95,7 +95,7 @@ function CustomerHeader() {
       <header className="hidden h-20 items-center justify-between border-b border-border-default px-8 sm:flex">
         <div className="flex items-center gap-3">
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >

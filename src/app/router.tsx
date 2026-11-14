@@ -19,6 +19,9 @@ import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
 import OrdersPage from '@/pages/OrdersPage'
+import PublicStorePage from '@/pages/PublicStorePage'
+import ProfilePage from '@/pages/ProfilePage'
+import PersonalInfoPage from '@/pages/PersonalInfoPage'
 
 export const router = createBrowserRouter([
   {
@@ -32,6 +35,9 @@ export const router = createBrowserRouter([
       { path: 'favorites', element: <OfferCollectionPage /> },
       { path: 'last-chance', element: <OfferCollectionPage /> },
       { path: 'orders', element: <OrdersPage /> },
+      { path: 'stores/:storeId', element: <PublicStorePage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'profile/personal', element: <PersonalInfoPage /> },
     ],
   },
   {
@@ -82,6 +88,13 @@ export const router = createBrowserRouter([
       },
       {
         path: 'finance/:section',
+        element: <VendorComingSoonPage title="مالی" />,
+      },
+      {
+        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
+      },
+      {
+        path: 'finance',
         element: <VendorComingSoonPage title="مالی" />,
       },
       {
