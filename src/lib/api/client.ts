@@ -1,4 +1,5 @@
 import { env } from '@/config/env'
+import { tokenStorage } from '@/services/tokenStorage'
 
 type ApiErrorBody = {
   message?: string
@@ -33,6 +34,9 @@ function normaliseFieldErrors(errors?: ApiErrorBody['errors']) {
 }
 
 function getAccessToken() {
+  const storedToken = tokenStorage.getToken()
+  if (storedToken) return storedToken
+
   const serializedSession = sessionStorage.getItem('auth_session')
   if (!serializedSession) return undefined
 
