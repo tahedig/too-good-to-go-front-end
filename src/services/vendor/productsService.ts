@@ -57,9 +57,8 @@ const demoProducts: StoredProduct[] = demoProductSeeds.map((product) => ({
 }))
 
 /**
- * Demo-only storage adapter. The pages depend on this service, not on localStorage,
- * so the adapter can be replaced with the Go API once its Swagger contract is available.
- * Do not add guessed routes or send image data until the upload/DTO contract is confirmed.
+ * Demo-only storage adapter. The supplied Go API list has no vendor product CRUD or image-upload
+ * endpoints, so the product pages cannot be safely connected yet. Do not guess routes or DTOs.
  */
 function readProducts(): StoredProduct[] {
   const saved = localStorage.getItem(STORAGE_KEY)

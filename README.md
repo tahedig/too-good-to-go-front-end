@@ -44,7 +44,7 @@ The implemented vendor pages use service modules under `src/services/vendor/`:
 - `ordersService.ts` — vendor order listing
 - `reservationsService.ts` — vendor reservation listing
 
-Until the Go Swagger contract is supplied, these modules use clearly marked demo data so the current screens and form flows remain testable. No endpoint paths, response DTOs, authentication rules, or image-upload format have been guessed. Once those details are available, replace the demo adapters in these modules and map the backend DTOs to the UI types. For new endpoint integrations, use the established `apiRequest` client in `src/lib/api/client.ts`, which reads `VITE_API_BASE_URL` and the stored access token; the legacy Axios helpers in `src/services/services.ts` use the `/api` proxy and `tokenStorage`.
+The supplied Go API list is now used by `ordersService.ts` and `reservationsService.ts`: both load the authenticated vendor's orders from `GET /orders`, including cursor pagination. The current contract has no separate reservation endpoint or delivery-confirmation action, so the reservation view is read-only. `productsService.ts` remains a clearly marked local demo adapter because the supplied list does not include vendor product CRUD or image-upload endpoints; the public store-offers endpoint does not provide enough data or operations for product create/edit. New integrations use `apiRequest` in `src/lib/api/client.ts`, which reads `VITE_API_BASE_URL` and the stored access token.
 
 ## Design system
 

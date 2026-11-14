@@ -1,12 +1,16 @@
-export type ReservationStatus = 'active' | 'pending' | 'delivered' | 'cancelled'
+export type ReservationStatus =
+  'pending_payment' | 'paid' | 'ready' | 'completed' | 'cancelled' | 'expired' | 'no_show'
+
 export type Reservation = {
   id: string
-  customer: string
+  customer: string | null
+  storeName: string
+  storeAddress: string
   product: string
   image: string
   quantity: number
   amount: number
-  pickupDate: string // ISO calendar date in the store's local timezone
+  pickupDate: string // ISO calendar date in the browser's local timezone
   startTime: string
   endTime: string
   status: ReservationStatus
@@ -35,8 +39,11 @@ export function formatPickupDate(iso: string): string {
   }).format(date)
 }
 export const STATUS_LABELS: Record<ReservationStatus, string> = {
-  active: 'فعال',
-  pending: 'در انتظار تحویل',
-  delivered: 'تحویل‌شده',
+  pending_payment: 'در انتظار پرداخت',
+  paid: 'پرداخت‌شده',
+  ready: 'آماده تحویل',
+  completed: 'تحویل‌شده',
   cancelled: 'لغوشده',
+  expired: 'منقضی‌شده',
+  no_show: 'عدم مراجعه',
 }
