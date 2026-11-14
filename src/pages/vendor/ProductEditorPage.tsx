@@ -259,50 +259,6 @@ export default function ProductEditorPage() {
       setSaving(false)
     }
   }
-  async function deleteProduct() {
-    if (!id || saving) return
-    setSaving(true)
-    setDeleteError('')
-    try {
-      await productRepository.remove(id)
-      navigate('/vendor/products', { replace: true, state: { message: 'محصول حذف شد.' } })
-      window.scrollTo({ top: 0 })
-    } catch (error) {
-      setDeleteError(
-        error instanceof Error ? error.message : 'حذف محصول ممکن نیست. دوباره تلاش کنید.',
-      )
-    } finally {
-      setSaving(false)
-    }
-  }
-  async function addImages(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    event.target.value = ''
-    if (!files.length) return
-    if (
-      files.length + values.images.length > 5 ||
-      files.some((file) => !file.type.startsWith('image/') || file.size > 1024 * 1024)
-    ) {
-      setAlert('حداکثر ۵ تصویر و حجم هر تصویر حداکثر ۱ مگابایت است.')
-      return
-    }
-    try {
-      const urls = await Promise.all(
-        files.map(
-          (file) =>
-            new Promise<string>((resolve, reject) => {
-              const reader = new FileReader()
-              reader.onload = () => resolve(String(reader.result))
-              reader.onerror = () => reject(new Error('خواندن تصویر ممکن نیست.'))
-              reader.readAsDataURL(file)
-            }),
-        ),
-      )
-      setValues((current) => ({ ...current, images: [...current.images, ...urls] }))
-    } catch {
-      setAlert('خواندن تصویر ممکن نیست.')
-    }
-  }
   function move(index: number, target: number) {
     if (target < 0 || target >= values.images.length) return
     const images = [...values.images]
@@ -355,20 +311,6 @@ export default function ProductEditorPage() {
       onChange={(e) => update(key, e.target.value)}
     />
   )
-  return (
-    <div className="flex flex-col gap-6 p-4 lg:p-12">
-      <div className="flex items-center gap-3">
-        <Link
-          to="/vendor/products"
-          aria-label="بازگشت به محصولات"
-          className="grid size-11 shrink-0 place-items-center rounded-[12px] border border-border-default bg-surface"
-        >
-          <ArrowRight size={24} />
-        </Link>
-        <h1 className="text-title-lg font-bold lg:text-title-xl">
-          {id ? 'ویرایش محصول' : Object.keys(errors).length ? 'اصلاح اطلاعات محصول' : 'ساخت محصول'}
-        </h1>
-      </div>
       {alert && (
         <div className="flex items-center gap-2 rounded-md border border-error bg-surface shadow-2">
           <InlineAlert tone="error" className="flex-1 bg-surface">

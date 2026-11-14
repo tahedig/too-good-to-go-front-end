@@ -72,12 +72,16 @@ function read(): StoredProduct[] {
 // Do not uncomment guessed URLs or send base64 images without confirming the API contract.
 export const productRepository = {
   async list(): Promise<StoredProduct[]> {
+    // Backend integration: replace with apiClient.get('/vendor/products')
+    // For now, retain the browser-backed mock as documented in README.
     return read()
   },
   async get(id: string): Promise<StoredProduct | undefined> {
+    // Backend integration: replace with apiClient.get(`/vendor/products/${id}`)
     return read().find((item) => item.id === id)
   },
   async remove(id: string): Promise<void> {
+    // Backend integration: replace with apiClient.delete(`/vendor/products/${id}`)
     const items = read()
     const product = items.find((item) => item.id === id)
     if (!product) throw new Error('محصول پیدا نشد.')
@@ -87,6 +91,7 @@ export const productRepository = {
     localStorage.setItem(KEY, JSON.stringify(items.filter((item) => item.id !== id)))
   },
   async unpublish(id: string): Promise<void> {
+    // Backend integration: replace with apiClient.post(`/vendor/products/${id}/unpublish`)
     const items = read()
     const product = items.find((item) => item.id === id)
     if (!product) throw new Error('محصول پیدا نشد.')
@@ -100,6 +105,8 @@ export const productRepository = {
     )
   },
   async save(input: ProductInput, id?: string): Promise<StoredProduct> {
+    // Backend integration: replace with apiClient.post('/vendor/products') or apiClient.put(`/vendor/products/${id}`)
+    // Image uploads must be handled according to the API contract.
     const items = read()
     const existing = id ? items.find((item) => item.id === id) : undefined
     if (id && !existing) throw new Error('محصول پیدا نشد.')

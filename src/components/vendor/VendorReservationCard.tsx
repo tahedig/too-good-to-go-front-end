@@ -10,21 +10,6 @@ const tones = {
   delivered: 'bg-success-subtle text-success',
   cancelled: 'bg-error-subtle text-error',
 }
-function ReservationBadge({
-  reservation,
-  mobile = false,
-}: {
-  reservation: Reservation
-  mobile?: boolean
-}) {
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-sm px-2 py-1 text-caption font-semibold ${tones[reservation.status]}`}
-    >
-      {mobile && reservation.status === 'active' ? 'رزرو فعال' : STATUS_LABELS[reservation.status]}
-    </span>
-  )
-}
 
 export function VendorReservationCard({
   reservation,
@@ -40,7 +25,11 @@ export function VendorReservationCard({
     <article className="rounded-lg border border-border-default bg-surface p-4 lg:rounded-[12px] lg:p-5">
       <div className="flex flex-col gap-3 lg:hidden">
         <div className="flex items-center gap-3">
-          <ReservationBadge reservation={reservation} mobile />
+          <span
+            className={`inline-flex shrink-0 items-center rounded-sm px-2 py-1 text-caption font-semibold ${tones[reservation.status]}`}
+          >
+            {reservation.status === 'active' ? 'رزرو فعال' : STATUS_LABELS[reservation.status]}
+          </span>
           <div className="min-w-0 flex-1">
             <h3 className="text-title-md font-semibold">{reservation.customer}</h3>
             <p className="text-body-md text-text-secondary">{reservation.product}</p>
@@ -82,7 +71,11 @@ export function VendorReservationCard({
             <p className="text-body-md">
               {packs} · {date} · <span dir="ltr">{time}</span>
             </p>
-            <ReservationBadge reservation={reservation} />
+            <span
+              className={`inline-flex shrink-0 items-center rounded-sm px-2 py-1 text-caption font-semibold ${tones[reservation.status]}`}
+            >
+              {STATUS_LABELS[reservation.status]}
+            </span>
           </div>
           <img
             src={reservation.image}

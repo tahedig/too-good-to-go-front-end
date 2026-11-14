@@ -12,6 +12,7 @@ import type {
 	PutParams,
 } from "../types/apiTypes";
 import { tokenStorage } from "./tokenStorage";
+
 export const baseURL = "/api"; // backend URL
 
 const apiClient: AxiosInstance = axios.create({
@@ -21,23 +22,6 @@ const apiClient: AxiosInstance = axios.create({
 		"Content-Type": "application/json",
 	},
 });
-
-// apiClient.interceptors.request.use(
-// 	(config: InternalAxiosRequestConfig) => {
-// 		// const token = getTokenFromStore();
-// 		// if (token) config.headers.Authorization = `Bearer ${token}`;
-// 		return config;
-// 	},
-// 	(error) => Promise.reject(error)
-// );
-
-// apiClient.interceptors.response.use(
-// 	(response: AxiosResponse) => response,
-// 	(error) => {
-// 		console.error(error);
-// 		return Promise.reject(error);
-// 	}
-// );
 
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -51,8 +35,6 @@ apiClient.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
-
-
 
 // ✅ GET
 export const getData = async ({ endPoint, headers, params }: GetParams) => {
@@ -69,17 +51,6 @@ export const getData = async ({ endPoint, headers, params }: GetParams) => {
 };
 
 // ✅ POST
-// export const postData = async ({ endPoint, data, headers }: PostParams) => {
-// 	try {
-// 		const response: AxiosResponse = await apiClient.post(endPoint, data, {
-// 			headers,
-// 		});
-// 		return response.data;
-// 	} catch (error) {
-// 		console.error("error in postData", error);
-// 		throw error;
-// 	}
-// };
 export const postData = async <T = unknown>({
   endPoint,
   data,
@@ -98,7 +69,6 @@ export const postData = async <T = unknown>({
     throw error;
   }
 };
-
 
 // ✅ POST image/form-data
 export const postImageData = async ({ endPoint, data }: PostParams) => {
