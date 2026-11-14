@@ -11,8 +11,8 @@ import type {
 	PostParams,
 	PutParams,
 } from "../types/apiTypes";
-
-export const baseURL = "http://1.2.3.4:8000"; // backend URL
+import { tokenStorage } from "./tokenStorage";
+export const baseURL = "/api"; // backend URL
 
 const apiClient: AxiosInstance = axios.create({
 	baseURL,
@@ -22,22 +22,37 @@ const apiClient: AxiosInstance = axios.create({
 	},
 });
 
+// apiClient.interceptors.request.use(
+// 	(config: InternalAxiosRequestConfig) => {
+// 		// const token = getTokenFromStore();
+// 		// if (token) config.headers.Authorization = `Bearer ${token}`;
+// 		return config;
+// 	},
+// 	(error) => Promise.reject(error)
+// );
+
+// apiClient.interceptors.response.use(
+// 	(response: AxiosResponse) => response,
+// 	(error) => {
+// 		console.error(error);
+// 		return Promise.reject(error);
+// 	}
+// );
+
 apiClient.interceptors.request.use(
-	(config: InternalAxiosRequestConfig) => {
-		// const token = getTokenFromStore();
-		// if (token) config.headers.Authorization = `Bearer ${token}`;
-		return config;
-	},
-	(error) => Promise.reject(error)
+  (config: InternalAxiosRequestConfig) => {
+    const token = tokenStorage.getToken();
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
 );
 
-apiClient.interceptors.response.use(
-	(response: AxiosResponse) => response,
-	(error) => {
-		console.error(error);
-		return Promise.reject(error);
-	}
-);
+
 
 // ✅ GET
 export const getData = async ({ endPoint, headers, params }: GetParams) => {
@@ -54,17 +69,36 @@ export const getData = async ({ endPoint, headers, params }: GetParams) => {
 };
 
 // ✅ POST
-export const postData = async ({ endPoint, data, headers }: PostParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.post(endPoint, data, {
-			headers,
-		});
-		return response.data;
-	} catch (error) {
-		console.error("error in postData", error);
-		throw error;
-	}
+// export const postData = async ({ endPoint, data, headers }: PostParams) => {
+// 	try {
+// 		const response: AxiosResponse = await apiClient.post(endPoint, data, {
+// 			headers,
+// 		});
+// 		return response.data;
+// 	} catch (error) {
+// 		console.error("error in postData", error);
+// 		throw error;
+// 	}
+// };
+export const postData = async <T = unknown>({
+  endPoint,
+  data,
+  headers,
+}: PostParams): Promise<T> => {
+  try {
+    const response: AxiosResponse<T> = await apiClient.post(
+      endPoint,
+      data,
+      { headers }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("error in postData", error);
+    throw error;
+  }
 };
+
 
 // ✅ POST image/form-data
 export const postImageData = async ({ endPoint, data }: PostParams) => {

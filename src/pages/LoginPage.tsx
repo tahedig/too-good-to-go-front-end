@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/Input'
 import { PhoneInput } from '@/components/ui/PhoneInput'
 import { ApiError } from '@/lib/api/client'
 import { toEnglishDigits } from '@/lib/digits'
-import { customerOtpApi, MOCK_OTP_CODE } from '@/features/auth/api/customerOtpApi'
+import { customerOtpApi} from '@/features/auth/api/customerOtpApi'
 import OtpCodeInput from '@/features/auth/components/OtpCodeInput'
+import { verifyOtpService } from "../services/authService";
 
 type LoginStep = 'phone' | 'profile' | 'otp'
 type NameErrors = Partial<Record<'firstName' | 'lastName', string>>
@@ -103,25 +104,37 @@ export default function LoginPage() {
   }
 
   async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+    event.preventDefault();
+
     if (code.length !== 6) {
-      setFieldError('کد تایید باید ۶ رقم باشد.')
-      return
+      setFieldError('کد تایید باید ۶ رقم باشد.');
+      return;
     }
 
-    setFieldError('')
-    setSubmitError('')
-    setSubmitting(true)
+    setFieldError('');
+    setSubmitError('');
+    setSubmitting(true);
+
     try {
-      await customerOtpApi.verifyOtp(requestId, code)
-      const returnTo = searchParams.get('returnTo')
+      const response = await verifyOtpService({
+        phone: toEnglishDigits(phoneNumber),
+        code: toEnglishDigits(code),
+      });
+
+      console.log('Logged in user:', response.user);
+
+      const returnTo = searchParams.get('returnTo');
+
       const safeReturnTo =
-        returnTo?.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/profile'
-      await navigate(safeReturnTo, { replace: true })
+        returnTo?.startsWith('/') && !returnTo.startsWith('//')
+          ? returnTo
+          : '/profile';
+
+      await navigate(safeReturnTo, { replace: true });
     } catch (error) {
-      setFieldError(errorMessage(error, 'کد تایید نادرست است.'))
+      setFieldError(errorMessage(error, 'کد تایید نادرست است.'));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
   }
 
@@ -256,7 +269,7 @@ export default function LoginPage() {
             ارسال شد. کد را در کادرهای زیر وارد کنید.
           </p>
           <p className="mt-3 text-caption text-text-secondary">
-            کد آزمایشی: <bdi dir="ltr">{MOCK_OTP_CODE}</bdi>
+            کد آزمایشی: <bdi dir="ltr"></bdi>
           </p>
           {submitError && (
             <InlineAlert tone="error" className="mt-5">
