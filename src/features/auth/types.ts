@@ -9,7 +9,7 @@ export type AuthSession = {
   user: {
     id: string
     email: string
-    role: 'admin' | 'vendor' | 'user'
+    role: 'admin' | 'vendor'
   }
 }
 
