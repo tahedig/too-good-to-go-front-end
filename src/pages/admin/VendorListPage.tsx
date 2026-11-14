@@ -3,7 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SearchField } from '@/components/ui/SearchField'
-import { getErrorMessage } from '@/features/auth/utils'
+import { describeError } from '@/features/vendor-approval/errors'
+import type { DescribedError } from '@/features/vendor-approval/errors'
 import { vendorApprovalApi } from '@/features/vendor-approval/api'
 import { formatVendorDate } from '@/features/vendor-approval/constants'
 import type { Vendor, VendorListResponse, VendorStatus } from '@/features/vendor-approval/types'
@@ -123,7 +124,7 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
   const [result, setResult] = useState<{
     key: string
     data: VendorListResponse | null
-    error: string
+    error: DescribedError | null
   } | null>(null)
 
   const updateParams = useCallback(
@@ -156,14 +157,14 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
     vendorApprovalApi
       .list({ statuses: filter.statuses, search, page, pageSize: PAGE_SIZE })
       .then((data) => {
-        if (active) setResult({ key: requestKey, data, error: '' })
+        if (active) setResult({ key: requestKey, data, error: null })
       })
       .catch((caught) => {
         if (active)
           setResult((previous) => ({
             key: requestKey,
             data: previous?.data ?? null,
-            error: getErrorMessage(caught, 'اتصال اینترنت را بررسی و دوباره تلاش کنید.'),
+            error: describeError(caught, 'اتصال اینترنت را بررسی و دوباره تلاش کنید.'),
           }))
       })
     return () => {
@@ -173,7 +174,7 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
 
   const loading = result?.key !== requestKey
   const data = result?.data ?? null
-  const error = loading ? '' : (result?.error ?? '')
+  const error = loading ? null : (result?.error ?? null)
   const load = () => setReloadCount((count) => count + 1)
 
   const hasFilters = filterValue !== 'all' || Boolean(search)
@@ -248,12 +249,18 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
           tone="error"
           title={mode === 'requests' ? 'درخواست‌ها بارگذاری نشد' : 'فروشگاه‌ها بارگذاری نشد'}
           action={
-            <Button fullWidth size="md" onClick={load}>
-              تلاش دوباره
-            </Button>
+            error.unauthorized ? (
+              <Link to="/login" className={linkButtonClass('primary', 'w-full')}>
+                ورود دوباره
+              </Link>
+            ) : (
+              <Button fullWidth size="md" onClick={load}>
+                تلاش دوباره
+              </Button>
+            )
           }
         >
-          {error}
+          {error.message}
         </StateCard>
       ) : loading && !data ? (
         <SkeletonRows />

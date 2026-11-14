@@ -5,7 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
 import { TextArea } from '@/components/ui/TextArea'
 import { ApiError } from '@/lib/api/client'
-import { getErrorMessage } from '@/features/auth/utils'
+import { describeError } from '../errors'
 import { toPersianDigits } from '@/lib/digits'
 import {
   DECISION_MESSAGE_MAX_LENGTH,
@@ -14,9 +14,19 @@ import {
 } from '../constants'
 import type { Vendor, VendorDecisionPayload, VendorDecisionType } from '../types'
 
-const COPY: Record<VendorDecisionType, { title: string; section: string; confirm: string }> = {
+const COPY: Record<
+  VendorDecisionType,
+  { title: string; section: string; confirm: string; notice?: string }
+> = {
   rejection: { title: 'رد درخواست', section: 'دلیل رد درخواست', confirm: 'رد درخواست' },
-  suspension: { title: 'تعلیق فروشگاه', section: 'دلیل تعلیق فروشگاه', confirm: 'تعلیق فروشگاه' },
+  suspension: {
+    title: 'تعلیق فروشگاه',
+    section: 'دلیل تعلیق فروشگاه',
+    confirm: 'تعلیق فروشگاه',
+    // Backend decision (TEAM-45): paid orders stay valid after a suspension.
+    notice:
+      'با تعلیق، پیشنهادهای این فروشگاه از دید مشتریان پنهان می‌شود و فروشنده نمی‌تواند پیشنهاد جدید منتشر کند. سفارش‌هایی که قبلاً پرداخت شده‌اند لغو نمی‌شوند و فروشنده باید آن‌ها را تحویل دهد.',
+  },
 }
 
 type DecisionDialogProps = {
@@ -61,7 +71,7 @@ export function DecisionDialog({ open, type, vendor, onClose, onSubmit }: Decisi
           message: caught.fieldErrors.message?.[0],
         })
       }
-      setError(getErrorMessage(caught, 'انجام نشد. لطفاً دوباره تلاش کنید.'))
+      setError(describeError(caught, 'انجام نشد. لطفاً دوباره تلاش کنید.').message)
       setSubmitting(false)
     }
   }
@@ -90,6 +100,7 @@ export function DecisionDialog({ open, type, vendor, onClose, onSubmit }: Decisi
         </>
       }
     >
+      {copy.notice && <InlineAlert tone="warning">{copy.notice}</InlineAlert>}
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
       <fieldset
         className="flex flex-col gap-4 rounded-lg border border-border-default p-4"

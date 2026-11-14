@@ -3,11 +3,10 @@ import type { ReactNode } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { getErrorMessage } from '@/features/auth/utils'
-import { ApiError } from '@/lib/api/client'
+import { describeError } from '@/features/vendor-approval/errors'
 import { toPersianDigits } from '@/lib/digits'
 import { vendorApprovalApi } from '@/features/vendor-approval/api'
-import { formatVendorDate, reasonLabel } from '@/features/vendor-approval/constants'
+import { formatPhone, formatVendorDate, reasonLabel } from '@/features/vendor-approval/constants'
 import { DecisionDialog } from '@/features/vendor-approval/components/DecisionDialog'
 import {
   BackToListLink,
@@ -17,6 +16,7 @@ import {
 } from '@/features/vendor-approval/components/VendorUi'
 import { linkButtonClass } from '@/features/vendor-approval/components/linkButtonClass'
 import type { Vendor, VendorDecisionPayload, VendorStatus } from '@/features/vendor-approval/types'
+import type { DescribedError } from '@/features/vendor-approval/errors'
 import type { VendorListMode } from './VendorListPage'
 
 type DialogKind = 'approve' | 'reject' | 'suspend' | 'reactivate' | null
@@ -66,7 +66,7 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
   const [result, setResult] = useState<{
     key: string
     vendor: Vendor | null
-    error: { message: string; notFound: boolean } | null
+    error: DescribedError | null
   } | null>(null)
   const [dialog, setDialog] = useState<DialogKind>(null)
   const [dialogKey, setDialogKey] = useState(0)
@@ -85,17 +85,8 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
       })
       .catch((caught) => {
         if (!active) return
-        const notFound = caught instanceof ApiError && caught.status === 404
-        setResult({
-          key: requestKey,
-          vendor: null,
-          error: {
-            notFound,
-            message: notFound
-              ? 'این فروشگاه وجود ندارد یا حذف شده است.'
-              : getErrorMessage(caught, 'اتصال اینترنت را بررسی و دوباره تلاش کنید.'),
-          },
-        })
+        const error = describeError(caught, 'اتصال اینترنت را بررسی و دوباره تلاش کنید.')
+        setResult({ key: requestKey, vendor: null, error })
       })
     return () => {
       active = false
@@ -124,7 +115,7 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
       setOutcome(result)
       window.scrollTo({ top: 0 })
     } catch (caught) {
-      setActionError(getErrorMessage(caught, 'انجام نشد. لطفاً دوباره تلاش کنید.'))
+      setActionError(describeError(caught, 'انجام نشد. لطفاً دوباره تلاش کنید.').message)
     } finally {
       setActing(false)
     }
@@ -152,10 +143,16 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
           tone="error"
           title={loadError.notFound ? 'فروشگاه پیدا نشد' : 'درخواست بارگذاری نشد'}
           action={
-            !loadError.notFound && (
-              <Button fullWidth size="md" onClick={load}>
-                تلاش دوباره
-              </Button>
+            loadError.unauthorized ? (
+              <Link to="/login" className={linkButtonClass('primary', 'w-full')}>
+                ورود دوباره
+              </Link>
+            ) : (
+              !loadError.notFound && (
+                <Button fullWidth size="md" onClick={load}>
+                  تلاش دوباره
+                </Button>
+              )
             )
           }
         >
@@ -218,7 +215,7 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
           <DetailRow label="آدرس">{vendor.address}</DetailRow>
           <DetailRow label="شماره تماس">
             <a href={`tel:${vendor.phone}`} dir="ltr" className="hover:underline">
-              {toPersianDigits(vendor.phone.replace(/^(\d{4})(\d{3})(\d{4})$/, '$1 $2 $3'))}
+              {toPersianDigits(formatPhone(vendor.phone))}
             </a>
           </DetailRow>
           {vendor.email && (
