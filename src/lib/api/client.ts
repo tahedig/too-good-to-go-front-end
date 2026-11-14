@@ -7,18 +7,33 @@ type ApiErrorBody = {
   error?: {
     message?: string
     details?: unknown
+    request_id?: string
   }
+}
+
+// The backend's 401/403 messages are shared English strings, so they are replaced here.
+const STATUS_MESSAGES: Record<number, string> = {
+  401: 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.',
+  403: 'شما به این بخش دسترسی ندارید.',
 }
 
 export class ApiError extends Error {
   readonly status: number
   readonly fieldErrors: Record<string, string[]>
+  /** Backend request id, useful for finding the request in server logs. */
+  readonly requestId?: string
 
-  constructor(message: string, status: number, fieldErrors: Record<string, string[]> = {}) {
+  constructor(
+    message: string,
+    status: number,
+    fieldErrors: Record<string, string[]> = {},
+    requestId?: string,
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
+    this.requestId = requestId
   }
 }
 
@@ -92,15 +107,19 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody
+    const envelopeMessage = errorBody.error && STATUS_MESSAGES[response.status]
     throw new ApiError(
-      errorBody.error?.message ??
-        errorBody.message ??
+      envelopeMessage ||
+        errorBody.error?.message ||
+        errorBody.message ||
+        STATUS_MESSAGES[response.status] ||
         'در انجام درخواست مشکلی پیش آمد. لطفاً دوباره تلاش کنید.',
       response.status,
       {
         ...normaliseFieldErrors(errorBody.errors),
         ...readFieldErrors(errorBody.error?.details),
       },
+      errorBody.error?.request_id,
     )
   }
 
