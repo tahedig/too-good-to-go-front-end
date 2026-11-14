@@ -3,16 +3,22 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Package, Store, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
-import { storeRepository } from './data/stores'
-import type { VendorStore } from './data/stores'
+import { storeService } from '@/services/storeService'
+import type { VendorStore } from '@/types/storeTypes'
 
 function StoreCard({ store }: { store: VendorStore }) {
   const approved = store.status === 'approved'
+  const badgeColor =
+    store.status === 'approved'
+      ? 'bg-success-subtle text-success'
+      : store.status === 'rejected' || store.status === 'suspended'
+        ? 'bg-error-subtle text-error'
+        : 'bg-warning-subtle text-warning'
 
   return (
     <article className="overflow-hidden rounded-lg border border-border-default bg-surface shadow-1">
       <img
-        src={store.images[0] ?? '/vendor-bakery.jpg'}
+        src={store.images[0]?.url ?? '/vendor-bakery.jpg'}
         alt={`تصویر ${store.name}`}
         className="h-44 w-full object-cover lg:h-52"
       />
@@ -21,16 +27,10 @@ function StoreCard({ store }: { store: VendorStore }) {
           <div className="min-w-0">
             <p className="text-caption text-text-secondary">فروشگاه</p>
             <h3 className="mt-1 text-title-md text-text-primary">{store.name}</h3>
-            <p className="text-body-md text-text-secondary">{store.branch}</p>
+            {store.branch && <p className="text-body-md text-text-secondary">{store.branch}</p>}
           </div>
-          <span
-            className={`rounded-full px-3 py-1 text-caption font-semibold ${
-              approved
-                ? 'bg-success-subtle text-success'
-                : 'bg-warning-subtle text-warning'
-            }`}
-          >
-            {approved ? 'تأییدشده' : 'در انتظار بررسی'}
+          <span className={`rounded-full px-3 py-1 text-caption font-semibold ${badgeColor}`}>
+            {store.statusLabel}
           </span>
         </div>
 
@@ -82,7 +82,7 @@ export default function StoresPage() {
 
   useEffect(() => {
     let active = true
-    storeRepository
+    storeService
       .list()
       .then((items) => {
         if (active) setStores(items)
@@ -114,7 +114,7 @@ export default function StoresPage() {
     )
 
   const approvedStores = stores.filter((store) => store.status === 'approved')
-  const pendingStores = stores.filter((store) => store.status === 'pending')
+  const pendingStores = stores.filter((store) => store.status !== 'approved')
 
   return (
     <div className="flex flex-col gap-6 p-4 lg:px-20 lg:py-8">
