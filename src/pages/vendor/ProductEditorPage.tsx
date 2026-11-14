@@ -7,10 +7,11 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
+import { VendorDatePicker, VendorTimePicker } from '@/components/vendor/VendorDateTimePicker'
 import { toEnglishDigits, toPersianDigits } from '@/lib/digits'
 import { formatPrice } from '@/lib/format'
-import { productRepository } from './data/products'
-import type { ProductInput, StoredProduct } from './data/products'
+import { vendorProductsService } from '@/services/vendor/productsService'
+import type { ProductInput, StoredProduct } from '@/services/vendor/productsService'
 
 type FormValues = {
   name: string
@@ -54,7 +55,7 @@ function priceNumber(value: string): number {
   const normalized = toEnglishDigits(value).replace(/[٬,\s]/g, '')
   return /^\d+$/.test(normalized) ? Number(normalized) : NaN
 }
-function validate(v: FormValues, draft: boolean): Errors {
+function validate(v: FormValues, draft: boolean, minimumQuantity = 1): Errors {
   const errors: Errors = {}
   if (!v.name.trim()) errors.name = 'نام محصول را وارد کنید.'
   if (draft) {
@@ -77,8 +78,8 @@ function validate(v: FormValues, draft: boolean): Errors {
   if (!Number.isSafeInteger(price) || price <= 0) errors.price = 'قیمت معتبر وارد کنید.'
   else if (Number.isSafeInteger(original) && original > 0 && price > original)
     errors.price = 'قیمت پس از تخفیف نمی‌تواند بیشتر از قیمت اصلی باشد.'
-  if (!Number.isInteger(v.quantity) || v.quantity < 1)
-    errors.quantity = 'تعداد باید عدد صحیح مثبت باشد.'
+  if (!Number.isInteger(v.quantity) || v.quantity < minimumQuantity)
+    errors.quantity = `تعداد نمی‌تواند کمتر از ${toPersianDigits(minimumQuantity)} بسته باشد.`
   if (!v.pickupDate) errors.pickupDate = 'تاریخ تحویل را انتخاب کنید.'
   else if (v.pickupDate < today()) errors.pickupDate = 'تاریخ تحویل گذشته است.'
   if (!v.startTime) errors.startTime = 'ساعت شروع را انتخاب کنید.'
@@ -161,38 +162,53 @@ export default function ProductEditorPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!id) return
     let alive = true
-    productRepository
+    setAlert('')
+    setErrors({})
+
+    if (!id) {
+      setOriginal(null)
+      setValues(blank)
+      setLoading(false)
+      return () => {
+        alive = false
+      }
+    }
+
+    // Clear the previous route's product immediately so changing edit IDs can never save stale data.
+    setLoading(true)
+    setOriginal(null)
+    setValues(blank)
+    vendorProductsService
       .get(id)
-      .then((p) => {
+      .then((product) => {
         if (!alive) return
-        if (!p) {
+        if (!product) {
           setAlert('محصول پیدا نشد.')
           setLoading(false)
           return
         }
-        setOriginal(p)
+        setOriginal(product)
         setValues({
-          name: p.name,
-          store: p.store,
-          category: p.category,
-          description: p.description,
-          originalPrice: String(p.originalPrice || ''),
-          price: String(p.price || ''),
-          quantity: p.inventory.total,
-          pickupDate: p.pickupDate,
-          startTime: p.startTime,
-          endTime: p.endTime,
-          cancellationTime: p.cancellationTime,
-          allergens: p.allergens,
-          images: p.images,
+          name: product.name,
+          store: product.store,
+          category: product.category,
+          description: product.description,
+          originalPrice: String(product.originalPrice || ''),
+          price: String(product.price || ''),
+          quantity: product.inventory.total,
+          pickupDate: product.pickupDate,
+          startTime: product.startTime,
+          endTime: product.endTime,
+          cancellationTime: product.cancellationTime,
+          allergens: product.allergens,
+          images: product.images,
         })
         setLoading(false)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (alive) {
-          setAlert('دریافت محصول ممکن نیست.')
+          setAlert(error instanceof Error ? error.message : 'دریافت محصول ممکن نیست.')
           setLoading(false)
         }
       })
@@ -200,7 +216,14 @@ export default function ProductEditorPage() {
       alive = false
     }
   }, [id])
+
+  const minimumQuantity =
+    original?.status === 'ended'
+      ? original.inventory.reserved
+      : Math.max(1, original?.inventory.reserved ?? 0)
+
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
+    setAlert('')
     setValues((current) => ({ ...current, [key]: value }))
     setErrors((current) => {
       const next = { ...current }
@@ -212,7 +235,7 @@ export default function ProductEditorPage() {
     const draft = mode === 'draft' || (mode === 'edit' && original?.status === 'draft')
     if (saving) return
     setSaveFailed(false)
-    const nextErrors = validate(values, draft)
+    const nextErrors = validate(values, draft, minimumQuantity)
     if (original && values.quantity < original.inventory.reserved)
       nextErrors.quantity = 'تعداد نمی‌تواند کمتر از تعداد رزرو باشد.'
     if (Object.keys(nextErrors).length) {
@@ -231,7 +254,8 @@ export default function ProductEditorPage() {
     }
     setSaving(true)
     try {
-      await productRepository.save(input, id)
+      if (id) await vendorProductsService.update(id, input)
+      else await vendorProductsService.create(input)
       navigate('/vendor/products', {
         replace: true,
         state: {
@@ -246,13 +270,7 @@ export default function ProductEditorPage() {
       window.scrollTo({ top: 0 })
     } catch (error) {
       setSaveFailed(true)
-      setAlert(
-        id
-          ? 'ذخیره نشد. دوباره تلاش کنید.'
-          : error instanceof Error
-            ? error.message
-            : 'ذخیره محصول ممکن نیست.',
-      )
+      setAlert(error instanceof Error ? error.message : 'ذخیره محصول ممکن نیست. دوباره تلاش کنید.')
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setSaving(false)
@@ -263,7 +281,7 @@ export default function ProductEditorPage() {
     setSaving(true)
     setDeleteError('')
     try {
-      await productRepository.remove(id)
+      await vendorProductsService.remove(id)
       navigate('/vendor/products', { replace: true, state: { message: 'محصول حذف شد.' } })
       window.scrollTo({ top: 0 })
     } catch (error) {
@@ -346,17 +364,7 @@ export default function ProductEditorPage() {
       <ChevronDown className="pointer-events-none absolute end-3 top-3 size-5" />
     </div>
   )
-  const text = (
-    key:
-      | 'name'
-      | 'originalPrice'
-      | 'price'
-      | 'pickupDate'
-      | 'startTime'
-      | 'endTime'
-      | 'cancellationTime',
-    type = 'text',
-  ) => (
+  const text = (key: 'name' | 'originalPrice' | 'price', type = 'text') => (
     <input
       {...attrs(key, errors[key])}
       type={type}
@@ -453,10 +461,13 @@ export default function ProductEditorPage() {
                 <span className="text-label-md font-bold">تعداد بسته‌ها</span>
                 <QuantityStepper
                   label="تعداد بسته‌ها"
-                  min={Math.max(1, original?.inventory.reserved ?? 0)}
+                  min={minimumQuantity}
                   value={values.quantity}
                   onChange={(value) => update('quantity', value)}
                 />
+                <p className="text-body-md font-semibold">
+                  حداقل تعداد بسته: {toPersianDigits(minimumQuantity)}
+                </p>
                 {errors.quantity && <p className="text-caption text-error">{errors.quantity}</p>}
               </div>
               {original && (
@@ -469,20 +480,44 @@ export default function ProductEditorPage() {
             </Section>
             <Section title="زمان تحویل">
               <Field id="pickupDate" label="تاریخ تحویل" error={errors.pickupDate}>
-                {text('pickupDate', 'date')}
+                <VendorDatePicker
+                  id="pickupDate"
+                  label="تاریخ تحویل"
+                  value={values.pickupDate}
+                  error={errors.pickupDate}
+                  onChange={(value) => update('pickupDate', value)}
+                />
               </Field>
               <Field id="startTime" label="ساعت شروع" error={errors.startTime}>
-                {text('startTime', 'time')}
+                <VendorTimePicker
+                  id="startTime"
+                  label="ساعت شروع"
+                  value={values.startTime}
+                  error={errors.startTime}
+                  onChange={(value) => update('startTime', value)}
+                />
               </Field>
               <Field id="endTime" label="ساعت پایان" error={errors.endTime}>
-                {text('endTime', 'time')}
+                <VendorTimePicker
+                  id="endTime"
+                  label="ساعت پایان"
+                  value={values.endTime}
+                  error={errors.endTime}
+                  onChange={(value) => update('endTime', value)}
+                />
               </Field>
               <Field
                 id="cancellationTime"
                 label="قانون لغو · مهلت لغو"
                 error={errors.cancellationTime}
               >
-                {text('cancellationTime', 'time')}
+                <VendorTimePicker
+                  id="cancellationTime"
+                  label="مهلت لغو"
+                  value={values.cancellationTime}
+                  error={errors.cancellationTime}
+                  onChange={(value) => update('cancellationTime', value)}
+                />
               </Field>
             </Section>
             <Section title="مواد اولیه و حساسیت‌زاها">

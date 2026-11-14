@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
+  ChevronDown,
   LayoutDashboard,
   Menu,
   PackageCheck,
@@ -28,6 +29,13 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/vendor/account', label: 'حساب فروشنده', icon: UserRound },
 ]
 
+const FINANCE_ITEMS = [
+  ['overview', 'مرور کلی'],
+  ['plans', 'طرح‌ها'],
+  ['transactions', 'تراکنش‌ها'],
+  ['settlements', 'تسویه‌ها'],
+] as const
+
 function BrandRow({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-[53px] shrink-0 items-center gap-3 border-b border-border-default px-3">
@@ -51,25 +59,67 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const { pathname } = useLocation()
+  const onFinanceRoute = pathname.startsWith('/vendor/finance')
+  const [financeExpanded, setFinanceExpanded] = useState(onFinanceRoute)
+
   return (
-    <nav aria-label="ناوبری فروشنده" className="flex flex-col gap-1">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-        <NavLink
-          key={to}
-          to={to}
-          end={end}
-          onClick={onNavigate}
-          className={({ isActive }) =>
-            [
-              'flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors',
-              isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary',
-            ].join(' ')
-          }
-        >
-          <Icon className="size-6 shrink-0" strokeWidth={1.75} />
-          <span className="flex-1 text-start">{label}</span>
-        </NavLink>
-      ))}
+    <nav aria-label="ناوبری فروشنده" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
+      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+        if (to === '/vendor/finance') {
+          return (
+            <div key={to}>
+              <button
+                type="button"
+                aria-expanded={financeExpanded}
+                onClick={() => setFinanceExpanded((expanded) => !expanded)}
+                className={`flex h-12 w-full items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors ${onFinanceRoute ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
+              >
+                <Icon className="size-6 shrink-0" strokeWidth={1.75} />
+                <span className="flex-1 text-start">{label}</span>
+                <ChevronDown
+                  className={`size-5 transition-transform ${financeExpanded ? 'rotate-180' : ''}`}
+                  strokeWidth={1.75}
+                />
+              </button>
+              {financeExpanded && (
+                <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
+                  {FINANCE_ITEMS.map(([path, subLabel]) => (
+                    <NavLink
+                      key={path}
+                      to={`/vendor/finance/${path}`}
+                      onClick={onNavigate}
+                      className={({ isActive }) =>
+                        `flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
+                      }
+                    >
+                      {subLabel}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        return (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            onClick={onNavigate}
+            className={({ isActive }) =>
+              [
+                'flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors',
+                isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary',
+              ].join(' ')
+            }
+          >
+            <Icon className="size-6 shrink-0" strokeWidth={1.75} />
+            <span className="flex-1 text-start">{label}</span>
+          </NavLink>
+        )
+      })}
     </nav>
   )
 }

@@ -1,8 +1,13 @@
 import { env } from '@/config/env'
+import { tokenStorage } from '@/services/tokenStorage'
 
 type ApiErrorBody = {
   message?: string
   errors?: Record<string, string[] | string>
+  error?: {
+    message?: string
+    details?: unknown
+  }
 }
 
 export class ApiError extends Error {
@@ -28,18 +33,56 @@ function normaliseFieldErrors(errors?: ApiErrorBody['errors']) {
   )
 }
 
+function getAccessToken() {
+  const storedToken = tokenStorage.getToken()
+  if (storedToken) return storedToken
+
+  const serializedSession = sessionStorage.getItem('auth_session')
+  if (!serializedSession) return undefined
+
+  let session: unknown
+  try {
+    session = JSON.parse(serializedSession)
+  } catch {
+    throw new ApiError('جلسه ورود معتبر نیست. لطفاً دوباره وارد شوید.', 401)
+  }
+
+  if (!session || typeof session !== 'object') return undefined
+  const token =
+    'accessToken' in session
+      ? session.accessToken
+      : 'access_token' in session
+        ? session.access_token
+        : undefined
+  return typeof token === 'string' && token ? token : undefined
+}
+
+function readFieldErrors(details: unknown): Record<string, string[]> {
+  if (!Array.isArray(details)) return {}
+  return Object.fromEntries(
+    details.flatMap((detail) => {
+      if (!detail || typeof detail !== 'object' || !('field' in detail) || !('message' in detail))
+        return []
+      const { field, message } = detail
+      if (typeof field !== 'string' || typeof message !== 'string') return []
+      return [[field, [message]]]
+    }),
+  )
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response
   const baseUrl = env.apiBaseUrl.replace(/\/$/, '')
+  const headers = new Headers(init.headers)
+  headers.set('Accept', 'application/json')
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  const token = getAccessToken()
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
 
   try {
     response = await fetch(`${baseUrl}${path}`, {
       ...init,
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...init.headers,
-      },
+      headers,
     })
   } catch {
     throw new ApiError('ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت را بررسی کنید.', 0)
@@ -50,9 +93,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody
     throw new ApiError(
-      errorBody.message ?? 'در انجام درخواست مشکلی پیش آمد. لطفاً دوباره تلاش کنید.',
+      errorBody.error?.message ??
+        errorBody.message ??
+        'در انجام درخواست مشکلی پیش آمد. لطفاً دوباره تلاش کنید.',
       response.status,
-      normaliseFieldErrors(errorBody.errors),
+      {
+        ...normaliseFieldErrors(errorBody.errors),
+        ...readFieldErrors(errorBody.error?.details),
+      },
     )
   }
 

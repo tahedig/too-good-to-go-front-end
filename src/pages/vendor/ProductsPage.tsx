@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Heart, X } from 'lucide-react'
 import { InlineAlert } from '@/components/ui/InlineAlert'
-import { productRepository } from './data/products'
-import { ChevronDown, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Select } from '@/components/ui/Select'
 import { VendorProductCard } from '@/components/vendor/VendorProductCard'
-import type { VendorProduct } from '@/components/vendor/VendorProductCard'
+import { vendorProductsService } from '@/services/vendor/productsService'
+import type { StoredProduct } from '@/services/vendor/productsService'
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'draft' | 'ended'
 
@@ -20,15 +19,7 @@ const STATUS_OPTIONS = [
   { value: 'ended', label: 'پایان‌یافته' },
 ]
 
-const CATEGORY_OPTIONS = [
-  { value: 'all', label: 'همه' },
-  { value: 'نانوایی', label: 'نانوایی' },
-]
-
-const STORE_OPTIONS = [
-  { value: 'all', label: 'همه' },
-  { value: 'نان صبحگاهی', label: 'نان صبحگاهی' },
-]
+const ALL_OPTION = { value: 'all', label: 'همه' }
 
 function MobileFilterSelect({
   label,
@@ -95,44 +86,89 @@ export default function ProductsPage() {
   const [showAll, setShowAll] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const [products, setProducts] = useState<VendorProduct[] | null>(null)
+  const [products, setProducts] = useState<StoredProduct[] | null>(null)
+  const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
   const [unpublishId, setUnpublishId] = useState<string | null>(null)
   const [actionError, setActionError] = useState('')
   const [acting, setActing] = useState(false)
   const [message, setMessage] = useState<string | null>(
     () => (location.state as { message?: string } | null)?.message ?? null,
   )
+
   useEffect(() => {
     let mounted = true
-    productRepository
+    vendorProductsService
       .list()
       .then((items) => {
         if (mounted) setProducts(items)
       })
-      .catch(() => {
-        if (mounted) setLoadError('دریافت محصولات ممکن نیست.')
+      .catch((error: unknown) => {
+        if (mounted) {
+          setLoadError(error instanceof Error ? error.message : 'دریافت محصولات ممکن نیست.')
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false)
       })
     return () => {
       mounted = false
     }
-  }, [])
-  useEffect(() => {
-    if (location.state) window.history.replaceState({ ...window.history.state, usr: null }, '')
-  }, [location.state])
+  }, [reloadKey])
 
-  if (loadError)
+  function retryLoad() {
+    setProducts(null)
+    setLoadError('')
+    setLoading(true)
+    setReloadKey((key) => key + 1)
+  }
+
+  useEffect(() => {
+    if (!location.state) return
+    navigate(`${location.pathname}${location.search}${location.hash}`, {
+      replace: true,
+      state: null,
+    })
+  }, [location.hash, location.pathname, location.search, location.state, navigate])
+
+  const categoryOptions = useMemo(
+    () => [
+      ALL_OPTION,
+      ...Array.from(new Set((products ?? []).map((product) => product.category)))
+        .sort()
+        .map((value) => ({ value, label: value })),
+    ],
+    [products],
+  )
+  const storeOptions = useMemo(
+    () => [
+      ALL_OPTION,
+      ...Array.from(new Set((products ?? []).map((product) => product.store)))
+        .sort()
+        .map((value) => ({ value, label: value })),
+    ],
+    [products],
+  )
+
+  if (loadError && !products)
     return (
-      <p role="alert" className="p-6 text-error">
-        {loadError}
-      </p>
+      <div className="flex flex-col items-start gap-4 p-6">
+        <p role="alert" className="text-error">
+          {loadError}
+        </p>
+        <Button variant="secondary" onClick={retryLoad}>
+          تلاش دوباره
+        </Button>
+      </div>
     )
-  if (!products)
+  if (loading && !products)
     return (
       <p role="status" className="p-6">
         در حال دریافت محصولات...
       </p>
     )
+  if (!products) return null
   if (products.length === 0)
     return <EmptyState onCreate={() => navigate('/vendor/products/new')} message={message} />
 
@@ -151,8 +187,13 @@ export default function ProductsPage() {
     setActing(true)
     setActionError('')
     try {
-      await productRepository.unpublish(unpublishId)
-      setProducts(await productRepository.list())
+      await vendorProductsService.unpublish(unpublishId)
+      setProducts(
+        (current) =>
+          current?.map((product) =>
+            product.id === unpublishId ? { ...product, status: 'inactive' } : product,
+          ) ?? null,
+      )
       setUnpublishId(null)
       setMessage('انتشار محصول لغو شد.')
     } catch (error) {
@@ -210,7 +251,7 @@ export default function ProductsPage() {
                 label="فروشگاه"
                 value={storeFilter}
                 onChange={(event) => setStoreFilter(event.target.value)}
-                options={STORE_OPTIONS}
+                options={storeOptions}
               />
             </div>
             <div className="w-55 min-w-0 [&_label]:sr-only">
@@ -218,7 +259,7 @@ export default function ProductsPage() {
                 label="دسته"
                 value={categoryFilter}
                 onChange={(event) => setCategoryFilter(event.target.value)}
-                options={CATEGORY_OPTIONS}
+                options={categoryOptions}
               />
             </div>
             <div className="w-55 min-w-0 [&_label]:sr-only">
@@ -237,13 +278,13 @@ export default function ProductsPage() {
               label="دسته"
               value={categoryFilter}
               onChange={setCategoryFilter}
-              options={CATEGORY_OPTIONS}
+              options={categoryOptions}
             />
             <MobileFilterSelect
               label="فروشگاه"
               value={storeFilter}
               onChange={setStoreFilter}
-              options={STORE_OPTIONS}
+              options={storeOptions}
             />
           </div>
         </div>

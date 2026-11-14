@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { SelectHTMLAttributes } from 'react';
-import { FormField, fieldClasses, useFieldMeta } from './FormField';
+import { FormField } from './FormField';
+import { fieldClasses, useFieldMeta } from './formFieldUtils';
 import { ChevronDown } from 'lucide-react';
 
 export interface SelectOption {
