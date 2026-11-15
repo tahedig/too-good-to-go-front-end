@@ -6,17 +6,21 @@ import { Modal } from '@/components/ui/Modal'
 import { VendorReservationCard } from '@/components/vendor/VendorReservationCard'
 import { formatPrice } from '@/lib/format'
 import { toPersianDigits } from '@/lib/digits'
-import { listReservations } from './data/reservations'
+import { listVendorOrders } from '@/services/vendor/ordersService'
+import { listVendorReservations } from '@/services/vendor/reservationsService'
 import { formatPickupDate, isValidDate, localDate, STATUS_LABELS } from '@/lib/vendorReservations'
 import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
 
 type Filter = 'all' | ReservationStatus
 const FILTERS: { value: Filter; label: string; color: string }[] = [
   { value: 'all', label: 'همه', color: 'border-border-input' },
-  { value: 'active', label: 'فعال', color: 'border-focus' },
-  { value: 'pending', label: 'در انتظار تحویل', color: 'border-warning' },
-  { value: 'delivered', label: 'تحویل‌شده', color: 'border-success' },
+  { value: 'pending_payment', label: 'در انتظار پرداخت', color: 'border-warning' },
+  { value: 'paid', label: 'پرداخت‌شده', color: 'border-focus' },
+  { value: 'ready', label: 'آماده تحویل', color: 'border-success' },
+  { value: 'completed', label: 'تحویل‌شده', color: 'border-success' },
   { value: 'cancelled', label: 'لغوشده', color: 'border-error' },
+  { value: 'expired', label: 'منقضی‌شده', color: 'border-border-default' },
+  { value: 'no_show', label: 'عدم مراجعه', color: 'border-error' },
 ]
 function FilterButtons({
   value,
@@ -30,7 +34,7 @@ function FilterButtons({
   return (
     <div
       role="group"
-      aria-label="فیلتر وضعیت رزرو"
+      aria-label="فیلتر وضعیت سفارش"
       className={`flex flex-wrap gap-2 ${daily ? 'lg:grid lg:grid-cols-5 lg:gap-3' : ''}`}
     >
       {FILTERS.map((option) => (
@@ -41,14 +45,7 @@ function FilterButtons({
           onClick={() => onChange(option.value)}
           className={`h-11 rounded-md border px-4 text-label-md transition-colors lg:h-12 ${value === option.value ? (daily ? 'border-primary bg-primary text-on-primary' : 'border-border-input bg-primary-subtle text-text-primary') : daily ? 'border-border-default bg-surface text-text-primary hover:bg-surface-secondary' : `${option.color} bg-surface text-text-primary hover:bg-surface-secondary`}`}
         >
-          {daily && option.value === 'active' ? (
-            <>
-              <span className="lg:hidden">رزرو فعال</span>
-              <span className="hidden lg:inline">فعال</span>
-            </>
-          ) : (
-            option.label
-          )}
+          {option.label}
         </button>
       ))}
     </div>
@@ -74,10 +71,12 @@ function ReviewDialog({
     >
       {reservation && (
         <div className="flex flex-col gap-3 text-body-md">
-          <p className="text-label-lg">{reservation.customer}</p>
+          <p className="text-label-lg">{reservation.customer ?? `سفارش ${reservation.id}`}</p>
           <p>
             {reservation.product} · {toPersianDigits(reservation.quantity)} بسته
           </p>
+          <p>فروشگاه: {reservation.storeName}</p>
+          {reservation.storeAddress && <p>نشانی: {reservation.storeAddress}</p>}
           <p>تاریخ تحویل: {formatPickupDate(reservation.pickupDate)}</p>
           <p>
             ساعت تحویل:{' '}
@@ -88,7 +87,8 @@ function ReviewDialog({
           <p>وضعیت: {STATUS_LABELS[reservation.status]}</p>
           <p>مبلغ: {formatPrice(reservation.amount)}</p>
           <p className="rounded-md bg-primary-subtle p-3 text-text-primary">
-            این اطلاعات آزمایشی است؛ ثبت یا تأیید واقعی تحویل هنوز متصل نشده است.
+            اطلاعات از API سفارش‌ها دریافت شده است. در مستندات فعلی، عملیاتی برای ثبت یا تأیید تحویل
+            وجود ندارد.
           </p>
         </div>
       )}
@@ -180,11 +180,15 @@ function ReservationsSummary({
   delivered,
   amount,
   active,
+  storeName,
+  storeAddress,
 }: {
   packs: number
   delivered: number
   amount: number
   active: number
+  storeName: string
+  storeAddress: string
 }) {
   const stats = [
     ['بسته‌های رزروشده', `${toPersianDigits(packs)} بسته`],
@@ -207,8 +211,8 @@ function ReservationsSummary({
       <div className="hidden items-center gap-4 rounded-lg border border-border-default bg-surface p-5 shadow-1 lg:flex">
         <div className="w-70 shrink-0">
           <p className="text-caption text-text-secondary">فروشگاه</p>
-          <p className="text-label-lg">نان صبحگاهی</p>
-          <p className="text-body-md text-text-secondary">تهران، خیابان ولیعصر، پلاک ۱۲</p>
+          <p className="text-label-lg">{storeName}</p>
+          <p className="text-body-md text-text-secondary">{storeAddress}</p>
         </div>
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-4 xl:grid-cols-4">
           {[
@@ -234,7 +238,9 @@ export default function ReservationsPages({
   view?: 'orders' | 'reservations' | 'daily'
 }) {
   const [items, setItems] = useState<Reservation[] | null>(null)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState<Filter>('all')
   const [selected, setSelected] = useState<Reservation | null>(null)
   const [dateDialog, setDateDialog] = useState(false)
@@ -244,32 +250,65 @@ export default function ReservationsPages({
   const validDate = isValidDate(rawDate) ? rawDate : ''
   const selectedDate =
     view === 'daily' ? validDate || localDate() : view === 'reservations' ? validDate : ''
+
   useEffect(() => {
     let live = true
-    listReservations()
+    const load = view === 'reservations' ? listVendorReservations() : listVendorOrders()
+
+    load
       .then((data) => {
         if (live) setItems(data)
       })
       .catch(() => {
         if (live) setError(true)
       })
+      .finally(() => {
+        if (live) setLoading(false)
+      })
+
     return () => {
       live = false
     }
-  }, [])
-  // Orders defaults to every date. Reservations can optionally be narrowed to a date.
+  }, [reloadKey, view])
+
+  function retryLoad() {
+    setItems(null)
+    setError(false)
+    setLoading(true)
+    setReloadKey((key) => key + 1)
+  }
+
+  // Orders default to every date. Reservations can optionally be narrowed to a date.
   const scoped = (items ?? []).filter((item) => !selectedDate || item.pickupDate === selectedDate)
   const visible = scoped.filter((item) => filter === 'all' || item.status === filter)
-  const booked = scoped.filter((item) => item.status !== 'cancelled')
+  const booked = scoped.filter((item) => item.status !== 'cancelled' && item.status !== 'expired')
   const packs = booked.reduce((sum, item) => sum + item.quantity, 0)
   const delivered = scoped
-    .filter((item) => item.status === 'delivered')
+    .filter((item) => item.status === 'completed')
     .reduce((sum, item) => sum + item.quantity, 0)
   const amount = booked.reduce((sum, item) => sum + item.amount, 0)
   const active = scoped.filter(
-    (item) => item.status === 'active' || item.status === 'pending',
+    (item) =>
+      item.status === 'pending_payment' || item.status === 'paid' || item.status === 'ready',
   ).length
-  const noDayOrders = view === 'daily' && items !== null && !error && scoped.length === 0
+  const stores = Array.from(
+    new Map(
+      (items ?? []).map((item) => [
+        `${item.storeName}\u0000${item.storeAddress}`,
+        { name: item.storeName, address: item.storeAddress },
+      ]),
+    ).values(),
+  )
+  const storeName =
+    stores.length === 1
+      ? stores[0].name
+      : stores.length > 1
+        ? `${toPersianDigits(stores.length)} فروشگاه`
+        : 'فروشگاه‌های شما'
+  const storeAddress =
+    stores.length === 1 ? stores[0].address : stores.length > 1 ? 'سفارش‌های چند فروشگاه' : ''
+  const noDayOrders =
+    view === 'daily' && !loading && items !== null && !error && scoped.length === 0
   const filters = (
     <FilterButtons value={filter} onChange={setFilter} daily={view !== 'reservations'} />
   )
@@ -296,7 +335,8 @@ export default function ReservationsPages({
           {title}
         </h1>
         <p className="text-body-lg text-text-secondary">
-          نان صبحگاهی{view !== 'daily' && ' · تهران، خیابان ولیعصر، پلاک ۱۲'}
+          {storeName}
+          {storeAddress && view !== 'daily' ? ` · ${storeAddress}` : ''}
         </p>
       </header>
       {noDayOrders ? (
@@ -342,6 +382,8 @@ export default function ReservationsPages({
                 delivered={delivered}
                 amount={amount}
                 active={active}
+                storeName={storeName}
+                storeAddress={storeAddress}
               />
               <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between lg:gap-4">
                 <div className="hidden lg:block">{filters}</div>
@@ -386,12 +428,18 @@ export default function ReservationsPages({
               </span>
             </div>
             {error ? (
-              <p role="alert" className="rounded-lg bg-surface p-5">
-                دریافت رزروها ممکن نیست.
-              </p>
-            ) : !items ? (
+              <div
+                role="alert"
+                className="flex flex-col items-start gap-4 rounded-lg bg-surface p-5"
+              >
+                <p>دریافت اطلاعات ممکن نیست.</p>
+                <Button variant="secondary" size="md" onClick={retryLoad}>
+                  تلاش دوباره
+                </Button>
+              </div>
+            ) : loading || !items ? (
               <p role="status" className="rounded-lg bg-surface p-5">
-                در حال دریافت رزروها...
+                در حال دریافت اطلاعات...
               </p>
             ) : visible.length === 0 ? (
               <p
