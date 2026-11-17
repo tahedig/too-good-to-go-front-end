@@ -93,23 +93,7 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-title-xl">صفحه اصلی</h1>
-        <div className="flex gap-2">
-          <a
-            href="/vendor/orders"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-on-primary shadow-1 hover:bg-primary-hover transition-colors"
-          >
-            سفارشات روزانه فروشگاه
-          </a>
-          <a
-            href="/vendor/reservations"
-            className="inline-flex items-center gap-1.5 rounded-xl border border-primary bg-surface px-4 py-2 text-sm font-semibold text-primary hover:bg-surface-secondary transition-colors"
-          >
-            رزروها
-          </a>
-        </div>
-      </div>
+      <h1 className="text-title-xl">صفحه اصلی</h1>
 
       {reserved && <InlineAlert tone="success">رزرو شما ثبت شد. در بازه‌ی تحویل به نانوایی مراجعه کنید.</InlineAlert>}
 
