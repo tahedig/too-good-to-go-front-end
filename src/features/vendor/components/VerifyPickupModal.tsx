@@ -39,7 +39,7 @@ export const VerifyPickupModal: React.FC<VerifyPickupModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="w-full max-w-md rounded-2xl border border-border-default bg-surface p-6 shadow-3">
+      <div className="w-full max-w-md rounded-xl border border-border-default bg-surface p-6 shadow-3">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border-default/50 pb-4">
           <div className="flex items-center gap-2">
@@ -56,7 +56,7 @@ export const VerifyPickupModal: React.FC<VerifyPickupModalProps> = ({
         </div>
 
         {/* Order Brief */}
-        <div className="mt-4 rounded-xl bg-surface-secondary/70 p-4">
+        <div className="mt-4 rounded-lg bg-surface-secondary/70 p-4">
           <div className="flex justify-between text-sm py-1">
             <span className="text-text-secondary">مشتری:</span>
             <span className="font-bold text-text-primary">{order.customer.name}</span>

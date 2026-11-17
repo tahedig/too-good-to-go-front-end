@@ -22,7 +22,7 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
           <div className="mb-2 text-xs font-semibold text-text-secondary">
             خلاصه رزروهای امروز
           </div>
-          <div className="rounded-2xl border border-border-default bg-surface p-4 shadow-1">
+          <div className="rounded-xl border border-border-default bg-surface p-4 shadow-1">
             <div className="flex items-center justify-between py-2 border-b border-border-default/50">
               <span className="text-sm text-text-secondary">بسته‌های رزروشده</span>
               <span className="text-sm font-bold text-text-primary">
@@ -45,7 +45,7 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
         </div>
 
         {/* Desktop View */}
-        <div className="hidden md:flex items-center justify-between rounded-2xl border border-border-default bg-surface px-6 py-4 shadow-1">
+        <div className="hidden md:flex items-center justify-between rounded-xl border border-border-default bg-surface px-6 py-4 shadow-1">
           {store && (
             <div className="border-l border-border-default pl-6">
               <span className="text-xs text-text-secondary block">فروشگاه</span>
@@ -94,7 +94,7 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
   return (
     <div className="w-full">
       {/* Mobile Orders Summary */}
-      <div className="rounded-2xl border border-border-default bg-surface p-4 shadow-1 md:hidden">
+      <div className="rounded-xl border border-border-default bg-surface p-4 shadow-1 md:hidden">
         <div className="grid grid-cols-2 gap-4 pb-3 border-b border-border-default/50 text-center">
           <div>
             <span className="text-xs text-text-secondary block">تحویل‌شده</span>
@@ -119,19 +119,19 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
 
       {/* Desktop Orders Summary: 3 cards side by side */}
       <div className="hidden md:grid md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-border-default bg-surface p-5 text-center shadow-1">
+        <div className="rounded-xl border border-border-default bg-surface p-5 text-center shadow-1">
           <span className="text-sm text-text-secondary block">مبلغ رزروهای امروز</span>
           <span className="text-2xl font-bold text-primary mt-2 block">
             {toPersianDigits(formatNumber(summary.total_revenue))} تومان
           </span>
         </div>
-        <div className="rounded-2xl border border-border-default bg-surface p-5 text-center shadow-1">
+        <div className="rounded-xl border border-border-default bg-surface p-5 text-center shadow-1">
           <span className="text-sm text-text-secondary block">تحویل‌شده</span>
           <span className="text-2xl font-bold text-text-primary mt-2 block">
             {toPersianDigits(summary.delivered_packages_count)} بسته
           </span>
         </div>
-        <div className="rounded-2xl border border-border-default bg-surface p-5 text-center shadow-1">
+        <div className="rounded-xl border border-border-default bg-surface p-5 text-center shadow-1">
           <span className="text-sm text-text-secondary block">بسته‌های رزروشده</span>
           <span className="text-2xl font-bold text-text-primary mt-2 block">
             {toPersianDigits(summary.total_reserved_packages)} بسته

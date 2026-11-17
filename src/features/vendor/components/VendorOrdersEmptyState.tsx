@@ -17,7 +17,7 @@ export const VendorOrdersEmptyState: React.FC<VendorOrdersEmptyStateProps> = ({
   return (
     <div className="w-full space-y-4">
       {/* Date badge summary card */}
-      <div className="rounded-2xl border border-border-default bg-surface p-4 text-center shadow-1">
+      <div className="rounded-xl border border-border-default bg-surface p-4 text-center shadow-1">
         <div className="text-sm font-bold text-text-primary">
           {toPersianDigits(dateLabel)}
         </div>
@@ -27,7 +27,7 @@ export const VendorOrdersEmptyState: React.FC<VendorOrdersEmptyStateProps> = ({
       </div>
 
       {/* Empty State Box */}
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-border-default bg-surface p-8 text-center shadow-1">
+      <div className="flex flex-col items-center justify-center rounded-xl border border-border-default bg-surface p-8 text-center shadow-1">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-secondary text-text-secondary mb-3">
           <Heart className="size-6 text-primary" strokeWidth={1.75} />
         </div>

@@ -52,7 +52,7 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
     : order.pickup_date;
 
   return (
-    <div className="w-full rounded-2xl border border-border-default bg-surface p-4 shadow-1 transition-shadow hover:shadow-2">
+    <div className="w-full rounded-xl border border-border-default bg-surface p-4 shadow-1 transition-shadow hover:shadow-2">
       {/* Mobile Layout */}
       <div className="flex flex-col md:hidden">
         {/* Customer & Status Header */}
@@ -69,7 +69,7 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
         </div>
 
         {/* Package Image */}
-        <div className="relative mt-3 h-36 w-full overflow-hidden rounded-xl bg-surface-secondary">
+        <div className="relative mt-3 h-36 w-full overflow-hidden rounded-lg bg-surface-secondary">
           <img
             src={order.package.image_url}
             alt={order.package.title}
@@ -131,7 +131,7 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
       {/* Desktop Layout */}
       <div className="hidden md:flex items-center justify-between gap-6">
         {/* Right side: Thumbnail */}
-        <div className="h-24 w-32 shrink-0 overflow-hidden rounded-xl bg-surface-secondary">
+        <div className="h-24 w-32 shrink-0 overflow-hidden rounded-lg bg-surface-secondary">
           <img
             src={order.package.image_url}
             alt={order.package.title}
