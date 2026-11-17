@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Button } from './Button';
 import { Clock, Heart, WifiOff } from 'lucide-react';
@@ -101,10 +101,12 @@ function ReadyCard({
   headingLevel = 3,
   className,
 }: ReadyListingProps) {
+  const [prevImageSrc, setPrevImageSrc] = useState(imageSrc);
   const [imageFailed, setImageFailed] = useState(false);
-  useEffect(() => {
+  if (prevImageSrc !== imageSrc) {
+    setPrevImageSrc(imageSrc);
     setImageFailed(false);
-  }, [imageSrc]);
+  }
 
   const Heading = `h${headingLevel}` as 'h2' | 'h3' | 'h4';
   const interactive = Boolean(href || renderLink);

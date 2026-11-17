@@ -4,15 +4,15 @@ export interface BaseParams {
 }
 
 export interface GetParams extends BaseParams {
-	params?: Record<string, any>;
+	params?: Record<string, unknown>;
 }
 
 export interface PostParams extends BaseParams {
-	data: any;
+	data: unknown;
 }
 
 export type PatchParams = PostParams;
 export type PutParams = PostParams;
 export interface DeleteParams extends BaseParams {
-	data?: any;
+	data?: unknown;
 }

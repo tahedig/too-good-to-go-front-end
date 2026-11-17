@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Check, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
