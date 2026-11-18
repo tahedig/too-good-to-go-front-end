@@ -18,7 +18,6 @@ type NearestProps = {
   reserved: number | null
   published: number | null
   emptyMessage: string
-  loading: boolean
   onReview: (reservation: Reservation) => void
 }
 
@@ -28,7 +27,6 @@ export function DashboardNearestReservation({
   reserved,
   published,
   emptyMessage,
-  loading,
   onReview,
 }: NearestProps) {
   if (!reservation) {
@@ -38,7 +36,6 @@ export function DashboardNearestReservation({
         <div
           className="flex flex-col items-center gap-2 rounded-md bg-surface-secondary px-4 py-6 text-center text-body-md text-text-secondary"
           aria-live="polite"
-          aria-busy={loading}
         >
           <Package className="size-6" strokeWidth={1.75} aria-hidden="true" />
           <p>{emptyMessage}</p>

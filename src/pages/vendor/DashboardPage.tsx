@@ -5,6 +5,7 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { VendorPickupDialog } from '@/components/vendor/VendorPickupDialog'
 import { DashboardFinanceCard } from '@/features/vendor-dashboard/DashboardFinanceCard'
+import { DashboardLoading } from '@/features/vendor-dashboard/DashboardLoading'
 import { DashboardNearestReservation } from '@/features/vendor-dashboard/DashboardNearestReservation'
 import { DashboardQuickActions } from '@/features/vendor-dashboard/DashboardQuickActions'
 import { DashboardStoreRequest } from '@/features/vendor-dashboard/DashboardStoreRequest'
@@ -14,11 +15,14 @@ import type { Reservation } from '@/lib/vendorReservations'
 import { loadVendorDashboard } from '@/services/vendor/dashboardService'
 import type { DashboardData } from '@/services/vendor/dashboardService'
 
+const dashboardContent =
+  'mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pb-6 sm:gap-6 sm:p-8 lg:py-6 xl:px-20'
+
 function countWithUnit(count: number | undefined, unit: string) {
   return count === undefined ? undefined : `${formatNumber(count)} ${unit}`
 }
 
-function DashboardStats({ data, loading }: { data: DashboardData | null; loading: boolean }) {
+function DashboardStats({ data }: { data: DashboardData | null }) {
   const stores = data?.stores.ok ? data.stores.value : null
   const activeProducts = stores?.every((store) => Number.isSafeInteger(store.productsCount))
     ? stores.reduce((count, store) => count + (store.productsCount ?? 0), 0)
@@ -44,7 +48,6 @@ function DashboardStats({ data, loading }: { data: DashboardData | null; loading
   return (
     <dl
       aria-label="خلاصه عملکرد فروشگاه"
-      aria-busy={loading}
       className="grid w-full grid-cols-2 gap-3 lg:max-w-[1020px] lg:grid-cols-4 xl:w-4/5"
     >
       {stats.map(({ label, value, column }) => (
@@ -97,6 +100,15 @@ function DashboardOverview({ preview }: { preview: boolean }) {
     setAttempt((previous) => previous + 1)
   }
 
+  const verifiedNotice = verified && <InlineAlert tone="success">تحویل بسته ثبت شد.</InlineAlert>
+  if (!data && !loadFailed) {
+    return (
+      <div className={`${dashboardContent} pt-6`}>
+        <DashboardLoading notice={verifiedNotice} />
+      </div>
+    )
+  }
+
   const stores = data?.stores.ok ? data.stores.value : []
   const store = stores.length === 1 ? stores[0] : null
   const pendingStore = data?.pendingStore.ok ? data.pendingStore.value : null
@@ -118,28 +130,23 @@ function DashboardOverview({ preview }: { preview: boolean }) {
   const partialError =
     loadFailed ||
     sections.some((section) => section?.ok === false && (section !== orders || !ordersNotAvailable))
-  const loading = !data && !loadFailed
   const context = store
     ? [store.name, store.branch, toPersianDigits(store.address ?? '')].filter(Boolean).join(' · ')
     : stores.length > 1
       ? `${formatNumber(stores.length)} فروشگاه تأییدشده`
       : data?.stores.ok
         ? 'هنوز فروشگاه تأییدشده‌ای ندارید.'
-        : loading
-          ? 'در حال دریافت اطلاعات فروشگاه…'
-          : 'اطلاعات فروشگاه در دسترس نیست.'
-  const reservationMessage = loading
-    ? 'در حال دریافت رزروها…'
-    : ordersNotAvailable
-      ? 'نمایش رزروها به نسخهٔ جدید API سفارشات فروشنده نیاز دارد.'
-      : authError && !reservations
-        ? 'برای دیدن رزروها وارد حساب فروشنده شوید.'
-        : !reservations
-          ? 'دریافت رزروها ممکن نیست.'
-          : 'رزروی برای تحویل پیش‌رو ندارید.'
+        : 'اطلاعات فروشگاه در دسترس نیست.'
+  const reservationMessage = ordersNotAvailable
+    ? 'نمایش رزروها به نسخهٔ جدید API سفارشات فروشنده نیاز دارد.'
+    : authError && !reservations
+      ? 'برای دیدن رزروها وارد حساب فروشنده شوید.'
+      : !reservations
+        ? 'دریافت رزروها ممکن نیست.'
+        : 'رزروی برای تحویل پیش‌رو ندارید.'
 
   return (
-    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-4 px-4 pt-4 pb-6 sm:gap-6 sm:p-8 lg:py-6 xl:px-20">
+    <div className={`${dashboardContent} pt-4`}>
       <header className="flex flex-col gap-3">
         <h1 className="sr-only sm:not-sr-only sm:text-title-xl lg:text-display-xl">
           داشبورد فروشگاه
@@ -167,7 +174,7 @@ function DashboardOverview({ preview }: { preview: boolean }) {
         </p>
       </header>
 
-      {verified && <InlineAlert tone="success">تحویل بسته ثبت شد.</InlineAlert>}
+      {verifiedNotice}
       {authError ? (
         <InlineAlert tone="warning">
           <p>
@@ -190,7 +197,7 @@ function DashboardOverview({ preview }: { preview: boolean }) {
         )
       )}
 
-      <DashboardStats data={data} loading={loading} />
+      <DashboardStats data={data} />
       <DashboardQuickActions
         storeProfilePath={
           store && !preview ? `/vendor/stores/${encodeURIComponent(store.id)}` : '/vendor/stores'
@@ -206,7 +213,6 @@ function DashboardOverview({ preview }: { preview: boolean }) {
           published={reservations?.publishedForNearestOffer ?? null}
           onReview={setSelected}
           emptyMessage={reservationMessage}
-          loading={loading}
         />
       </div>
 
