@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 
 type NavItem = {
   to: string
@@ -28,13 +29,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/vendor/finance', label: 'مالی', icon: Wallet },
   { to: '/vendor/account', label: 'حساب فروشنده', icon: UserRound },
 ]
-
-const FINANCE_ITEMS = [
-  ['overview', 'مرور کلی'],
-  ['plans', 'طرح‌ها'],
-  ['transactions', 'تراکنش‌ها'],
-  ['settlements', 'تسویه‌ها'],
-] as const
 
 function BrandRow({ onClose }: { onClose?: () => void }) {
   return (
@@ -216,9 +210,8 @@ export default function VendorLayout() {
         <header
           ref={headerRef}
           onFocus={revealHeader}
-          className="sticky top-0 z-30 flex items-center justify-between bg-background px-5 py-4 will-change-transform lg:hidden"
+          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border-default bg-surface px-4 will-change-transform lg:hidden"
         >
-          <span className="text-title-md text-text-primary">ته‌دیگ</span>
           <button
             type="button"
             ref={menuButtonRef}
@@ -227,8 +220,9 @@ export default function VendorLayout() {
             aria-expanded={menuOpen}
             className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-text-primary transition-colors hover:bg-surface-secondary"
           >
-            <Menu className="size-6" strokeWidth={1.75} />
+            <Menu className="size-6" strokeWidth={1.75} aria-hidden="true" />
           </button>
+          <span className="text-title-sm text-text-primary">ته‌دیگ</span>
         </header>
 
         {/* Desktop brand header; the product page supplies its store context when needed. */}

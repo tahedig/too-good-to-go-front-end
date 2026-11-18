@@ -2,7 +2,7 @@ import { Check, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export type ListingStatus = 'available' | 'soldOut' | 'active' | 'inactive' | 'draft' | 'ended'
-type BadgeStatus = ListingStatus | 'pending'
+type BadgeStatus = ListingStatus | 'pending' | 'info'
 
 export interface StatusBadgeProps {
   status: BadgeStatus
@@ -36,6 +36,7 @@ const statuses: Record<
   },
   draft: { label: 'پیش‌نویس', background: 'bg-warning-subtle', text: 'text-warning', Icon: Check },
   ended: { label: 'پایان‌یافته', background: 'bg-error-subtle', text: 'text-error', Icon: Check },
+  info: { label: 'فعال', background: 'bg-info-subtle', text: 'text-info', Icon: Check },
   pending: {
     label: 'در حال بررسی',
     background: 'bg-warning-subtle',

@@ -34,6 +34,8 @@
   --color-focus: #527fca;
 
   /* ---------- Colors: status ---------- */
+  --color-info: #2e5aa0;
+  --color-info-subtle: #e6eef9;
   --color-success: #326747;
   --color-success-subtle: #dce6d6;
   --color-warning: #94621d;

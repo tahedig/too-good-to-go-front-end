@@ -15,7 +15,7 @@ npm run dev
 - `npm run dev` — dev server
 - `npm run build` — production build
 - `npm run lint` — ESLint
-- `npm test` — vendor dashboard API contract and pickup-window tests
+- `npm test` — vendor dashboard API contract, pickup windows, and finance filters
 - `npm run format` — Prettier
 
 ## Folder structure
@@ -64,13 +64,31 @@ Jalali calendar date.
 
 The current API does **not** provide vendor payouts, net revenue, plans, or the original
 published quantity for an offer. The dashboard leaves those values unavailable rather
-than treating reservations or gross sales as received payments. The existing finance
-routes remain placeholders, and vendor product create/edit still uses the existing local
-adapter until vendor product CRUD is provided by the Go backend.
+than treating reservations or gross sales as received payments. Vendor product
+create/edit still uses the existing local adapter until vendor product CRUD is provided
+by the Go backend.
 
 To inspect the Figma states without a backend, open `/vendor?preview=1` on the Vite dev
 server. This mode is explicitly labelled, uses a design fixture, and cannot record a
 pickup. Neither the fixture nor this mode is included in the production build.
+
+## Vendor finance
+
+The vendor menu links to `/vendor/finance/transactions`, with cards at narrow widths
+and a table on desktop. Status, type, and period filters can be combined and are
+restored from the URL. Overview, plans, and settlements have separate routes and stay
+within finance navigation, but are not implemented yet.
+
+The reviewed backend exposes no vendor transaction ledger. The normal transactions
+route shows an unavailable state rather than presenting example amounts as real data.
+To try the eight design records on Vite, open `/vendor/finance/transactions?preview=1`
+or run `VITE_VENDOR_FINANCE_PREVIEW=1 npm run dev` to enable the labelled preview when
+entering through the vendor menu. `?preview=0` opts out on that server. The example data
+and preview mode are excluded from the production build.
+
+Reservations and daily orders use the same Jalali picker as the product editor. History
+filters allow past dates and keep `?date=YYYY-MM-DD` in Gregorian format. The product
+editor continues to prevent choosing dates before today.
 
 ## Design system
 

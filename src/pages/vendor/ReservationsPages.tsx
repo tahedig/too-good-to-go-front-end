@@ -4,6 +4,7 @@ import { ArrowRight, Heart } from 'lucide-react'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
+import { VendorDatePicker } from '@/components/vendor/VendorDateTimePicker'
 import { VendorReservationCard } from '@/components/vendor/VendorReservationCard'
 import { VendorPickupDialog } from '@/components/vendor/VendorPickupDialog'
 import { ApiError } from '@/lib/api/client'
@@ -57,22 +58,29 @@ function FilterButtons({
     </div>
   )
 }
-function DateInput({ value, onChange }: { value: string; onChange: (date: string) => void }) {
+function DateInput({
+  value,
+  onChange,
+  inline,
+}: {
+  value: string
+  onChange: (date: string) => void
+  inline?: boolean
+}) {
   const id = useId()
   return (
     <div className="flex w-full flex-col gap-2">
       <label htmlFor={id} className="text-label-md">
         تاریخ تحویل
       </label>
-      <input
+      <VendorDatePicker
         id={id}
-        type="date"
-        min="0001-01-01"
-        max="9999-12-31"
-        required
+        label="تاریخ تحویل"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-13 w-full rounded-md border border-border-input bg-surface px-4 text-body-lg text-text-primary"
+        onChange={onChange}
+        referenceDate={localDate()}
+        allowPast
+        inline={inline}
       />
     </div>
   )
@@ -210,6 +218,13 @@ export default function ReservationsPages({
   const selectedDate =
     view === 'daily' ? validDate || localDate() : view === 'reservations' ? validDate : ''
 
+  function changeDate(value: string) {
+    const next = new URLSearchParams(params)
+    if (value) next.set('date', value)
+    else next.delete('date')
+    setParams(next, { preventScrollReset: true })
+  }
+
   useEffect(() => {
     const controller = new AbortController()
     const { signal } = controller
@@ -323,13 +338,10 @@ export default function ReservationsPages({
                 <div className="hidden lg:block">{filters}</div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                   <div className="w-full sm:w-70">
-                    <DateInput
-                      value={selectedDate}
-                      onChange={(value) => (value ? setParams({ date: value }) : setParams({}))}
-                    />
+                    <DateInput value={selectedDate} onChange={changeDate} />
                   </div>
                   {selectedDate && (
-                    <Button variant="secondary" size="md" onClick={() => setParams({})}>
+                    <Button variant="secondary" size="md" onClick={() => changeDate('')}>
                       همه تاریخ‌ها
                     </Button>
                   )}
@@ -435,12 +447,12 @@ export default function ReservationsPages({
           onSubmit={(event) => {
             event.preventDefault()
             if (!draftDate) return
-            setParams({ date: draftDate })
+            changeDate(draftDate)
             setFilter('all')
             setDateDialog(false)
           }}
         >
-          <DateInput value={draftDate} onChange={setDraftDate} />
+          <DateInput value={draftDate} onChange={setDraftDate} inline />
           <Button type="submit" fullWidth disabled={!draftDate}>
             نمایش سفارشات روز
           </Button>
