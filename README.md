@@ -36,6 +36,16 @@ in `src/features/auth/api/authApi.ts` when the backend is ready:
 - `POST /auth/recovery/otp`
 - `POST /auth/recovery/otp/verify`
 
+## Vendor dashboard API integration
+
+The implemented vendor pages use service modules under `src/services/vendor/`:
+
+- `productsService.ts` — product listing, detail, create/edit, remove, and unpublish operations
+- `ordersService.ts` — vendor order listing
+- `reservationsService.ts` — vendor reservation listing
+
+The supplied Go API list is now used by `ordersService.ts` and `reservationsService.ts`: both load the authenticated vendor's orders from `GET /orders`, including cursor pagination. The current contract has no separate reservation endpoint or delivery-confirmation action, so the reservation view is read-only. `productsService.ts` remains a clearly marked local demo adapter because the supplied list does not include vendor product CRUD or image-upload endpoints; the public store-offers endpoint does not provide enough data or operations for product create/edit. New integrations use `apiRequest` in `src/lib/api/client.ts`, which reads `VITE_API_BASE_URL` and the stored access token.
+
 ## Design system
 
 Tokens are defined in `src/index.css` (`@theme`) following the approved Figma

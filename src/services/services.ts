@@ -1,118 +1,95 @@
-import axios from "axios";
+import axios from 'axios'
 import type {
-	AxiosInstance,
-	AxiosResponse,
-	InternalAxiosRequestConfig,
-} from "axios";
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios'
 import type {
-	DeleteParams,
-	GetParams,
-	PatchParams,
-	PostParams,
-	PutParams,
-} from "../types/apiTypes";
+  DeleteParams,
+  GetParams,
+  PatchParams,
+  PostParams,
+  PutParams,
+} from '../types/apiTypes'
+import { tokenStorage } from './tokenStorage'
 
-export const baseURL = "http://1.2.3.4:8000"; // backend URL
+// The Vite/Nginx development and container configs proxy /api to the Go service.
+export const baseURL = '/api'
 
 const apiClient: AxiosInstance = axios.create({
-	baseURL,
-	timeout: 20000,
-	headers: {
-		"Content-Type": "application/json",
-	},
-});
+  baseURL,
+  timeout: 20000,
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json',
+  },
+})
 
 apiClient.interceptors.request.use(
-	(config: InternalAxiosRequestConfig) => {
-		// const token = getTokenFromStore();
-		// if (token) config.headers.Authorization = `Bearer ${token}`;
-		return config;
-	},
-	(error) => Promise.reject(error)
-);
+  (config: InternalAxiosRequestConfig) => {
+    const token = tokenStorage.getToken()
+    if (token) config.headers.Authorization = `Bearer ${token}`
+    return config
+  },
+  (error) => Promise.reject(error),
+)
 
 apiClient.interceptors.response.use(
-	(response: AxiosResponse) => response,
-	(error) => {
-		console.error(error);
-		return Promise.reject(error);
-	}
-);
+  (response: AxiosResponse) => response,
+  (error) => Promise.reject(error),
+)
 
-// ✅ GET
-export const getData = async ({ endPoint, headers, params }: GetParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.get(endPoint, {
-			params,
-			headers,
-		});
-		return response.data;
-	} catch (error) {
-		console.error("error in getData", error);
-		throw error;
-	}
-};
+export async function getData<T = unknown>({
+  endPoint,
+  headers,
+  params,
+}: GetParams): Promise<T> {
+  const response = await apiClient.get<T>(endPoint, { params, headers })
+  return response.data
+}
 
-// ✅ POST
-export const postData = async ({ endPoint, data, headers }: PostParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.post(endPoint, data, {
-			headers,
-		});
-		return response.data;
-	} catch (error) {
-		console.error("error in postData", error);
-		throw error;
-	}
-};
+export async function postData<T = unknown>({
+  endPoint,
+  data,
+  headers,
+}: PostParams): Promise<T> {
+  const response = await apiClient.post<T>(endPoint, data, { headers })
+  return response.data
+}
 
-// ✅ POST image/form-data
-export const postImageData = async ({ endPoint, data }: PostParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.post(endPoint, data, {
-			headers: { "Content-Type": "multipart/form-data" },
-		});
-		return response.data;
-	} catch (error) {
-		console.error("error in postImageData", error);
-		throw error;
-	}
-};
+/** Leave Content-Type unset so Axios supplies the multipart boundary for FormData. */
+export async function postImageData<T = unknown>({
+  endPoint,
+  data,
+  headers,
+}: PostParams<FormData>): Promise<T> {
+  const response = await apiClient.post<T>(endPoint, data, { headers })
+  return response.data
+}
 
-// ✅ PATCH
-export const patchData = async ({ endPoint, data, headers }: PatchParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.patch(endPoint, data, {
-			headers,
-		});
-		return response.data;
-	} catch (error) {
-		console.error("error in patchData", error);
-		throw error;
-	}
-};
+export async function patchData<T = unknown>({
+  endPoint,
+  data,
+  headers,
+}: PatchParams): Promise<T> {
+  const response = await apiClient.patch<T>(endPoint, data, { headers })
+  return response.data
+}
 
-// ✅ PUT
-export const putData = async ({ endPoint, data }: PutParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.put(endPoint, data);
-		return response.data;
-	} catch (error) {
-		console.error("error in putData", error);
-		throw error;
-	}
-};
+export async function putData<T = unknown>({
+  endPoint,
+  data,
+  headers,
+}: PutParams): Promise<T> {
+  const response = await apiClient.put<T>(endPoint, data, { headers })
+  return response.data
+}
 
-// ✅ DELETE
-export const deleteData = async ({ endPoint, data, headers }: DeleteParams) => {
-	try {
-		const response: AxiosResponse = await apiClient.delete(endPoint, {
-			data,
-			headers,
-		});
-		return response.data;
-	} catch (error) {
-		console.error("error in deleteData", error);
-		throw error;
-	}
-};
+export async function deleteData<T = unknown>({
+  endPoint,
+  data,
+  headers,
+}: DeleteParams): Promise<T> {
+  const response = await apiClient.delete<T>(endPoint, { data, headers })
+  return response.data
+}
