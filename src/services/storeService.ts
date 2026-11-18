@@ -190,16 +190,27 @@ function mapFormToUpdate(form: VendorStoreForm): UpdateStoreRequestDto {
   return payload
 }
 
+async function listStores(signal?: AbortSignal): Promise<VendorStore[]> {
+  const response = await apiRequest<StoreListResponseDto>('/vendor/stores', { signal })
+  if (!Array.isArray(response?.stores)) throw new Error('پاسخ فهرست فروشگاه‌ها معتبر نیست.')
+  return response.stores.map(mapStore)
+}
+
+async function listRequests(signal?: AbortSignal): Promise<VendorStore[]> {
+  const response = await apiRequest<StoreRequestListResponseDto>('/vendor/store-requests', {
+    signal,
+  })
+  if (!Array.isArray(response?.requests)) throw new Error('پاسخ فهرست درخواست‌ها معتبر نیست.')
+  return response.requests.map(mapRequest)
+}
+
 export const storeService = {
+  listStores,
+  listRequests,
+
   async list(): Promise<VendorStore[]> {
-    const [storeResponse, requestResponse] = await Promise.all([
-      apiRequest<StoreListResponseDto>('/vendor/stores'),
-      apiRequest<StoreRequestListResponseDto>('/vendor/store-requests'),
-    ])
-    return [
-      ...requestResponse.requests.map(mapRequest),
-      ...storeResponse.stores.map(mapStore),
-    ]
+    const [stores, requests] = await Promise.all([listStores(), listRequests()])
+    return [...requests, ...stores]
   },
 
   async get(id: string): Promise<{ store: VendorStore; source: StoreProfileSource }> {

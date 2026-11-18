@@ -118,65 +118,75 @@
   }
 }
 
-@layer components {
-  .text-display-xl {
-    font-size: 40px;
-    line-height: 44px;
-    font-weight: 700;
-  }
-  .text-title-xl {
-    font-size: 32px;
-    line-height: 38px;
-    font-weight: 700;
-  }
-  .text-title-lg {
-    font-size: 24px;
-    line-height: 32px;
-    font-weight: 600;
-  }
-  .text-title-md {
-    font-size: 20px;
-    line-height: 28px;
-    font-weight: 600;
-  }
-  .text-title-sm {
-    font-size: 16px;
-    line-height: 22px;
-    font-weight: 600;
-  }
-  .text-body-lg {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 400;
-  }
-  .text-body-md {
-    font-size: 14px;
-    line-height: 21px;
-    font-weight: 400;
-  }
-  .text-label-lg {
-    font-size: 16px;
-    line-height: 24px;
-    font-weight: 600;
-  }
-  .text-label-md {
-    font-size: 14px;
-    line-height: 20px;
-    font-weight: 600;
-  }
-  .text-caption {
-    font-size: 12px;
-    line-height: 16px;
-    font-weight: 500;
-  }
-  .text-price-lg {
-    font-size: 24px;
-    line-height: 32px;
-    font-weight: 700;
-  }
-  .text-price-md {
-    font-size: 18px;
-    line-height: 24px;
-    font-weight: 700;
-  }
+/* Register typography as utilities so the same tokens work at every breakpoint. */
+@utility text-display-xl {
+  font-size: 40px;
+  line-height: 44px;
+  font-weight: 700;
+}
+
+@utility text-title-xl {
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 700;
+}
+
+@utility text-title-lg {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+}
+
+@utility text-title-md {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+}
+
+@utility text-title-sm {
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 600;
+}
+
+@utility text-body-lg {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+@utility text-body-md {
+  font-size: 14px;
+  line-height: 21px;
+  font-weight: 400;
+}
+
+@utility text-label-lg {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+@utility text-label-md {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+
+@utility text-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+@utility text-price-lg {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+@utility text-price-md {
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 700;
 }

@@ -1,22 +1,16 @@
-import { postData } from "../../../services/services"
+import { apiRequest } from '@/lib/api/client'
 
-interface RequestOtpResponse {
-  request_id: string;
-  retry_after?: number;
-  [key: string]: unknown;
+type RequestOtpResponse = {
+  message: string
+  expires_in_seconds: number
+  debug_code?: string
 }
 
 export const customerOtpApi = {
-  requestOtp: async (phone: string): Promise<RequestOtpResponse> => {
-    const response = await postData<RequestOtpResponse>({
-      endPoint: "/auth/otp/request",
-      data: {
-        phone: phone,
-      },
-    });
-
-    console.log("OTP request response:", response);
-
-    return response;
+  requestOtp(phone: string) {
+    return apiRequest<RequestOtpResponse>('/auth/otp/request', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    })
   },
-};
+}
