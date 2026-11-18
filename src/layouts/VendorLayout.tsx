@@ -269,5 +269,5 @@ export default function VendorLayout() {
         </aside>
       </div>
     </div>
-  )
+  );
 }

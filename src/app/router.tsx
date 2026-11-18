@@ -9,8 +9,12 @@ import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
 import VendorDashboardPage from '@/pages/vendor/DashboardPage'
 import VendorProductsPage from '@/pages/vendor/ProductsPage'
+import VendorStoresPage from '@/pages/vendor/StoresPage'
+import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
+import VendorOrdersPage from '@/pages/vendor/OrdersPage'
+import VendorReservationsPage from '@/pages/vendor/ReservationsPage'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
@@ -20,6 +24,9 @@ import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
 import OrdersPage from '@/pages/OrdersPage'
+import PublicStorePage from '@/pages/PublicStorePage'
+import ProfilePage from '@/pages/ProfilePage'
+import PersonalInfoPage from '@/pages/PersonalInfoPage'
 
 export const router = createBrowserRouter([
   {
@@ -33,6 +40,9 @@ export const router = createBrowserRouter([
       { path: 'favorites', element: <OfferCollectionPage /> },
       { path: 'last-chance', element: <OfferCollectionPage /> },
       { path: 'orders', element: <OrdersPage /> },
+      { path: 'stores/:storeId', element: <PublicStorePage /> },
+      { path: 'profile', element: <ProfilePage /> },
+      { path: 'profile/personal', element: <PersonalInfoPage /> },
     ],
   },
   {
@@ -65,9 +75,19 @@ export const router = createBrowserRouter([
       },
       { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
       { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
+      { path: 'orders/list', element: <VendorOrdersPage /> },
+      { path: 'reservations', element: <VendorReservationsPage /> },
       {
         path: 'stores',
-        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
+        element: <VendorStoresPage />,
+      },
+      {
+        path: 'stores/new',
+        element: <VendorStoreProfilePage storeId="new" />,
+      },
+      {
+        path: 'stores/:id',
+        element: <VendorStoreProfilePage />,
       },
       {
         path: 'finance',
@@ -146,4 +166,4 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '*', element: <NotFoundPage /> },
-])
+]);

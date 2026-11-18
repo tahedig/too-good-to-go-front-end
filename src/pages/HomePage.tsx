@@ -47,7 +47,7 @@ function DiscoveryHeader() {
       <header className="hidden h-20 items-center justify-between border-b border-border-default px-8 sm:flex">
         <div className="flex items-center gap-3">
           <Link
-            to="/login"
+            to="/profile"
             aria-label="پروفایل"
             className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
           >
@@ -191,6 +191,11 @@ function OfferCarousel({
             <FoodListingCard
               key={offer.id}
               {...offer}
+              renderLink={
+                offer.storeId
+                  ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                  : undefined
+              }
               saved={Boolean(saved[offer.id])}
               onSaveChange={(value) => onSaveChange(offer.id, value)}
               className="w-[270px] shrink-0 snap-start"

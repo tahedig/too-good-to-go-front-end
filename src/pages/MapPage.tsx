@@ -58,7 +58,7 @@ function MapHeader({
         </Link>
 
         <Link
-          to="/login"
+          to="/profile"
           aria-label="پروفایل"
           className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
         >
