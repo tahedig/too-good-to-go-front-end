@@ -1,0 +1,13 @@
+# Keep LF line endings in every checkout (Windows included) so Prettier,
+# the CI checks and the shell hook behave the same on all machines.
+* text=auto eol=lf
+
+# Binary assets
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+permissions:
+  contents: read
+  pull-requests: read
+
+# A new push to the same PR cancels the run that is still going for the old commits.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  branch-validation:
+    name: Branch name
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate source branch name
+        env:
+          # Passed through env (not ${{ }} inside run) so a crafted branch name cannot inject shell code.
+          HEAD_REF: ${{ github.head_ref }}
+        run: python3 scripts/validate_branch_name.py "$HEAD_REF"
+
+  commit-validation:
+    name: Commit messages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate every PR commit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/validate_pr_commits.py
+
+  format:
+    name: Formatting (Prettier)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check formatting
+        run: npm run format:check
+
+  lint:
+    name: Lint (ESLint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint sources
+        run: npm run lint
+
+  typecheck:
+    name: Type check (TypeScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        run: npm run typecheck
+
+  build:
+    name: Build (Vite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build frontend
+        env:
+          # Same defaults as the Dockerfile so the CI build matches the production image.
+          VITE_API_BASE_URL: /api/v1
+          VITE_APP_NAME: crumb
+          VITE_SUPPORT_EMAIL: support@example.com
+        run: npm run build
