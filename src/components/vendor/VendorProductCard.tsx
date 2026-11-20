@@ -123,13 +123,15 @@ export function VendorProductCard({
           <StatusBadge status={product.status} />
         </div>
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="md"
+          fullWidth
           onClick={onEdit}
-          className="mt-auto flex h-[46px] w-full items-center justify-center rounded-[12px] border border-primary bg-surface text-label-md font-bold text-text-primary transition-colors hover:bg-primary-subtle"
+          className="mt-auto h-[46px]! rounded-[12px]! border! font-bold! text-text-primary!"
         >
           ویرایش محصول
-        </button>
+        </Button>
         {product.status === 'active' && (
           <Button variant="tertiary" size="md" fullWidth onClick={onUnpublish}>
             لغو انتشار

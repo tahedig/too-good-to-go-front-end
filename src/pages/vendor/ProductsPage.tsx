@@ -21,39 +21,6 @@ const STATUS_OPTIONS = [
 
 const ALL_OPTION = { value: 'all', label: 'همه' }
 
-function MobileFilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: { value: string; label: string }[]
-}) {
-  return (
-    <label className="relative flex h-[46px] min-w-0 flex-1 items-center rounded-[12px] border border-primary bg-surface px-3 focus-within:outline-3 focus-within:outline-focus focus-within:outline-offset-2">
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-full w-full appearance-none bg-transparent pe-6 text-start text-label-md font-bold text-text-primary focus-visible:outline-none"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute end-3 size-6 shrink-0 text-text-primary"
-        strokeWidth={1.75}
-      />
-    </label>
-  )
-}
-
 function EmptyState({ onCreate, message }: { onCreate: () => void; message: string | null }) {
   return (
     <div className="flex flex-col gap-4 p-4 lg:px-20 lg:py-6">
@@ -231,118 +198,119 @@ export default function ProductsPage() {
             <InlineAlert tone="success" className="flex-1 bg-surface p-0">
               {message}
             </InlineAlert>
-            <button type="button" aria-label="بستن پیام" onClick={() => setMessage(null)}>
-              <X className="size-6" />
-            </button>
+            <Button
+              variant="tertiary"
+              size="sm"
+              className="size-10! px-0!"
+              aria-label="بستن پیام"
+              onClick={() => setMessage(null)}
+            >
+              <X className="size-6" aria-hidden="true" />
+            </Button>
           </div>
         )}
         <h1 className="text-title-xl text-text-primary lg:text-display-xl">محصولات</h1>
 
         {/* Toolbar */}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <Button fullWidth className="lg:w-auto" onClick={() => navigate('/vendor/products/new')}>
             ساخت محصول
           </Button>
 
-          {/* Desktop selects */}
-          <div className="hidden min-w-0 flex-row-reverse gap-3 lg:flex lg:max-w-[684px] lg:flex-1 lg:justify-start">
-            <div className="w-55 min-w-0 [&_label]:sr-only">
-              <Select
-                label="فروشگاه"
-                value={storeFilter}
-                onChange={(event) => setStoreFilter(event.target.value)}
-                options={storeOptions}
-              />
-            </div>
-            <div className="w-55 min-w-0 [&_label]:sr-only">
-              <Select
-                label="دسته"
-                value={categoryFilter}
-                onChange={(event) => setCategoryFilter(event.target.value)}
-                options={categoryOptions}
-              />
-            </div>
-            <div className="w-55 min-w-0 [&_label]:sr-only">
-              <Select
-                label="وضعیت"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
-                options={STATUS_OPTIONS}
-              />
-            </div>
-          </div>
-
-          {/* Mobile selects */}
-          <div className="flex gap-3 lg:hidden">
-            <MobileFilterSelect
-              label="دسته"
+          <div
+            role="group"
+            aria-label="فیلترهای محصولات"
+            className="grid min-w-0 grid-cols-2 gap-3 lg:max-w-[684px] lg:flex-1 lg:grid-cols-3"
+          >
+            <Select
+              variant="filter"
+              className="min-w-0"
+              label="دسته‌بندی"
               value={categoryFilter}
-              onChange={setCategoryFilter}
+              onValueChange={setCategoryFilter}
               options={categoryOptions}
             />
-            <MobileFilterSelect
+            <Select
+              variant="filter"
+              className="min-w-0"
               label="فروشگاه"
               value={storeFilter}
-              onChange={setStoreFilter}
+              onValueChange={setStoreFilter}
               options={storeOptions}
+            />
+            <Select
+              variant="filter"
+              className="hidden min-w-0 lg:order-first lg:flex"
+              label="وضعیت محصول"
+              value={statusFilter}
+              onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+              options={STATUS_OPTIONS}
             />
           </div>
         </div>
 
-        {/* Mobile status chips */}
-        <div className="flex flex-wrap gap-2 lg:hidden" role="group" aria-label="فیلتر وضعیت">
-          {STATUS_OPTIONS.map((option) => {
-            const active = statusFilter === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setStatusFilter(option.value as StatusFilter)}
-                className={[
-                  'flex h-11 items-center rounded-md border px-4 text-label-md transition-colors',
-                  active
-                    ? 'border-primary bg-primary-subtle text-text-primary'
-                    : 'border-border-input bg-surface text-text-primary hover:border-primary',
-                ].join(' ')}
-              >
-                {option.label}
-              </button>
-            )
-          })}
+        {/* Keep the mobile status shortcuts, with the same colors as the dropdown options. */}
+        <div
+          className="flex flex-col gap-2 lg:hidden"
+          role="group"
+          aria-labelledby="product-status-filter"
+        >
+          <p id="product-status-filter" className="text-label-md font-normal">
+            وضعیت محصول
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {STATUS_OPTIONS.map((option) => {
+              const active = statusFilter === option.value
+              return (
+                <Button
+                  key={option.value}
+                  variant="secondary"
+                  size="sm"
+                  aria-pressed={active}
+                  onClick={() => setStatusFilter(option.value as StatusFilter)}
+                  className={`h-11! border! text-text-primary! ${active ? 'bg-primary-subtle! hover:bg-primary-subtle! active:bg-primary-subtle!' : 'border-border-default! hover:bg-surface-secondary! active:bg-surface-secondary!'}`}
+                >
+                  {option.label}
+                </Button>
+              )
+            })}
+          </div>
         </div>
 
         {/* Desktop carousel controls */}
         <div className="hidden items-center justify-between lg:flex">
           <div className="flex items-center gap-3">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => scrollTrack('prev')}
               disabled={showAll || visibleProducts.length === 0}
               aria-label="قبلی"
-              className="grid size-10 place-items-center rounded-md border border-border-default bg-surface text-text-primary transition-colors hover:bg-surface-secondary"
+              className="size-10! border! border-border-default! px-0! hover:bg-surface-secondary!"
             >
-              <ChevronRight className="size-5" strokeWidth={2} />
-            </button>
-            <button
-              type="button"
+              <ChevronRight className="size-5" strokeWidth={2} aria-hidden="true" />
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => scrollTrack('next')}
               disabled={showAll || visibleProducts.length === 0}
               aria-label="بعدی"
-              className="grid size-10 place-items-center rounded-md border border-border-default bg-surface text-text-primary transition-colors hover:bg-surface-secondary"
+              className="size-10! border! border-border-default! px-0! hover:bg-surface-secondary!"
             >
-              <ChevronLeft className="size-5" strokeWidth={2} />
-            </button>
+              <ChevronLeft className="size-5" strokeWidth={2} aria-hidden="true" />
+            </Button>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="tertiary"
+            size="sm"
             onClick={() => setShowAll((value) => !value)}
             aria-expanded={showAll}
-            className="flex h-10 items-center gap-2 rounded-md bg-primary-subtle px-4 text-label-md text-text-primary transition-colors hover:bg-surface-sage"
+            className="h-10! bg-primary-subtle! text-text-primary! hover:bg-surface-sage!"
           >
             {showAll ? 'نمایش چرخشی' : 'مشاهده همه'}
-            <ChevronDown className="size-6 shrink-0" strokeWidth={1.75} />
-          </button>
+            <ChevronDown className="size-6 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+          </Button>
         </div>
 
         {visibleProducts.length === 0 ? (
@@ -370,28 +338,29 @@ export default function ProductsPage() {
               />
             ))}
             {!showAll && (
-              <button
-                type="button"
+              <Button
+                variant="tertiary"
                 onClick={() => setShowAll(true)}
-                className="flex w-50 min-h-[512px] shrink-0 flex-col items-center justify-center rounded-[12px] bg-surface-sage lg:min-h-[385px] lg:w-45"
+                className="h-auto! min-h-[512px] w-50 flex-col gap-0! rounded-[12px]! bg-surface-sage! lg:min-h-[385px] lg:w-45"
               >
                 <span className="text-label-lg text-text-primary">مشاهده همه</span>
                 <span className="text-caption font-semibold text-text-primary">
                   همه محصولات فروشگاه
                 </span>
-              </button>
+              </Button>
             )}
           </div>
         )}
 
-        <button
-          type="button"
+        <Button
+          variant="tertiary"
+          size="md"
           onClick={() => setShowAll((value) => !value)}
           aria-expanded={showAll}
-          className="self-start text-label-lg text-text-primary lg:hidden"
+          className="self-start px-0! text-label-lg! text-text-primary! lg:hidden"
         >
           {showAll ? 'نمایش چرخشی' : 'مشاهده همه'}
-        </button>
+        </Button>
       </div>
       <ConfirmDialog
         className="!max-w-[560px] !rounded-lg"
