@@ -206,29 +206,33 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <header className="hidden h-16 shrink-0 items-center justify-between border-b border-border-default bg-background px-8 lg:flex">
-          <span className="text-title-md text-primary">{pageTitle}</span>
+        <header className="hidden h-16 shrink-0 border-b border-border-default bg-background lg:block">
+          <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-8">
+            <span className="text-title-md text-primary">{pageTitle}</span>
 
-          <div className="flex items-center gap-8">
-            <time className="text-caption font-normal text-text-secondary">{todayDate}</time>
+            <div className="flex items-center gap-8">
+              <time className="text-caption font-normal text-text-secondary">{todayDate}</time>
 
-            <div className="flex items-center gap-3">
-              <div className="flex flex-col items-start">
-                <span className="text-title-md text-primary">ته‌دیگ · مدیریت</span>
-                <span className="text-body-md text-text-secondary">فضای مدیریت</span>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-start">
+                  <span className="text-title-md text-primary">ته‌دیگ · مدیریت</span>
+                  <span className="text-body-md text-text-secondary">فضای مدیریت</span>
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-title-md font-bold text-on-primary"
+                >
+                  ت
+                </span>
               </div>
-              <span
-                aria-hidden="true"
-                className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-title-md font-bold text-on-primary"
-              >
-                ت
-              </span>
             </div>
           </div>
         </header>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <div className="mx-auto w-full max-w-[1116px]">
+            <Outlet />
+          </div>
         </main>
       </div>
       <div

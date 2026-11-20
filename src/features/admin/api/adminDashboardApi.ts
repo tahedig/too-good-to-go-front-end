@@ -1,7 +1,8 @@
 import { env } from '@/config/env'
-import { apiRequest } from '@/lib/api/client'
+import { ApiError, apiRequest } from '@/lib/api/client'
+import { adminVendorsApi, type AdminVendorListDto } from './adminVendorsApi'
 
-export type AdminRequestStatus = 'pending' | 'approved' | 'rejected'
+export type AdminRequestStatus = 'pending' | 'approved' | 'rejected' | 'suspended'
 
 export type AdminDashboardMetrics = {
   registeredStores: number
@@ -57,6 +58,7 @@ type AdminDashboardDto = {
     date_label?: string
     dateLabel?: string
     created_at?: string
+    submitted_at?: string
     status?: string
     status_label?: string
     statusLabel?: string
@@ -70,6 +72,7 @@ type AdminDashboardDto = {
     date_label?: string
     dateLabel?: string
     created_at?: string
+    submitted_at?: string
     status?: string
     status_label?: string
     statusLabel?: string
@@ -123,6 +126,7 @@ const DEMO_DASHBOARD_DATA: AdminDashboardData = {
 function mapStatus(value?: string): AdminRequestStatus {
   if (value === 'approved' || value === 'active') return 'approved'
   if (value === 'rejected') return 'rejected'
+  if (value === 'suspended') return 'suspended'
   return 'pending'
 }
 
@@ -132,6 +136,8 @@ function defaultStatusLabel(status: AdminRequestStatus): string {
       return 'تأییدشده'
     case 'rejected':
       return 'ردشده'
+    case 'suspended':
+      return 'تعلیق‌شده'
     default:
       return 'در انتظار بررسی'
   }
@@ -175,7 +181,10 @@ function normalizeDashboardDto(dto: AdminDashboardDto): AdminDashboardData {
         id: String(item.id ?? `activity-${index + 1}`),
         storeName: item.storeName ?? item.store_name ?? '',
         ownerName: item.ownerName ?? item.owner_name ?? '',
-        dateLabel: item.dateLabel ?? item.date_label ?? formatActivityDate(item.created_at) ?? '',
+        dateLabel:
+          item.dateLabel ??
+          item.date_label ??
+          formatActivityDate(item.submitted_at ?? item.created_at),
         status,
         statusLabel: item.statusLabel ?? item.status_label ?? defaultStatusLabel(status),
       }
@@ -183,13 +192,59 @@ function normalizeDashboardDto(dto: AdminDashboardDto): AdminDashboardData {
   }
 }
 
+function buildFromVendorsSummary(vendors: AdminVendorListDto): AdminDashboardData {
+  const { pending, approved, rejected, suspended } = vendors.counts
+  return {
+    metrics: {
+      registeredStores: approved + suspended,
+      knownCustomers: 0,
+      activeProducts: 0,
+      activeStores: approved,
+      completedReservations: 0,
+      activeReservations: 0,
+      pendingRequests: pending,
+      platformCommission: 0,
+    },
+    requestStatus: {
+      pending,
+      approved,
+      rejected,
+    },
+    recentActivity: vendors.items.slice(0, 3).map((item) => {
+      const status = mapStatus(item.status)
+      return {
+        id: item.id,
+        storeName: item.store_name,
+        ownerName: item.owner_name,
+        dateLabel: formatActivityDate(item.submitted_at),
+        status,
+        statusLabel: defaultStatusLabel(status),
+      }
+    }),
+  }
+}
+
+/**
+ * Backend alignment notes (tahedig/too-good-to-go-back-end):
+ * - GET /admin/vendors already exists on `main` and supplies request status counts + recent submitted stores.
+ * - A unified GET /admin/dashboard endpoint for aggregate customer, product, reservation, and commission metrics
+ *   is not yet implemented on the backend; `env.adminApiMode === 'mock'` renders demo data in the meantime.
+ */
 export const adminDashboardApi = {
   async getSummary(): Promise<AdminDashboardData> {
     if (env.adminApiMode === 'mock') {
       return DEMO_DASHBOARD_DATA
     }
 
-    const dto = await apiRequest<AdminDashboardDto>('/admin/dashboard')
-    return normalizeDashboardDto(dto)
+    try {
+      const dto = await apiRequest<AdminDashboardDto>('/admin/dashboard')
+      return normalizeDashboardDto(dto)
+    } catch (error) {
+      if (error instanceof ApiError && [404, 405, 501].includes(error.status)) {
+        const vendors = await adminVendorsApi.listVendors({ page: 1, pageSize: 3 })
+        return buildFromVendorsSummary(vendors)
+      }
+      throw error
+    }
   },
 }

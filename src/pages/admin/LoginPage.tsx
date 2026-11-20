@@ -125,16 +125,22 @@ export default function AdminLoginPage() {
       setStep('otp')
     } catch (error) {
       if (error instanceof ApiError) {
-        if (
+        if (error.code === 'INVALID_PHONE_NUMBER') {
+          setPhoneError('شماره تلفن واردشده معتبر نیست.')
+        } else if (
           error.status === 400 ||
           error.status === 401 ||
           error.status === 403 ||
           error.status === 404 ||
           error.status === 422
         ) {
-          setPhoneError(error.fieldErrors.phone?.[0] ?? UNAUTHORIZED_PHONE_MESSAGE)
+          setPhoneError(UNAUTHORIZED_PHONE_MESSAGE)
         } else if (error.status === 429) {
-          setSubmitError('تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.')
+          setSubmitError(
+            error.retryAfter
+              ? `کد تأیید به‌تازگی ارسال شده است. لطفاً ${toPersianDigits(String(error.retryAfter))} ثانیه صبر کنید.`
+              : 'تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.',
+          )
         } else if (error.status === 0) {
           setSubmitError(error.message)
         } else {
@@ -187,6 +193,8 @@ export default function AdminLoginPage() {
         if (error.status === 403) {
           setDeniedRole('')
           setStep('denied')
+        } else if (error.code === 'OTP_EXPIRED') {
+          setOtpError('کد تأیید منقضی شده یا قبلاً استفاده شده است.')
         } else if (
           error.status === 400 ||
           error.status === 401 ||
@@ -225,6 +233,7 @@ export default function AdminLoginPage() {
       setNotice('کد تأیید جدید ارسال شد.')
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
+        if (error.retryAfter) setResendSecondsLeft(error.retryAfter)
         setSubmitError('تعداد درخواست‌ها بیش از حد مجاز است. لطفاً کمی بعد دوباره تلاش کنید.')
       } else if (error instanceof ApiError && error.status === 0) {
         setSubmitError(error.message)

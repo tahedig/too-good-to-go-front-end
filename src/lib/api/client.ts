@@ -5,6 +5,7 @@ type ApiErrorBody = {
   message?: string
   errors?: Record<string, string[] | string>
   error?: {
+    code?: string
     message?: string
     details?: unknown
   }
@@ -13,12 +14,21 @@ type ApiErrorBody = {
 export class ApiError extends Error {
   readonly status: number
   readonly fieldErrors: Record<string, string[]>
+  readonly code?: string
+  readonly retryAfter?: number
 
-  constructor(message: string, status: number, fieldErrors: Record<string, string[]> = {}) {
+  constructor(
+    message: string,
+    status: number,
+    fieldErrors: Record<string, string[]> = {},
+    options?: { code?: string; retryAfter?: number },
+  ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
+    this.code = options?.code
+    this.retryAfter = options?.retryAfter
   }
 }
 
@@ -70,6 +80,19 @@ function readFieldErrors(details: unknown): Record<string, string[]> {
   )
 }
 
+function parseRetryAfter(response: Response, details: unknown): number | undefined {
+  const headerValue = response.headers.get('Retry-After')
+  if (headerValue) {
+    const parsed = Number(headerValue)
+    if (Number.isFinite(parsed) && parsed > 0) return Math.ceil(parsed)
+  }
+  if (details && typeof details === 'object' && 'retry_after_seconds' in details) {
+    const value = details.retry_after_seconds
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.ceil(value)
+  }
+  return undefined
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response
   const baseUrl = env.apiBaseUrl.replace(/\/$/, '')
@@ -100,6 +123,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       {
         ...normaliseFieldErrors(errorBody.errors),
         ...readFieldErrors(errorBody.error?.details),
+      },
+      {
+        code: errorBody.error?.code,
+        retryAfter: parseRetryAfter(response, errorBody.error?.details),
       },
     )
   }
