@@ -40,6 +40,26 @@ const FINANCE_ITEMS = [
   ['reports', 'گزارش مالی'],
 ] as const
 
+function getAdminPageTitle(pathname: string): string {
+  if (pathname.startsWith('/admin/finance')) {
+    const section = pathname.split('/')[3]
+    const sub = FINANCE_ITEMS.find(([key]) => key === section)?.[1]
+    return sub ? `مالی · ${sub}` : 'مالی'
+  }
+  const match = NAV_ITEMS.find((item) =>
+    item.end ? pathname === item.to : pathname.startsWith(item.to),
+  )
+  return match?.label ?? 'داشبورد'
+}
+
+function formatTodayPersianDate(): string {
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date())
+}
+
 function BrandRow({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-[53px] shrink-0 items-center gap-3 border-b border-border-default px-3">
@@ -124,6 +144,9 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export default function AdminLayout() {
+  const { pathname } = useLocation()
+  const pageTitle = getAdminPageTitle(pathname)
+  const todayDate = formatTodayPersianDate()
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -167,19 +190,43 @@ export default function AdminLayout() {
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border-default bg-background px-5 py-4 lg:hidden">
-          <span className="text-title-md">ته‌دیگ · مدیریت</span>
-          <button
-            ref={menuButtonRef}
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="باز کردن منو"
-            aria-expanded={menuOpen}
-            className="grid size-11 place-items-center rounded-md border border-border-default bg-surface hover:bg-surface-secondary"
-          >
-            <Menu className="size-6" strokeWidth={1.75} />
-          </button>
+        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border-default bg-background px-4 lg:hidden">
+          <div className="flex items-center gap-3">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="باز کردن منو"
+              aria-expanded={menuOpen}
+              className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface-secondary text-primary transition-colors hover:bg-surface"
+            >
+              <Menu className="size-5" strokeWidth={2} />
+            </button>
+            <span className="text-title-md text-primary">{pageTitle}</span>
+          </div>
         </header>
+
+        <header className="hidden h-16 shrink-0 items-center justify-between border-b border-border-default bg-background px-8 lg:flex">
+          <span className="text-title-md text-primary">{pageTitle}</span>
+
+          <div className="flex items-center gap-8">
+            <time className="text-caption font-normal text-text-secondary">{todayDate}</time>
+
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-start">
+                <span className="text-title-md text-primary">ته‌دیگ · مدیریت</span>
+                <span className="text-body-md text-text-secondary">فضای مدیریت</span>
+              </div>
+              <span
+                aria-hidden="true"
+                className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-title-md font-bold text-on-primary"
+              >
+                ت
+              </span>
+            </div>
+          </div>
+        </header>
+
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>

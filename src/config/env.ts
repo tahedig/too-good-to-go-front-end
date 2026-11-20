@@ -3,4 +3,5 @@ export const env = {
   appName: import.meta.env.VITE_APP_NAME ?? 'crumb',
   supportEmail: import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@example.com',
   profileApiMode: import.meta.env.VITE_PROFILE_API_MODE === 'remote' ? 'remote' : 'mock',
+  adminApiMode: import.meta.env.VITE_ADMIN_API_MODE === 'remote' ? 'remote' : 'mock',
 }
