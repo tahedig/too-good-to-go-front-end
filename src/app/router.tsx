@@ -15,6 +15,7 @@ import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
+import AdminLoginPage from '@/pages/admin/LoginPage'
 import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
@@ -42,7 +43,10 @@ export const router = createBrowserRouter([
   },
   {
     element: <AuthLayout />,
-    children: [{ path: '/login', element: <LoginPage /> }],
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/admin/login', element: <AdminLoginPage /> },
+    ],
   },
   {
     path: '/vendor',
