@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import type { VendorOrder } from '../types';
-import { toPersianDigits } from '@/lib/digits';
-import { formatNumber } from '@/lib/format';
-import { CheckCircle2, Loader2, X } from 'lucide-react';
+import React, { useState } from 'react'
+import type { VendorOrder } from '../types'
+import { toPersianDigits } from '@/lib/digits'
+import { formatNumber } from '@/lib/format'
+import { CheckCircle2, Loader2, X } from 'lucide-react'
 
 interface VerifyPickupModalProps {
-  order: VendorOrder | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (order: VendorOrder, pickupCode?: string) => Promise<void>;
+  order: VendorOrder | null
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: (order: VendorOrder, pickupCode?: string) => Promise<void>
 }
 
 export const VerifyPickupModal: React.FC<VerifyPickupModalProps> = ({
@@ -17,25 +17,25 @@ export const VerifyPickupModal: React.FC<VerifyPickupModalProps> = ({
   onClose,
   onConfirm,
 }) => {
-  const [pickupCode, setPickupCode] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [pickupCode, setPickupCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!isOpen || !order) return null;
+  if (!isOpen || !order) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
     try {
-      await onConfirm(order, pickupCode.trim() || undefined);
-      onClose();
+      await onConfirm(order, pickupCode.trim() || undefined)
+      onClose()
     } catch {
-      setError('خطا در ثبت تحویل سفارش. لطفاً دوباره تلاش کنید.');
+      setError('خطا در ثبت تحویل سفارش. لطفاً دوباره تلاش کنید.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
@@ -99,9 +99,7 @@ export const VerifyPickupModal: React.FC<VerifyPickupModalProps> = ({
           </div>
 
           {error && (
-            <div className="rounded-lg bg-error-subtle p-3 text-xs text-error">
-              {error}
-            </div>
+            <div className="rounded-lg bg-error-subtle p-3 text-xs text-error">{error}</div>
           )}
 
           <div className="flex gap-3 pt-2">
@@ -123,5 +121,5 @@ export const VerifyPickupModal: React.FC<VerifyPickupModalProps> = ({
         </form>
       </div>
     </div>
-  );
-};
+  )
+}

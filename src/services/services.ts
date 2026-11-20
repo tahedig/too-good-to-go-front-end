@@ -1,16 +1,6 @@
 import axios from 'axios'
-import type {
-  AxiosInstance,
-  AxiosResponse,
-  InternalAxiosRequestConfig,
-} from 'axios'
-import type {
-  DeleteParams,
-  GetParams,
-  PatchParams,
-  PostParams,
-  PutParams,
-} from '../types/apiTypes'
+import type { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
+import type { DeleteParams, GetParams, PatchParams, PostParams, PutParams } from '../types/apiTypes'
 import { tokenStorage } from './tokenStorage'
 
 // The Vite/Nginx development and container configs proxy /api to the Go service.
@@ -39,20 +29,12 @@ apiClient.interceptors.response.use(
   (error) => Promise.reject(error),
 )
 
-export async function getData<T = unknown>({
-  endPoint,
-  headers,
-  params,
-}: GetParams): Promise<T> {
+export async function getData<T = unknown>({ endPoint, headers, params }: GetParams): Promise<T> {
   const response = await apiClient.get<T>(endPoint, { params, headers })
   return response.data
 }
 
-export async function postData<T = unknown>({
-  endPoint,
-  data,
-  headers,
-}: PostParams): Promise<T> {
+export async function postData<T = unknown>({ endPoint, data, headers }: PostParams): Promise<T> {
   const response = await apiClient.post<T>(endPoint, data, { headers })
   return response.data
 }
@@ -67,20 +49,12 @@ export async function postImageData<T = unknown>({
   return response.data
 }
 
-export async function patchData<T = unknown>({
-  endPoint,
-  data,
-  headers,
-}: PatchParams): Promise<T> {
+export async function patchData<T = unknown>({ endPoint, data, headers }: PatchParams): Promise<T> {
   const response = await apiClient.patch<T>(endPoint, data, { headers })
   return response.data
 }
 
-export async function putData<T = unknown>({
-  endPoint,
-  data,
-  headers,
-}: PutParams): Promise<T> {
+export async function putData<T = unknown>({ endPoint, data, headers }: PutParams): Promise<T> {
   const response = await apiClient.put<T>(endPoint, data, { headers })
   return response.data
 }

@@ -1,0 +1,21 @@
+#!/bin/sh
+# Local commit-msg hook: rejects a commit whose message breaks the convention,
+# before it ever reaches a pull request. Enable once per clone with:
+#   git config core.hooksPath .githooks
+
+# Git writes merge commit messages itself; CI skips them too.
+if git rev-parse -q --verify MERGE_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
+
+repo_root=$(git rev-parse --show-toplevel)
+
+for python in python3 python py; do
+  # The -c check skips the Windows Store "python3" stub, which exists but does not run.
+  if "$python" -c "import sys" >/dev/null 2>&1; then
+    exec "$python" "$repo_root/scripts/validate_commit_message.py" --file "$1"
+  fi
+done
+
+echo "commit-msg hook: Python not found, skipping local commit message check (CI will still check it)." >&2
+exit 0

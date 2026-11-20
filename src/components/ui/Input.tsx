@@ -1,20 +1,20 @@
-import { forwardRef, useState } from 'react';
-import type { InputHTMLAttributes, ReactNode } from 'react';
-import { FormField } from './FormField';
-import { fieldClasses, useFieldMeta } from './formFieldUtils';
-import { Eye, EyeOff } from 'lucide-react';
+import { forwardRef, useState } from 'react'
+import type { InputHTMLAttributes, ReactNode } from 'react'
+import { FormField } from './FormField'
+import { fieldClasses, useFieldMeta } from './formFieldUtils'
+import { Eye, EyeOff } from 'lucide-react'
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  helperText?: string;
-  error?: string;
-  success?: string;
-  startIcon?: ReactNode;
-  endAdornment?: ReactNode;
-  ltrValue?: boolean;
-  showPasswordLabel?: string;
-  hidePasswordLabel?: string;
-  className?: string;
+  label: string
+  helperText?: string
+  error?: string
+  success?: string
+  startIcon?: ReactNode
+  endAdornment?: ReactNode
+  ltrValue?: boolean
+  showPasswordLabel?: string
+  hidePasswordLabel?: string
+  className?: string
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
@@ -37,12 +37,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   },
   ref,
 ) {
-  const meta = useFieldMeta({ id, disabled, error, success, helperText });
-  const [passwordVisible, setPasswordVisible] = useState(false);
+  const meta = useFieldMeta({ id, disabled, error, success, helperText })
+  const [passwordVisible, setPasswordVisible] = useState(false)
 
-  const isPassword = type === 'password';
-  const inputType = isPassword && passwordVisible ? 'text' : type;
-  const isLtr = ltrValue ?? (isPassword || type === 'email' || type === 'url');
+  const isPassword = type === 'password'
+  const inputType = isPassword && passwordVisible ? 'text' : type
+  const isLtr = ltrValue ?? (isPassword || type === 'email' || type === 'url')
 
   const passwordToggle = isPassword && (
     <button
@@ -58,7 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       )}
       {passwordVisible ? hidePasswordLabel : showPasswordLabel}
     </button>
-  );
+  )
 
   return (
     <FormField
@@ -69,9 +69,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       afterField={passwordToggle}
       className={className}
     >
-      <div className={fieldClasses(meta.status, 'flex h-12 w-full items-center gap-2 rounded-md px-4')}>
+      <div
+        className={fieldClasses(meta.status, 'flex h-12 w-full items-center gap-2 rounded-md px-4')}
+      >
         {startIcon && (
-          <span className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(' ')} aria-hidden="true">
+          <span
+            className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(
+              ' ',
+            )}
+            aria-hidden="true"
+          >
             {startIcon}
           </span>
         )}
@@ -96,5 +103,5 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         {endAdornment}
       </div>
     </FormField>
-  );
-});
+  )
+})

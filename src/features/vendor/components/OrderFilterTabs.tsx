@@ -1,9 +1,9 @@
-import React from 'react';
-import type { OrderFilterStatus } from '../types';
+import React from 'react'
+import type { OrderFilterStatus } from '../types'
 
 interface OrderFilterTabsProps {
-  selectedStatus: OrderFilterStatus;
-  onSelectStatus: (status: OrderFilterStatus) => void;
+  selectedStatus: OrderFilterStatus
+  onSelectStatus: (status: OrderFilterStatus) => void
 }
 
 const FILTER_OPTIONS: { id: OrderFilterStatus; label: string }[] = [
@@ -12,7 +12,7 @@ const FILTER_OPTIONS: { id: OrderFilterStatus; label: string }[] = [
   { id: 'ready_for_pickup', label: 'در انتظار تحویل' },
   { id: 'delivered', label: 'تحویل‌شده' },
   { id: 'cancelled', label: 'لغوشده' },
-];
+]
 
 export const OrderFilterTabs: React.FC<OrderFilterTabsProps> = ({
   selectedStatus,
@@ -20,12 +20,10 @@ export const OrderFilterTabs: React.FC<OrderFilterTabsProps> = ({
 }) => {
   return (
     <div className="w-full">
-      <div className="mb-2 text-xs font-semibold text-text-secondary md:hidden">
-        فیلترها
-      </div>
+      <div className="mb-2 text-xs font-semibold text-text-secondary md:hidden">فیلترها</div>
       <div className="flex flex-wrap items-center gap-2">
         {FILTER_OPTIONS.map((option) => {
-          const isSelected = selectedStatus === option.id;
+          const isSelected = selectedStatus === option.id
           return (
             <button
               key={option.id}
@@ -40,9 +38,9 @@ export const OrderFilterTabs: React.FC<OrderFilterTabsProps> = ({
             >
               {option.label}
             </button>
-          );
+          )
         })}
       </div>
     </div>
-  );
-};
+  )
+}

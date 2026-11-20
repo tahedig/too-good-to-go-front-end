@@ -1,12 +1,12 @@
-import React from 'react';
-import type { VendorOrderSummary, VendorStoreActive } from '../types';
-import { toPersianDigits } from '@/lib/digits';
-import { formatNumber } from '@/lib/format';
+import React from 'react'
+import type { VendorOrderSummary, VendorStoreActive } from '../types'
+import { toPersianDigits } from '@/lib/digits'
+import { formatNumber } from '@/lib/format'
 
 interface OrderStatsSummaryProps {
-  summary: VendorOrderSummary;
-  store?: VendorStoreActive;
-  variant?: 'reservations' | 'orders';
+  summary: VendorOrderSummary
+  store?: VendorStoreActive
+  variant?: 'reservations' | 'orders'
 }
 
 export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
@@ -19,9 +19,7 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
       <div className="w-full">
         {/* Mobile View */}
         <div className="md:hidden">
-          <div className="mb-2 text-xs font-semibold text-text-secondary">
-            خلاصه رزروهای امروز
-          </div>
+          <div className="mb-2 text-xs font-semibold text-text-secondary">خلاصه رزروهای امروز</div>
           <div className="rounded-xl border border-border-default bg-surface p-4 shadow-1">
             <div className="flex items-center justify-between py-2 border-b border-border-default/50">
               <span className="text-sm text-text-secondary">بسته‌های رزروشده</span>
@@ -52,9 +50,7 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
               <span className="text-base font-bold text-text-primary block mt-0.5">
                 {store.name}
               </span>
-              <span className="text-xs text-text-secondary block mt-0.5">
-                {store.address}
-              </span>
+              <span className="text-xs text-text-secondary block mt-0.5">{store.address}</span>
             </div>
           )}
 
@@ -87,7 +83,7 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // Variant "orders"
@@ -139,5 +135,5 @@ export const OrderStatsSummary: React.FC<OrderStatsSummaryProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

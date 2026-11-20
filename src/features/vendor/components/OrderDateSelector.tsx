@@ -1,11 +1,11 @@
-import React from 'react';
-import { ChevronDown, Calendar } from 'lucide-react';
-import { DEMO_DATES } from '../utils/dateUtils';
+import React from 'react'
+import { ChevronDown, Calendar } from 'lucide-react'
+import { DEMO_DATES } from '../utils/dateUtils'
 
 interface OrderDateSelectorProps {
-  selectedDate: string;
-  onDateChange: (date: string) => void;
-  label?: string;
+  selectedDate: string
+  onDateChange: (date: string) => void
+  label?: string
 }
 
 export const OrderDateSelector: React.FC<OrderDateSelectorProps> = ({
@@ -36,5 +36,5 @@ export const OrderDateSelector: React.FC<OrderDateSelectorProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

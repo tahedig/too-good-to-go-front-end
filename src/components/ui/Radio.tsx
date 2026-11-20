@@ -1,8 +1,8 @@
-import { forwardRef } from 'react';
-import type { InputHTMLAttributes, ReactNode } from 'react';
+import { forwardRef } from 'react'
+import type { InputHTMLAttributes, ReactNode } from 'react'
 
 export interface RadioProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
-  label: ReactNode;
+  label: ReactNode
 }
 
 export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio(
@@ -32,7 +32,13 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(function Radio(
         }
       />
 
-      <span className={['text-body-md', disabled ? 'text-text-disabled' : 'text-text-primary'].join(' ')}>{label}</span>
+      <span
+        className={['text-body-md', disabled ? 'text-text-disabled' : 'text-text-primary'].join(
+          ' ',
+        )}
+      >
+        {label}
+      </span>
     </label>
-  );
-});
+  )
+})

@@ -1,1 +1,1 @@
-export { router } from '@/app/router';
+export { router } from '@/app/router'

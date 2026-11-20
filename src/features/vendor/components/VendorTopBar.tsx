@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { ArrowRight, Menu, X, ShoppingBag, Calendar, Store } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState } from 'react'
+import { ArrowRight, Menu, X, ShoppingBag, Calendar, Store } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
 
 interface VendorTopBarProps {
-  title: string;
-  storeName?: string;
-  storeAddress?: string;
-  showBackButton?: boolean;
-  backTo?: string;
+  title: string
+  storeName?: string
+  storeAddress?: string
+  showBackButton?: boolean
+  backTo?: string
 }
 
 export const VendorTopBar: React.FC<VendorTopBarProps> = ({
@@ -17,16 +17,16 @@ export const VendorTopBar: React.FC<VendorTopBarProps> = ({
   showBackButton = true,
   backTo,
 }) => {
-  const navigate = useNavigate();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const handleBack = () => {
     if (backTo) {
-      navigate(backTo);
+      navigate(backTo)
     } else {
-      navigate(-1);
+      navigate(-1)
     }
-  };
+  }
 
   return (
     <div className="w-full">
@@ -108,5 +108,5 @@ export const VendorTopBar: React.FC<VendorTopBarProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

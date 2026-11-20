@@ -196,10 +196,7 @@ export const storeService = {
       apiRequest<StoreListResponseDto>('/vendor/stores'),
       apiRequest<StoreRequestListResponseDto>('/vendor/store-requests'),
     ])
-    return [
-      ...requestResponse.requests.map(mapRequest),
-      ...storeResponse.stores.map(mapStore),
-    ]
+    return [...requestResponse.requests.map(mapRequest), ...storeResponse.stores.map(mapStore)]
   },
 
   async get(id: string): Promise<{ store: VendorStore; source: StoreProfileSource }> {

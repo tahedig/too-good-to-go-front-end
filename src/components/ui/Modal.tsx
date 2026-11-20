@@ -1,38 +1,38 @@
-import { useEffect, useId, useRef } from 'react';
-import type { MouseEvent, ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useId, useRef } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
+import { X } from 'lucide-react'
 
-export type ModalVariant = 'dialog' | 'sheet';
+export type ModalVariant = 'dialog' | 'sheet'
 
 export interface ModalProps {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  description?: ReactNode;
-  children?: ReactNode;
-  footer?: ReactNode;
-  variant?: ModalVariant;
-  headerAction?: ReactNode;
-  preventClose?: boolean;
-  closeOnOverlayClick?: boolean;
-  hideCloseButton?: boolean;
-  closeLabel?: string;
-  className?: string;
+  open: boolean
+  onClose: () => void
+  title: string
+  description?: ReactNode
+  children?: ReactNode
+  footer?: ReactNode
+  variant?: ModalVariant
+  headerAction?: ReactNode
+  preventClose?: boolean
+  closeOnOverlayClick?: boolean
+  hideCloseButton?: boolean
+  closeLabel?: string
+  className?: string
 }
 
-let lockCount = 0;
-let previousOverflow = '';
+let lockCount = 0
+let previousOverflow = ''
 
 function lockBodyScroll() {
   if (lockCount === 0) {
-    previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
   }
-  lockCount += 1;
+  lockCount += 1
   return () => {
-    lockCount -= 1;
-    if (lockCount === 0) document.body.style.overflow = previousOverflow;
-  };
+    lockCount -= 1
+    if (lockCount === 0) document.body.style.overflow = previousOverflow
+  }
 }
 
 const surfaceStyles =
@@ -42,7 +42,7 @@ const surfaceStyles =
   'transition-[opacity,translate,display,overlay] transition-discrete duration-200 ease-out motion-reduce:transition-none ' +
   'backdrop:bg-primary/40 backdrop:backdrop-blur-[2px] backdrop:opacity-0 open:backdrop:opacity-100 ' +
   'starting:open:backdrop:opacity-0 backdrop:transition-[opacity,display,overlay] backdrop:transition-discrete ' +
-  'backdrop:duration-200 motion-reduce:backdrop:transition-none';
+  'backdrop:duration-200 motion-reduce:backdrop:transition-none'
 
 const variantStyles: Record<ModalVariant, string> = {
   dialog:
@@ -51,8 +51,7 @@ const variantStyles: Record<ModalVariant, string> = {
   sheet:
     'mx-0 mb-0 mt-auto w-full max-w-none max-h-[90dvh] rounded-t-xl ' +
     'translate-y-full open:translate-y-0 starting:open:translate-y-full',
-};
-
+}
 
 export function Modal({
   open,
@@ -69,38 +68,38 @@ export function Modal({
   closeLabel = 'بستن',
   className,
 }: ModalProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const pressStartedOnBackdrop = useRef(false);
-  const titleId = useId();
-  const descriptionId = useId();
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const pressStartedOnBackdrop = useRef(false)
+  const titleId = useId()
+  const descriptionId = useId()
 
   useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
-  }, [open]);
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (open && !dialog.open) dialog.showModal()
+    if (!open && dialog.open) dialog.close()
+  }, [open])
 
   useEffect(() => {
-    if (!open) return;
-    return lockBodyScroll();
-  }, [open]);
+    if (!open) return
+    return lockBodyScroll()
+  }, [open])
 
   function requestClose() {
-    if (!preventClose) onClose();
+    if (!preventClose) onClose()
   }
 
   function handleMouseDown(e: MouseEvent<HTMLDialogElement>) {
-    pressStartedOnBackdrop.current = e.target === e.currentTarget;
+    pressStartedOnBackdrop.current = e.target === e.currentTarget
   }
 
   function handleClick(e: MouseEvent<HTMLDialogElement>) {
     if (closeOnOverlayClick && e.target === e.currentTarget && pressStartedOnBackdrop.current) {
-      requestClose();
+      requestClose()
     }
   }
 
-  const gap = variant === 'sheet' ? 'gap-6' : 'gap-5';
+  const gap = variant === 'sheet' ? 'gap-6' : 'gap-5'
 
   return (
     <dialog
@@ -108,15 +107,20 @@ export function Modal({
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       onCancel={(e) => {
-        e.preventDefault();
-        requestClose();
+        e.preventDefault()
+        requestClose()
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       className={[surfaceStyles, variantStyles[variant], className].filter(Boolean).join(' ')}
     >
       <div className={['flex min-h-0 flex-1 flex-col p-6', gap].join(' ')}>
-        {variant === 'sheet' && <div aria-hidden="true" className="mx-auto h-1 w-10 shrink-0 rounded-full bg-text-secondary" />}
+        {variant === 'sheet' && (
+          <div
+            aria-hidden="true"
+            className="mx-auto h-1 w-10 shrink-0 rounded-full bg-text-secondary"
+          />
+        )}
 
         <header className="flex shrink-0 items-center gap-3">
           <h2 id={titleId} className="min-w-0 flex-1 text-title-lg text-text-primary">
@@ -155,5 +159,5 @@ export function Modal({
         {footer && <footer className="flex shrink-0 flex-col gap-5">{footer}</footer>}
       </div>
     </dialog>
-  );
+  )
 }
