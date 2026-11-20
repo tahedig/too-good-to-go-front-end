@@ -26,19 +26,32 @@ const CATEGORY_OPTIONS = [
   { value: '7', label: 'میوه و تره‌بار' },
 ]
 
-const MAP_BOUNDS = { minLatitude: 35.62, maxLatitude: 35.75, minLongitude: 51.3, maxLongitude: 51.48 }
+const MAP_BOUNDS = {
+  minLatitude: 35.62,
+  maxLatitude: 35.75,
+  minLongitude: 51.3,
+  maxLongitude: 51.48,
+}
 
 function mapPosition(location: StoreLocationDto) {
   return {
     x: Math.max(
       0,
-      Math.min(100, ((location.longitude - MAP_BOUNDS.minLongitude) /
-        (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude)) * 100),
+      Math.min(
+        100,
+        ((location.longitude - MAP_BOUNDS.minLongitude) /
+          (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude)) *
+          100,
+      ),
     ),
     y: Math.max(
       0,
-      Math.min(100, ((MAP_BOUNDS.maxLatitude - location.latitude) /
-        (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude)) * 100),
+      Math.min(
+        100,
+        ((MAP_BOUNDS.maxLatitude - location.latitude) /
+          (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude)) *
+          100,
+      ),
     ),
   }
 }
@@ -117,7 +130,10 @@ function HoursEditor({
       </div>
       <div className="flex flex-col divide-y divide-border-default">
         {days.map((day, index) => (
-          <div key={day.day} className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center">
+          <div
+            key={day.day}
+            className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center"
+          >
             <label className="flex items-center gap-3 text-label-md text-text-primary">
               <input
                 type="checkbox"
@@ -211,8 +227,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
         if (active)
           setProfile({
             id,
-            error:
-              reason instanceof Error ? reason.message : 'دریافت اطلاعات فروشگاه ممکن نیست.',
+            error: reason instanceof Error ? reason.message : 'دریافت اطلاعات فروشگاه ممکن نیست.',
           })
       })
     return () => {
@@ -258,7 +273,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
   if (!profile?.store || !profile.form)
     return (
       <div className="flex flex-col gap-4 p-4 lg:p-8">
-        <InlineAlert tone="error">{error || profile?.error || 'مشخصات فروشگاه در دسترس نیست.'}</InlineAlert>
+        <InlineAlert tone="error">
+          {error || profile?.error || 'مشخصات فروشگاه در دسترس نیست.'}
+        </InlineAlert>
         <Link to="/vendor/stores" className="text-label-md text-primary">
           بازگشت به فروشگاه‌ها
         </Link>
@@ -303,8 +320,8 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
       {isNewRequest && (
         <InlineAlert tone="info">
-          برای ثبت درخواست، نام فروشگاه، دسته‌بندی، مالک و آدرس به سرور ارسال می‌شوند. سایر
-          مشخصات پس از تأیید فروشگاه قابل ویرایش هستند.
+          برای ثبت درخواست، نام فروشگاه، دسته‌بندی، مالک و آدرس به سرور ارسال می‌شوند. سایر مشخصات
+          پس از تأیید فروشگاه قابل ویرایش هستند.
         </InlineAlert>
       )}
       {isReadOnly && (
@@ -319,7 +336,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-title-md text-text-primary">تصویر فروشگاه</h2>
-                <p className="mt-1 text-body-md text-text-secondary">تصاویر فروشگاه را انتخاب کنید.</p>
+                <p className="mt-1 text-body-md text-text-secondary">
+                  تصاویر فروشگاه را انتخاب کنید.
+                </p>
               </div>
               <span className="text-caption text-text-secondary">{form.images.length} تصویر</span>
             </div>
@@ -396,7 +415,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
               </Button>
             </div>
             {selectingLocation && (
-              <p className="text-caption text-primary">برای ثبت موقعیت، نقطهٔ موردنظر را روی نقشه بزنید.</p>
+              <p className="text-caption text-primary">
+                برای ثبت موقعیت، نقطهٔ موردنظر را روی نقشه بزنید.
+              </p>
             )}
             <MapPreview
               location={form.location}
@@ -411,9 +432,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
         <div className="flex flex-col gap-5">
           <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
-            <h2 className="text-title-md text-text-primary">
-              {store.name || 'مشخصات فروشگاه'}
-            </h2>
+            <h2 className="text-title-md text-text-primary">{store.name || 'مشخصات فروشگاه'}</h2>
             <Input
               label="نام فروشگاه"
               value={form.name}
@@ -469,9 +488,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
           <HoursEditor
             days={form.openingHours}
-            onChange={(openingHours) =>
-              updateForm({ openingHours, workingHoursConfigured: true })
-            }
+            onChange={(openingHours) => updateForm({ openingHours, workingHoursConfigured: true })}
             disabled={source !== 'store'}
           />
         </div>

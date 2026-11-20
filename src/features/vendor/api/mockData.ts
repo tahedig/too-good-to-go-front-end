@@ -1,7 +1,7 @@
-import type { VendorOrder, VendorOrderSummary, VendorStoreActive } from '../types';
+import type { VendorOrder, VendorOrderSummary, VendorStoreActive } from '../types'
 
 export const BREAD_DEMO_IMAGE =
-  'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80';
+  'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=80'
 
 export const INITIAL_VENDOR_STORE: VendorStoreActive = {
   id: 'store_550e8400',
@@ -9,7 +9,7 @@ export const INITIAL_VENDOR_STORE: VendorStoreActive = {
   address: 'تهران، ولیعصر، پلاک ۱۲',
   phone: '02188776655',
   is_active: true,
-};
+}
 
 export const INITIAL_VENDOR_ORDERS: VendorOrder[] = [
   {
@@ -60,7 +60,7 @@ export const INITIAL_VENDOR_ORDERS: VendorOrder[] = [
     },
     created_at: '2026-10-19T11:15:00Z',
   },
-];
+]
 
 export const INITIAL_VENDOR_SUMMARY: VendorOrderSummary = {
   date: '1405-07-27',
@@ -68,4 +68,4 @@ export const INITIAL_VENDOR_SUMMARY: VendorOrderSummary = {
   active_reservations_count: 2,
   delivered_packages_count: 0,
   total_revenue: 120000,
-};
+}

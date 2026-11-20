@@ -14,21 +14,21 @@
 // }
 
 export interface VerifyOtpPayload {
-  phone: string;
-  code: string;
+  phone: string
+  code: string
 }
 
 export interface AuthUser {
-  id: string;
-  phone: string;
-  role: string;
+  id: string
+  phone: string
+  role: string
 }
 
 export interface LoginResponse {
-  verified: boolean;
-  phone: string;
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  user: AuthUser;
+  verified: boolean
+  phone: string
+  access_token: string
+  token_type: string
+  expires_in: number
+  user: AuthUser
 }
