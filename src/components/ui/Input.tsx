@@ -6,6 +6,7 @@ import { Eye, EyeOff } from 'lucide-react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
+  variant?: 'default' | 'subtle';
   helperText?: string;
   error?: string;
   success?: string;
@@ -20,6 +21,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   {
     label,
+    variant = 'default',
     helperText,
     error,
     success,
@@ -43,6 +45,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const isPassword = type === 'password';
   const inputType = isPassword && passwordVisible ? 'text' : type;
   const isLtr = ltrValue ?? (isPassword || type === 'email' || type === 'url');
+  const subtle = variant === 'subtle';
 
   const passwordToggle = isPassword && (
     <button
@@ -64,12 +67,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <FormField
       meta={meta}
       label={label}
+      labelClassName={subtle ? 'font-normal' : undefined}
       required={required}
       disabled={disabled}
       afterField={passwordToggle}
       className={className}
     >
-      <div className={fieldClasses(meta.status, 'flex h-12 w-full items-center gap-2 rounded-md px-4')}>
+      <div className={fieldClasses(meta.status, 'flex h-12 w-full items-center gap-2 rounded-md px-4', subtle)}>
         {startIcon && (
           <span className={['size-6 shrink-0', disabled ? 'text-text-disabled' : 'text-primary'].join(' ')} aria-hidden="true">
             {startIcon}
@@ -85,7 +89,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           aria-invalid={meta.status === 'error' || undefined}
           aria-describedby={meta.messageId}
           className={
-            'h-full min-w-0 flex-1 bg-transparent text-start text-body-lg text-text-primary ' +
+            'h-full min-w-0 flex-1 bg-transparent text-start text-text-primary ' +
+            (subtle ? 'text-body-md ' : 'text-body-lg ') +
             'placeholder:text-text-secondary focus-visible:outline-none ' +
             'disabled:cursor-not-allowed disabled:text-text-disabled disabled:placeholder:text-text-disabled ' +
             (isLtr ? '[&:not(:placeholder-shown)]:[direction:ltr]' : '')

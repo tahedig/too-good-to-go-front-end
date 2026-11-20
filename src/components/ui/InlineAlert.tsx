@@ -6,6 +6,7 @@ export type AlertTone = 'info' | 'success' | 'warning' | 'error';
 
 export interface InlineAlertProps {
   tone?: AlertTone;
+  icon?: LucideIcon;
   children: ReactNode;
   className?: string;
 }
@@ -17,8 +18,9 @@ const tones: Record<AlertTone, { background: string; Icon: LucideIcon }> = {
   error: { background: 'bg-error-subtle', Icon: CircleAlert },
 };
 
-export function InlineAlert({ tone = 'info', children, className }: InlineAlertProps) {
-  const { background, Icon } = tones[tone];
+export function InlineAlert({ tone = 'info', icon, children, className }: InlineAlertProps) {
+  const { background, Icon: DefaultIcon } = tones[tone];
+  const Icon = icon ?? DefaultIcon;
 
   return (
     <div
@@ -27,7 +29,7 @@ export function InlineAlert({ tone = 'info', children, className }: InlineAlertP
         .filter(Boolean)
         .join(' ')}
     >
-      <Icon className="size-6 shrink-0" strokeWidth={1.75} />
+      <Icon className="size-6 shrink-0" strokeWidth={1.75} aria-hidden="true" />
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );

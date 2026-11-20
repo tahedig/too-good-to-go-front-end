@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { matchPath, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   ChevronDown,
   LayoutDashboard,
@@ -12,7 +12,7 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
+import { FINANCE_ITEMS, financePreviewSearch } from '@/features/vendor-finance/navigation'
 
 type NavItem = {
   to: string
@@ -53,9 +53,11 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
-  const { pathname } = useLocation()
-  const onFinanceRoute = pathname.startsWith('/vendor/finance')
-  const [financeExpanded, setFinanceExpanded] = useState(onFinanceRoute)
+  const { pathname, search } = useLocation()
+  const onFinanceRoute = Boolean(matchPath('/vendor/finance/*', pathname))
+  const [expanded, setExpanded] = useState<boolean>()
+  const financeExpanded = expanded ?? onFinanceRoute
+  const financeSearch = onFinanceRoute ? financePreviewSearch(search) : ''
 
   return (
     <nav aria-label="ناوبری فروشنده" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
@@ -66,7 +68,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
               <button
                 type="button"
                 aria-expanded={financeExpanded}
-                onClick={() => setFinanceExpanded((expanded) => !expanded)}
+                onClick={() => setExpanded(!financeExpanded)}
                 className={`flex h-12 w-full items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors ${onFinanceRoute ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
               >
                 <Icon className="size-6 shrink-0" strokeWidth={1.75} />
@@ -81,7 +83,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
                   {FINANCE_ITEMS.map(([path, subLabel]) => (
                     <NavLink
                       key={path}
-                      to={`/vendor/finance/${path}`}
+                      to={`/vendor/finance/${path}${financeSearch}`}
                       onClick={onNavigate}
                       className={({ isActive }) =>
                         `flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
@@ -119,7 +121,14 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export default function VendorLayout() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { key, pathname } = useLocation()
+  // The three finance canvases use the shared drawer at all widths. Other
+  // routes, including the Transactions desktop view, keep the existing sidebar.
+  const financeCanvas =
+    Boolean(matchPath('/vendor/finance/*', pathname)) &&
+    !matchPath('/vendor/finance/transactions', pathname)
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null)
+  const menuOpen = openMenuKey === key
   const headerRef = useRef<HTMLElement>(null)
   const headerOffset = useRef(0)
   const drawerRef = useRef<HTMLElement>(null)
@@ -160,12 +169,16 @@ export default function VendorLayout() {
     if (headerRef.current) headerRef.current.style.transform = ''
   }
 
+  function closeMenu() {
+    setOpenMenuKey(null)
+  }
+
   useEffect(() => {
     if (!menuOpen) return
     const menuButton = menuButtonRef.current
     drawerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setMenuOpen(false)
+      if (event.key === 'Escape') setOpenMenuKey(null)
       if (event.key === 'Tab' && drawerRef.current) {
         const items = Array.from(drawerRef.current.querySelectorAll<HTMLElement>('button, a[href]'))
         const first = items[0]
@@ -181,7 +194,7 @@ export default function VendorLayout() {
     }
     const desktop = window.matchMedia('(min-width: 64rem)')
     const onResize = () => {
-      if (desktop.matches) setMenuOpen(false)
+      if (desktop.matches && !financeCanvas) setOpenMenuKey(null)
     }
     desktop.addEventListener('change', onResize)
     document.addEventListener('keydown', onKeyDown)
@@ -191,31 +204,33 @@ export default function VendorLayout() {
       document.removeEventListener('keydown', onKeyDown)
       desktop.removeEventListener('change', onResize)
       document.body.style.overflow = previousOverflow
-      if (!desktop.matches) menuButton?.focus()
+      if (!desktop.matches || financeCanvas) menuButton?.focus({ preventScroll: true })
     }
-  }, [menuOpen])
+  }, [menuOpen, financeCanvas])
 
   return (
     <div className="flex min-h-dvh bg-background">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-65 shrink-0 border-e border-border-default bg-surface lg:block">
+      <aside
+        className={`sticky top-0 hidden h-dvh w-65 shrink-0 border-e border-border-default bg-surface ${financeCanvas ? '' : 'lg:block'}`}
+      >
         <div className="flex h-full flex-col gap-1 p-4">
           <BrandRow />
           <NavList />
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile header */}
+      <div className="flex min-w-0 flex-1 flex-col" inert={menuOpen}>
+        {/* Compact header */}
         <header
           ref={headerRef}
           onFocus={revealHeader}
-          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border-default bg-surface px-4 will-change-transform lg:hidden"
+          className={`sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border-default bg-surface px-4 will-change-transform ${financeCanvas ? '' : 'lg:hidden'}`}
         >
           <button
             type="button"
             ref={menuButtonRef}
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setOpenMenuKey(key)}
             aria-label="باز کردن منو"
             aria-expanded={menuOpen}
             className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-text-primary transition-colors hover:bg-surface-secondary"
@@ -226,7 +241,9 @@ export default function VendorLayout() {
         </header>
 
         {/* Desktop brand header; the product page supplies its store context when needed. */}
-        <header className="hidden h-12 shrink-0 items-center border-b border-border-default bg-background lg:flex">
+        <header
+          className={`hidden h-12 shrink-0 items-center border-b border-border-default bg-background ${financeCanvas ? '' : 'lg:flex'}`}
+        >
           <span className="text-title-lg text-text-primary">ته‌دیگ</span>
         </header>
 
@@ -235,16 +252,16 @@ export default function VendorLayout() {
         </main>
       </div>
 
-      {/* Mobile drawer */}
+      {/* Same vendor drawer for the compact header. */}
       <div
-        className={`fixed inset-0 z-50 lg:hidden ${menuOpen ? '' : 'pointer-events-none'}`}
+        className={`fixed inset-0 z-50 transition-[visibility] duration-200 motion-reduce:transition-none ${financeCanvas ? '' : 'lg:hidden'} ${menuOpen ? '' : 'pointer-events-none invisible'}`}
         aria-hidden={!menuOpen}
       >
         <div
           className={`absolute inset-0 bg-primary/40 transition-opacity duration-200 ${
             menuOpen ? 'opacity-100' : 'opacity-0'
           }`}
-          onClick={() => setMenuOpen(false)}
+          onClick={closeMenu}
         />
         <aside
           ref={drawerRef}
@@ -257,8 +274,8 @@ export default function VendorLayout() {
           }`}
         >
           <div className="flex h-full flex-col gap-1 p-4">
-            <BrandRow onClose={() => setMenuOpen(false)} />
-            <NavList onNavigate={() => setMenuOpen(false)} />
+            <BrandRow onClose={closeMenu} />
+            <NavList onNavigate={closeMenu} />
           </div>
         </aside>
       </div>

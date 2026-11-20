@@ -12,7 +12,6 @@ export interface SelectOption {
 
 export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
   label: string
-  variant?: 'default' | 'filter'
   options: SelectOption[]
   placeholder?: string
   helperText?: string
@@ -24,7 +23,6 @@ export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   {
     label,
-    variant = 'default',
     options,
     placeholder,
     helperText,
@@ -40,7 +38,6 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   },
   ref,
 ) {
-  const isFilter = variant === 'filter'
   const meta = useFieldMeta({ id, disabled, error, success, helperText })
 
   const initial =
@@ -50,18 +47,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
     <FormField
       meta={meta}
       label={label}
-      labelClassName={isFilter ? 'font-normal' : undefined}
       required={required}
       disabled={disabled}
       className={className}
     >
-      <div
-        className={fieldClasses(
-          meta.status,
-          `relative w-full rounded-md ${isFilter ? 'h-14' : 'h-13'}`,
-          isFilter,
-        )}
-      >
+      <div className={fieldClasses(meta.status, 'relative h-13 w-full rounded-md')}>
         <select
           ref={ref}
           id={meta.id}
@@ -72,10 +62,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           aria-invalid={meta.status === 'error' || undefined}
           aria-describedby={meta.messageId}
           className={
-            'h-full w-full appearance-none bg-transparent text-start ' +
-            (isFilter
-              ? 'ps-12 pe-4 text-label-md font-normal text-text-secondary '
-              : 'ps-4 pe-12 text-body-lg text-text-primary ') +
+            'h-full w-full appearance-none bg-transparent ps-4 pe-12 text-start text-body-lg text-text-primary ' +
             "focus-visible:outline-none has-[option[value='']:checked]:text-text-secondary " +
             'disabled:cursor-not-allowed disabled:text-text-disabled'
           }
@@ -97,8 +84,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
           strokeWidth={1.75}
           aria-hidden="true"
           className={[
-            'pointer-events-none absolute top-1/2 size-6 -translate-y-1/2',
-            isFilter ? 'start-4' : 'end-4',
+            'pointer-events-none absolute end-4 top-1/2 size-6 -translate-y-1/2',
             disabled ? 'text-text-disabled' : 'text-primary',
           ].join(' ')}
         />

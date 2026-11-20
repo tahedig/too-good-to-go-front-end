@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, replace } from 'react-router-dom'
 import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
@@ -87,7 +87,11 @@ export const router = createBrowserRouter([
       {
         path: 'finance',
         children: [
-          { index: true, element: <Navigate to="overview" replace /> },
+          {
+            index: true,
+            loader: ({ request }) =>
+              replace(`/vendor/finance/overview${new URL(request.url).search}`),
+          },
           ...FINANCE_ITEMS.map(([section]) => ({
             path: section,
             element: <VendorFinancePage section={section} />,

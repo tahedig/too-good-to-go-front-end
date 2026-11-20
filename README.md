@@ -15,7 +15,7 @@ npm run dev
 - `npm run dev` — dev server
 - `npm run build` — production build
 - `npm run lint` — ESLint
-- `npm test` — vendor dashboard API contract, pickup windows, and finance filters
+- `npm test` — vendor API contracts, pickup windows, finance filters and preview flows
 - `npm run format` — Prettier
 
 ## Folder structure
@@ -74,17 +74,32 @@ pickup. Neither the fixture nor this mode is included in the production build.
 
 ## Vendor finance
 
-The vendor menu links to `/vendor/finance/transactions`, with cards at narrow widths
-and a table on desktop. Status, type, and period filters can be combined and are
-restored from the URL. Overview, plans, and settlements have separate routes and stay
-within finance navigation, but are not implemented yet.
+The vendor menu links to four sections under `/vendor/finance`: `overview`, `plans`,
+`transactions`, and `settlements`. Mobile section tabs navigate between routes rather
+than filtering records. Transactions use cards on mobile and a table on desktop;
+status, type, and period filters are stored in the URL. The filter popups use the
+same green as the table header and support keyboard, pointer, and touch input.
 
-The reviewed backend exposes no vendor transaction ledger. The normal transactions
-route shows an unavailable state rather than presenting example amounts as real data.
-To try the eight design records on Vite, open `/vendor/finance/transactions?preview=1`
-or run `VITE_VENDOR_FINANCE_PREVIEW=1 npm run dev` to enable the labelled preview when
-entering through the vendor menu. `?preview=0` opts out on that server. The example data
-and preview mode are excluded from the production build.
+`src/services/vendor/financeService.ts` reads active and ready-for-pickup orders for
+the overview from `GET /vendor/orders` when the TEAM-48 contract is deployed. Their
+amounts are shown separately from completed sales. The reviewed backend provides no
+finance ledger, completed-sales report by settlement period, plan/subscription API,
+bank account registration, or settlement request endpoint. Without those contracts,
+live balances and histories are explicitly unavailable and financial submissions are
+disabled. Customer purchases and daily gross order totals are not used as substitutes.
+
+Open `/vendor/finance/overview?preview=1` on Vite, or set
+`VITE_VENDOR_FINANCE_PREVIEW=1` to enable the labelled demo across the four routes.
+`?preview=0` opts out, and the explicit opt-in/opt-out follows finance navigation.
+Preview actions update a shared in-memory example within the current tab; reloading
+resets it. They do not contact the server, write to browser storage, change a real
+subscription, or make any payment. To try the payout validation, use a test name and
+the synthetic checksum-valid number `IR490000000000000000000000`, not real details.
+
+The demo provider is isolated in `src/features/vendor-finance/previewFinance.ts` and
+`previewTransactions.ts`, with a development-only dynamic import in `FinancePage.tsx`.
+They are excluded from production builds. To retire the demo, remove the preview
+import and switch and plug the verified finance contracts into `vendorFinanceSource`.
 
 Reservations and daily orders use the same Jalali picker as the product editor. History
 filters allow past dates and keep `?date=YYYY-MM-DD` in Gregorian format. The product
