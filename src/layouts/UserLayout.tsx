@@ -14,7 +14,8 @@ const USER_NAV_ITEMS: UserNavItem[] = [
     to: '/',
     label: 'اکتشاف',
     icon: Compass,
-    matches: (pathname) => ['/', '/map', '/search', '/today', '/last-chance'].includes(pathname),
+    matches: (pathname) =>
+      ['/', '/map', '/search', '/today', '/popular-nearby', '/last-chance'].includes(pathname),
   },
   {
     to: '/favorites',

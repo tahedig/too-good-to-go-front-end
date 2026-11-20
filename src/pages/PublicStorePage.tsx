@@ -1,10 +1,13 @@
-import { useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Clock3, Compass, Heart, Search, ShoppingBag, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FoodListingCard } from '@/components/ui/FoodListingCard'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { publicStores, type PublicStore } from '@/features/store/mockData'
+import { catalogueService } from '@/services/catalogueService'
+import { publicStoreService } from '@/services/publicStoreService'
+import type { PublicStore } from '@/types/publicStoreTypes'
 
 function CustomerSidebar() {
   const navItems = [
@@ -72,9 +75,9 @@ function StoreSummary({ store }: { store: PublicStore }) {
           isClosed ? 'text-error' : 'text-text-secondary',
         ].join(' ')}
       >
-        {store.category} · {isClosed ? 'اکنون بسته' : store.neighborhood}
+        {isClosed ? `${store.headerSubtitle} · اکنون بسته` : store.headerSubtitle}
       </p>
-      {!isClosed && <StatusBadge status="active" label="باز است" className="mt-2" />}
+      {!isClosed && <StatusBadge status="active" label={store.statusLabel} className="mt-2" />}
       <h2 className="mt-2 text-title-sm text-primary">درباره فروشگاه</h2>
       <p className="mt-2 text-body-lg text-text-primary">{store.description}</p>
     </section>
@@ -99,7 +102,15 @@ function LocationCard({ store }: { store: PublicStore }) {
           </div>
         ))}
       </dl>
-      <Button variant="secondary" fullWidth className="mt-3" onClick={() => navigate('/map')}>
+      <Button
+        variant="secondary"
+        fullWidth
+        className="mt-3"
+        onClick={() => {
+          catalogueService.saveLocation(store.location)
+          navigate('/map')
+        }}
+      >
         مشاهده روی نقشه
       </Button>
     </section>
@@ -140,8 +151,19 @@ function EmptyProducts({ closed }: { closed: boolean }) {
 
 function ProductSection({ store }: { store: PublicStore }) {
   const navigate = useNavigate()
-  const [saved, setSaved] = useState(false)
+  const [savedOffers, setSavedOffers] = useState<Record<string, boolean>>({})
+  const [saveError, setSaveError] = useState('')
   const closed = store.availability === 'closed'
+
+  async function updateSaved(id: string, value: boolean) {
+    setSaveError('')
+    try {
+      await catalogueService.setFavorite(id, value)
+      setSavedOffers((current) => ({ ...current, [id]: value }))
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'ذخیره پیشنهاد ناموفق بود.')
+    }
+  }
 
   return (
     <section aria-labelledby="products-title" className="min-w-0">
@@ -151,6 +173,12 @@ function ProductSection({ store }: { store: PublicStore }) {
           {closed ? 'فروشگاه بسته است' : 'محصولات فروشگاه'}
         </h2>
       </div>
+
+      {saveError && (
+        <InlineAlert tone="error" className="mb-3">
+          {saveError}
+        </InlineAlert>
+      )}
 
       {store.products.length > 0 ? (
         <div className="space-y-2">
@@ -166,9 +194,9 @@ function ProductSection({ store }: { store: PublicStore }) {
               pickup={product.pickup}
               imageSrc={product.imageSrc}
               status="available"
-              statusLabel={`${product.remaining.toLocaleString('fa-IR')} بسته موجود`}
-              saved={saved}
-              onSaveChange={setSaved}
+              statusLabel={product.availabilityBadge}
+              saved={savedOffers[product.id] ?? product.isFavorite}
+              onSaveChange={(saved) => void updateSaved(product.id, saved)}
               showDescription={false}
               showDisclaimer={false}
               swapImageActions
@@ -193,9 +221,56 @@ function ProductSection({ store }: { store: PublicStore }) {
 
 export default function PublicStorePage() {
   const { storeId = '' } = useParams()
-  const store = publicStores[storeId]
+  const [store, setStore] = useState<PublicStore>()
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
-  if (!store) return <Navigate to="/not-found" replace />
+  useEffect(() => {
+    let active = true
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return undefined
+        setLoading(true)
+        setLoadError('')
+        return publicStoreService.get(storeId, catalogueService.getLocation())
+      })
+      .then((response) => {
+        if (active && response) setStore(response)
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setLoadError(
+            error instanceof Error ? error.message : 'دریافت اطلاعات فروشگاه ناموفق بود.',
+          )
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [reloadKey, storeId])
+
+  if (loading) {
+    return <InlineAlert>در حال دریافت اطلاعات فروشگاه…</InlineAlert>
+  }
+
+  if (loadError || !store) {
+    return (
+      <div className="mx-auto max-w-xl space-y-4 p-6">
+        <InlineAlert tone="error">{loadError || 'فروشگاه پیدا نشد.'}</InlineAlert>
+        <div className="flex gap-3">
+          <Button variant="secondary" onClick={() => setReloadKey((key) => key + 1)}>
+            تلاش دوباره
+          </Button>
+          <Link to="/" className="inline-flex min-h-11 items-center text-label-md text-primary">
+            بازگشت به اکتشاف
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-text-primary">
