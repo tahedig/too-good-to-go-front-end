@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
-import { Link, NavLink, useLocation, useSearchParams } from 'react-router-dom'
+import { NavLink, useLocation, useSearchParams } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
@@ -129,18 +129,18 @@ function FinanceScreen({
   const requestPayout = source?.requestPayout
 
   return (
-    <div
-      className={`mx-auto flex w-full max-w-[1440px] flex-col gap-6 p-4 pb-10 sm:p-8 ${transactions ? 'lg:p-6 xl:p-12' : 'lg:p-12'}`}
-    >
+    <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 p-4 pb-10 sm:p-8 lg:p-6 xl:p-12">
       <header className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
-          <Link
+          <ButtonLink
             to={overview ? '/vendor' : href('overview')}
+            variant="secondary"
+            size="sm"
             aria-label={overview ? 'بازگشت به داشبورد' : 'بازگشت به مرور کلی مالی'}
-            className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface transition-colors hover:bg-surface-secondary"
+            className="size-11! border! border-border-default! px-0! hover:bg-surface-secondary!"
           >
             <ArrowRight size={24} strokeWidth={1.75} aria-hidden="true" />
-          </Link>
+          </ButtonLink>
           <h1 className="text-title-lg font-bold lg:text-title-xl">{title}</h1>
         </div>
         <div className="flex min-h-5 flex-wrap items-center gap-2 text-label-md font-normal text-text-secondary">

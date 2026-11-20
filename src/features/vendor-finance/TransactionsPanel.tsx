@@ -1,6 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
 import { Button, ButtonLink } from '@/components/ui/Button'
-import { FilterSelect } from '@/components/ui/FilterSelect'
+import { Select } from '@/components/ui/Select'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { formatNumber, formatPrice } from '@/lib/format'
 import { formatJalaliDate, formatJalaliDateRange } from '@/lib/vendorDates'
@@ -169,29 +169,32 @@ export function TransactionsPanel({
         aria-label="فیلترهای تراکنش‌ها"
         className="flex flex-col gap-6 sm:flex-row-reverse"
       >
-        <FilterSelect
+        <Select
+          variant="filter"
           className="min-w-0 flex-1"
           label="وضعیت"
           value={filters.status}
           options={statusOptions}
           disabled={unavailable}
-          onChange={(value) => updateFilter('status', value)}
+          onValueChange={(value) => updateFilter('status', value)}
         />
-        <FilterSelect
+        <Select
+          variant="filter"
           className="min-w-0 flex-1"
           label="نوع تراکنش"
           value={filters.type}
           options={typeOptions}
           disabled={unavailable}
-          onChange={(value) => updateFilter('type', value)}
+          onValueChange={(value) => updateFilter('type', value)}
         />
-        <FilterSelect
+        <Select
+          variant="filter"
           className="min-w-0 flex-1"
           label="بازه زمانی"
           value={filters.period?.id ?? 'all'}
           options={periodOptions}
           disabled={unavailable}
-          onChange={(value) => updateFilter('period', value)}
+          onValueChange={(value) => updateFilter('period', value)}
         />
       </div>
       {visible ? (

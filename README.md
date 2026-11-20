@@ -75,10 +75,11 @@ pickup. Neither the fixture nor this mode is included in the production build.
 ## Vendor finance
 
 The vendor menu links to four sections under `/vendor/finance`: `overview`, `plans`,
-`transactions`, and `settlements`. Mobile section tabs navigate between routes rather
-than filtering records. Transactions use cards on mobile and a table on desktop;
-status, type, and period filters are stored in the URL. The filter popups use the
-same green as the table header and support keyboard, pointer, and touch input.
+`transactions`, and `settlements`. All four routes use the vendor sidebar on desktop;
+mobile section tabs navigate between routes. Transactions use cards on mobile and a
+table on desktop, and status, type, and period filters are stored in the URL. The
+shared `Select` uses the site tokens for white options, green selection, and beige
+hover, with keyboard, pointer, and touch support.
 
 `src/services/vendor/financeService.ts` reads active and ready-for-pickup orders for
 the overview from `GET /vendor/orders` when the TEAM-48 contract is deployed. Their
