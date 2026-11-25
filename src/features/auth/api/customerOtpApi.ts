@@ -1,9 +1,9 @@
 import { postData } from "../../../services/services"
 
 interface RequestOtpResponse {
-  request_id: string;
-  retry_after?: number;
-  [key: string]: unknown;
+  message: string
+  expires_in_seconds: number
+  debug_code?: string
 }
 
 export const customerOtpApi = {
@@ -11,12 +11,14 @@ export const customerOtpApi = {
     const response = await postData<RequestOtpResponse>({
       endPoint: "/auth/otp/request",
       data: {
-        phone: phone,
+        phone,
       },
-    });
+    })
 
-    console.log("OTP request response:", response);
+    if (response.debug_code) {
+      console.info("OTP debug code:", response.debug_code)
+    }
 
-    return response;
+    return response
   },
-};
+}
