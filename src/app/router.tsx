@@ -74,12 +74,9 @@ export const router = createBrowserRouter([
         path: 'products/:id/edit',
         element: <ProductEditorPage />,
       },
-      {
-        path: 'orders',
-        element: <ReservationsPages key="orders" view="orders" />,
-      },
+      { path: 'orders', element: <VendorOrdersPage /> },
       { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
-      { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
+      { path: 'orders/reservations', element: <VendorReservationsPage /> },
       { path: 'orders/list', element: <VendorOrdersPage /> },
       { path: 'reservations', element: <VendorReservationsPage /> },
       {
