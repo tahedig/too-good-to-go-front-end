@@ -49,6 +49,10 @@ function renderCustomerRoute(initialEntry) {
           { path: '/', element: React.createElement(UserLayout) },
           React.createElement(Route, { index: true, element: React.createElement(HomePage) }),
           React.createElement(Route, {
+            path: 'popular-nearby',
+            element: React.createElement(OfferCollectionPage),
+          }),
+          React.createElement(Route, {
             path: 'favorites',
             element: React.createElement(OfferCollectionPage),
           }),
@@ -111,7 +115,13 @@ test('UserLayout prioritizes primary sidebar and switches Profile link based on 
 })
 
 test('Customer routes render only UserLayout sidebar without duplicate sidebars or top navbars', () => {
-  for (const route of ['/favorites', '/orders', '/stores/morning-bakery', '/profile/personal']) {
+  for (const route of [
+    '/popular-nearby',
+    '/favorites',
+    '/orders',
+    '/stores/morning-bakery',
+    '/profile/personal',
+  ]) {
     const html = renderCustomerRoute(route)
     assert.equal(countMatches(html, /<aside\b/g), 1, `expected single aside on ${route}`)
     assert.equal(
@@ -130,12 +140,17 @@ test('Customer routes render only UserLayout sidebar without duplicate sidebars 
   assert.equal(countMatches(homeHtml, /<aside\b/g), 1)
   assert.equal(countMatches(homeHtml, /aria-label="ناوبری اصلی"/g), 0)
 
+  const popularHtml = renderCustomerRoute('/popular-nearby')
+  assert.equal(hasActiveNavLink(popularHtml, '/'), true)
+  assert.match(popularHtml, /محبوب‌های اطراف شما/)
+
   const storeHtml = renderCustomerRoute('/stores/morning-bakery')
   assert.equal(hasActiveNavLink(storeHtml, '/'), true)
 
   const favoritesHtml = renderCustomerRoute('/favorites')
-  assert.match(favoritesHtml, /باز کردن فیلترها/)
-  assert.match(favoritesHtml, /محبوب‌های اطراف/)
+  assert.equal(hasActiveNavLink(favoritesHtml, '/favorites'), true)
+  assert.match(favoritesHtml, /فیلترها/)
+  assert.match(favoritesHtml, /ذخیره‌ها/)
 })
 
 test('HelpSupportPage inside UserLayout omits redundant desktop header nav tabs', () => {

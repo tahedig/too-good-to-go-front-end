@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { matchPath, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, matchPath, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   ChevronDown,
   LayoutDashboard,
@@ -19,16 +19,53 @@ type NavItem = {
   to: string
   label: string
   icon: LucideIcon
-  end?: boolean
+  matches: (pathname: string) => boolean
+}
+
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/vendor', label: 'داشبورد', icon: LayoutDashboard, end: true },
-  { to: '/vendor/products', label: 'محصولات', icon: ShoppingBag },
-  { to: '/vendor/orders', label: 'سفارشات', icon: PackageCheck },
-  { to: '/vendor/stores', label: 'فروشگاه‌ها', icon: Store },
-  { to: '/vendor/finance', label: 'مالی', icon: Wallet },
-  { to: '/vendor/account', label: 'حساب فروشنده', icon: UserRound },
+  {
+    to: '/vendor',
+    label: 'داشبورد',
+    icon: LayoutDashboard,
+    matches: (pathname) => pathname === '/vendor' || pathname === '/vendor/dashboard',
+  },
+  {
+    to: '/vendor/products',
+    label: 'محصولات',
+    icon: ShoppingBag,
+    matches: (pathname) =>
+      pathname === '/vendor/products' || pathname.startsWith('/vendor/products/'),
+  },
+  {
+    to: '/vendor/orders',
+    label: 'سفارشات',
+    icon: PackageCheck,
+    matches: (pathname) => pathname === '/vendor/orders' || pathname.startsWith('/vendor/orders/'),
+  },
+  {
+    to: '/vendor/stores',
+    label: 'فروشگاه‌ها',
+    icon: Store,
+    matches: (pathname) => pathname === '/vendor/stores' || pathname.startsWith('/vendor/stores/'),
+  },
+  {
+    to: '/vendor/finance',
+    label: 'مالی',
+    icon: Wallet,
+    matches: (pathname) =>
+      pathname === '/vendor/finance' || pathname.startsWith('/vendor/finance/'),
+  },
+  {
+    to: '/vendor/account',
+    label: 'حساب فروشنده',
+    icon: UserRound,
+    matches: (pathname) =>
+      pathname === '/vendor/account' || pathname.startsWith('/vendor/account/'),
+  },
 ]
 
 const menuIconStyles =
@@ -72,18 +109,19 @@ const ORDERS_ITEMS: readonly { to: string; label: string; aliases: readonly stri
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname, search } = useLocation()
-  const onOrdersRoute = ORDERS_ITEMS.some(({ aliases }) => aliases.includes(pathname))
+  const normalizedPathname = normalizePathname(pathname)
+  const onOrdersRoute = ORDERS_ITEMS.some(({ aliases }) => aliases.includes(normalizedPathname))
   const [ordersExpandedState, setOrdersExpandedState] = useState<boolean>()
   const ordersExpanded = ordersExpandedState ?? onOrdersRoute
 
-  const onFinanceRoute = Boolean(matchPath('/vendor/finance/*', pathname))
+  const onFinanceRoute = Boolean(matchPath('/vendor/finance/*', normalizedPathname))
   const [expanded, setExpanded] = useState<boolean>()
   const financeExpanded = expanded ?? onFinanceRoute
   const financeSearch = onFinanceRoute ? financePreviewSearch(search) : ''
 
   return (
     <nav aria-label="ناوبری فروشنده" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+      {NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
         if (to === '/vendor/orders') {
           return (
             <div key={to}>
@@ -106,7 +144,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
               {ordersExpanded && (
                 <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
                   {ORDERS_ITEMS.map((item) => {
-                    const active = item.aliases.includes(pathname)
+                    const active = item.aliases.includes(normalizedPathname)
                     return (
                       <NavLink
                         key={item.to}
@@ -163,22 +201,21 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           )
         }
 
+        const active = matches(normalizedPathname)
         return (
-          <NavLink
+          <Link
             key={to}
             to={to}
-            end={end}
+            aria-current={active ? 'page' : undefined}
             onClick={onNavigate}
-            className={({ isActive }) =>
-              [
-                'flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors',
-                isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary',
-              ].join(' ')
-            }
+            className={[
+              'flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-text-primary transition-colors',
+              active ? 'bg-surface-sage' : 'hover:bg-surface-secondary',
+            ].join(' ')}
           >
             <Icon className="size-6 shrink-0" strokeWidth={1.75} />
             <span className="flex-1 text-start">{label}</span>
-          </NavLink>
+          </Link>
         )
       })}
     </nav>

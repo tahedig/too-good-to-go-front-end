@@ -31,6 +31,14 @@ import ProfilePage from '@/pages/ProfilePage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
 import HelpSupportPage from '@/pages/HelpSupportPage'
 
+function normalizeTrailingSlashLoader({ request }: { request: Request }) {
+  const url = new URL(request.url)
+  if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+    return replace(`${url.pathname.replace(/\/+$/, '')}${url.search}${url.hash}`)
+  }
+  return null
+}
+
 export const router = createBrowserRouter([
   {
     path: '/',
@@ -40,6 +48,7 @@ export const router = createBrowserRouter([
       { path: 'map', element: <MapPage /> },
       { path: 'search', element: <SearchResultsPage /> },
       { path: 'today', element: <OfferCollectionPage /> },
+      { path: 'popular-nearby', element: <OfferCollectionPage /> },
       { path: 'favorites', element: <OfferCollectionPage /> },
       { path: 'last-chance', element: <OfferCollectionPage /> },
       { path: 'orders', element: <OrdersPage /> },
@@ -59,11 +68,16 @@ export const router = createBrowserRouter([
   },
   {
     path: '/vendor',
+    loader: normalizeTrailingSlashLoader,
     element: <VendorLayout />,
     children: [
       {
         index: true,
         element: <VendorDashboardPage />,
+      },
+      {
+        path: 'dashboard',
+        loader: ({ request }) => replace(`/vendor${new URL(request.url).search}`),
       },
       {
         path: 'products',
@@ -119,9 +133,14 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
+    loader: normalizeTrailingSlashLoader,
     element: <AdminLayout />,
     children: [
       { index: true, element: <AdminDashboardPage /> },
+      {
+        path: 'dashboard',
+        loader: ({ request }) => replace(`/admin${new URL(request.url).search}`),
+      },
       { path: 'store-requests', element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" /> },
       { path: 'stores', element: <AdminComingSoonPage title="فروشگاه‌ها" /> },
       { path: 'customers', element: <AdminComingSoonPage title="مشتریان" /> },

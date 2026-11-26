@@ -12,18 +12,18 @@ export function DiscoveryMapPreview() {
         </h1>
         <Link
           to="/map"
-          aria-label="مشاهده نقشه‌ی کامل محدوده‌ی ولیعصر"
+          aria-label="مشاهده نقشه‌ی کامل"
           className="inline-flex items-center gap-2 text-label-md text-text-secondary hover:text-primary"
         >
           <MapPin className="size-5 text-primary" strokeWidth={1.75} />
-          تهران، ولیعصر
+          محدوده‌ی شما
         </Link>
       </div>
 
       <div className="rounded-2xl border border-border-default bg-surface p-3 sm:border sm:bg-surface sm:p-0 lg:border-0 lg:bg-transparent">
         <div
           role="group"
-          aria-label="نقشه‌ی محدوده‌ی ولیعصر با چند پیشنهاد غذایی نزدیک"
+          aria-label="نمای شماتیک نقشه"
           className="relative h-[220px] overflow-hidden rounded-xl bg-surface-secondary sm:rounded-2xl lg:h-[430px]"
         >
           <div
@@ -43,23 +43,13 @@ export function DiscoveryMapPreview() {
             aria-hidden="true"
             className="absolute bottom-[8%] left-[12%] h-[24%] w-[19%] rounded-full bg-surface-sage/70"
           />
-          <span className="absolute right-[25%] top-[46%] rotate-[-90deg] text-caption text-text-secondary/80">
-            خیابان ولیعصر
-          </span>
-
-          <span className="absolute left-[12%] top-[24%] rounded-md border border-primary bg-surface px-3 py-2 text-label-md text-primary shadow-2">
-            ۶۵٬۰۰۰ تومان
-          </span>
-          <span className="absolute left-[55%] top-[62%] rounded-md border border-primary bg-primary px-3 py-2 text-label-md text-on-primary shadow-2">
-            ۴۰٬۰۰۰ تومان
-          </span>
-          <button
-            type="button"
+          <Link
+            to="/map"
             aria-label="رفتن به موقعیت فعلی"
             className="absolute bottom-3 left-3 grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary shadow-1 hover:bg-surface-secondary sm:bottom-4 sm:left-4"
           >
             <LocateFixed strokeWidth={1.75} />
-          </button>
+          </Link>
           <Link
             to="/map"
             className="absolute right-3 top-3 inline-flex min-h-11 items-center gap-2 rounded-md border border-border-default bg-surface px-3 text-label-md text-primary shadow-1 hover:bg-surface-secondary sm:right-4 sm:top-4"

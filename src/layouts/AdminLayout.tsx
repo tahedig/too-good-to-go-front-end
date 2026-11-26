@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   ChevronDown,
   CircleHelp,
@@ -16,18 +16,76 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
-type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
+type NavItem = {
+  to: string
+  label: string
+  icon: LucideIcon
+  matches: (pathname: string) => boolean
+}
+
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
+}
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/admin', label: 'داشبورد', icon: LayoutDashboard, end: true },
-  { to: '/admin/store-requests', label: 'درخواست فروشگاه‌ها', icon: PackageCheck },
-  { to: '/admin/stores', label: 'فروشگاه‌ها', icon: Store },
-  { to: '/admin/customers', label: 'مشتریان', icon: UsersRound },
-  { to: '/admin/products', label: 'محصولات', icon: ShoppingBag },
-  { to: '/admin/orders', label: 'سفارشات', icon: PackageCheck },
-  { to: '/admin/finance', label: 'مالی', icon: Wallet },
-  { to: '/admin/support', label: 'پشتیبانی', icon: CircleHelp },
-  { to: '/admin/settings', label: 'تنظیمات', icon: Settings },
+  {
+    to: '/admin',
+    label: 'داشبورد',
+    icon: LayoutDashboard,
+    matches: (pathname) => pathname === '/admin' || pathname === '/admin/dashboard',
+  },
+  {
+    to: '/admin/store-requests',
+    label: 'درخواست فروشگاه‌ها',
+    icon: PackageCheck,
+    matches: (pathname) =>
+      pathname === '/admin/store-requests' || pathname.startsWith('/admin/store-requests/'),
+  },
+  {
+    to: '/admin/stores',
+    label: 'فروشگاه‌ها',
+    icon: Store,
+    matches: (pathname) => pathname === '/admin/stores' || pathname.startsWith('/admin/stores/'),
+  },
+  {
+    to: '/admin/customers',
+    label: 'مشتریان',
+    icon: UsersRound,
+    matches: (pathname) =>
+      pathname === '/admin/customers' || pathname.startsWith('/admin/customers/'),
+  },
+  {
+    to: '/admin/products',
+    label: 'محصولات',
+    icon: ShoppingBag,
+    matches: (pathname) =>
+      pathname === '/admin/products' || pathname.startsWith('/admin/products/'),
+  },
+  {
+    to: '/admin/orders',
+    label: 'سفارشات',
+    icon: PackageCheck,
+    matches: (pathname) => pathname === '/admin/orders' || pathname.startsWith('/admin/orders/'),
+  },
+  {
+    to: '/admin/finance',
+    label: 'مالی',
+    icon: Wallet,
+    matches: (pathname) => pathname === '/admin/finance' || pathname.startsWith('/admin/finance/'),
+  },
+  {
+    to: '/admin/support',
+    label: 'پشتیبانی',
+    icon: CircleHelp,
+    matches: (pathname) => pathname === '/admin/support' || pathname.startsWith('/admin/support/'),
+  },
+  {
+    to: '/admin/settings',
+    label: 'تنظیمات',
+    icon: Settings,
+    matches: (pathname) =>
+      pathname === '/admin/settings' || pathname.startsWith('/admin/settings/'),
+  },
 ]
 
 const FINANCE_ITEMS = [
@@ -41,14 +99,13 @@ const FINANCE_ITEMS = [
 ] as const
 
 function getAdminPageTitle(pathname: string): string {
-  if (pathname.startsWith('/admin/finance')) {
-    const section = pathname.split('/')[3]
+  const normalizedPathname = normalizePathname(pathname)
+  if (normalizedPathname.startsWith('/admin/finance')) {
+    const section = normalizedPathname.split('/')[3]
     const sub = FINANCE_ITEMS.find(([key]) => key === section)?.[1]
     return sub ? `مالی · ${sub}` : 'مالی'
   }
-  const match = NAV_ITEMS.find((item) =>
-    item.end ? pathname === item.to : pathname.startsWith(item.to),
-  )
+  const match = NAV_ITEMS.find((item) => item.matches(normalizedPathname))
   return match?.label ?? 'داشبورد'
 }
 
@@ -82,12 +139,14 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation()
-  const onFinanceRoute = pathname.startsWith('/admin/finance')
+  const normalizedPathname = normalizePathname(pathname)
+  const onFinanceRoute =
+    normalizedPathname === '/admin/finance' || normalizedPathname.startsWith('/admin/finance/')
   const [financeExpanded, setFinanceExpanded] = useState(onFinanceRoute)
 
   return (
     <nav aria-label="ناوبری مدیریت" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+      {NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
         if (to === '/admin/finance') {
           return (
             <div key={to}>
@@ -124,19 +183,18 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           )
         }
 
+        const active = matches(normalizedPathname)
         return (
-          <NavLink
+          <Link
             key={to}
             to={to}
-            end={end}
+            aria-current={active ? 'page' : undefined}
             onClick={onNavigate}
-            className={({ isActive }) =>
-              `flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
-            }
+            className={`flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold transition-colors ${active ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
           >
             <Icon className="size-6 shrink-0" strokeWidth={1.75} />
             <span className="flex-1 text-start">{label}</span>
-          </NavLink>
+          </Link>
         )
       })}
     </nav>

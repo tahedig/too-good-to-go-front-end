@@ -1,18 +1,10 @@
 import { LocateFixed } from 'lucide-react'
-import type { DiscoveryOffer } from '@/features/discovery/mockData'
+import type { DiscoveryLocation, DiscoveryOffer } from '@/types/discoveryTypes'
 import { formatNumber } from '@/lib/format'
-
-const markerPositions: Record<string, { top: string; left: string }> = {
-  'morning-bakery': { top: '22%', left: '16%' },
-  'green-kitchen': { top: '46%', left: '62%' },
-  'corner-cafe': { top: '67%', left: '30%' },
-  'seasonal-market': { top: '29%', left: '79%' },
-  'oven-stories': { top: '79%', left: '69%' },
-  'homemade-table': { top: '55%', left: '43%' },
-}
 
 interface DiscoveryMapCanvasProps {
   offers: DiscoveryOffer[]
+  center?: DiscoveryLocation
   selectedOfferId?: string
   disabled?: boolean
   onOfferSelect?: (offer: DiscoveryOffer) => void
@@ -21,15 +13,32 @@ interface DiscoveryMapCanvasProps {
 
 export function DiscoveryMapCanvas({
   offers,
+  center,
   selectedOfferId,
   disabled = false,
   onOfferSelect,
   onRecenter,
 }: DiscoveryMapCanvasProps) {
+  const locations = offers.flatMap((offer) =>
+    offer.location ? [{ offer, ...offer.location }] : [],
+  )
+  const latitudes = locations.map((item) => item.latitude)
+  const longitudes = locations.map((item) => item.longitude)
+  if (center) {
+    latitudes.push(center.latitude)
+    longitudes.push(center.longitude)
+  }
+  const minLatitude = Math.min(...latitudes)
+  const maxLatitude = Math.max(...latitudes)
+  const minLongitude = Math.min(...longitudes)
+  const maxLongitude = Math.max(...longitudes)
+  const latitudeRange = maxLatitude - minLatitude || 1
+  const longitudeRange = maxLongitude - minLongitude || 1
+
   return (
     <div
       role="group"
-      aria-label={disabled ? 'نمای نقشه‌ی محدوده‌ی ولیعصر' : 'پیشنهادهای غذایی روی نقشه‌ی ولیعصر'}
+      aria-label={disabled ? 'نمای شماتیک نقشه' : 'پیشنهادهای غذایی روی نقشه'}
       className="relative isolate h-full min-h-[220px] overflow-hidden rounded-2xl bg-[#eee8dd]"
     >
       <div
@@ -47,18 +56,12 @@ export function DiscoveryMapCanvas({
         <div className="absolute bottom-0 left-[29%] top-0 w-4 bg-white" />
         <div className="absolute bottom-0 left-[57%] top-0 w-6 bg-white" />
         <div className="absolute bottom-0 left-[83%] top-0 w-4 bg-white" />
-        <span className="absolute left-[61%] top-[51%] -rotate-90 text-caption text-text-secondary">
-          خیابان ولیعصر
-        </span>
-        <span className="absolute left-[6%] top-[7%] text-label-md text-text-secondary">
-          ولیعصر
-        </span>
       </div>
 
       {!disabled &&
-        offers.map((offer) => {
-          const position = markerPositions[offer.id]
-          if (!position) return null
+        locations.map(({ offer, latitude, longitude }) => {
+          const top = 10 + ((maxLatitude - latitude) / latitudeRange) * 80
+          const left = 10 + ((longitude - minLongitude) / longitudeRange) * 80
           const selected = offer.id === selectedOfferId
           return (
             <button
@@ -73,7 +76,7 @@ export function DiscoveryMapCanvas({
                   ? 'border-[3px] border-[#527fca] bg-primary text-on-primary'
                   : 'border-[1.5px] border-primary bg-surface text-primary',
               ].join(' ')}
-              style={position}
+              style={{ top: `${top}%`, left: `${left}%` }}
             >
               {formatNumber(offer.price)} تومان
             </button>

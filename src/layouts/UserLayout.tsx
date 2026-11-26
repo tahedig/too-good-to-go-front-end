@@ -11,13 +11,17 @@ type UserNavItem = {
   matches: (pathname: string) => boolean
 }
 
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
+}
+
 const USER_NAV_ITEMS: UserNavItem[] = [
   {
     to: '/',
     label: 'اکتشاف',
     icon: Compass,
     matches: (pathname) =>
-      ['/', '/map', '/search', '/today', '/last-chance'].includes(pathname) ||
+      ['/', '/map', '/search', '/today', '/popular-nearby', '/last-chance'].includes(pathname) ||
       pathname.startsWith('/stores'),
   },
   {
@@ -53,6 +57,7 @@ function canOpenProfileDirect(): boolean {
 
 function DesktopSidebar() {
   const { pathname } = useLocation()
+  const normalizedPathname = normalizePathname(pathname)
   const profileDirect = canOpenProfileDirect()
 
   return (
@@ -66,7 +71,7 @@ function DesktopSidebar() {
         </div>
         <nav aria-label="ناوبری مشتری" className="flex flex-col gap-1">
           {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
-            const active = matches(pathname)
+            const active = matches(normalizedPathname)
             const destination = to === '/profile' && !profileDirect ? '/login' : to
             return (
               <Link
@@ -90,6 +95,7 @@ function DesktopSidebar() {
 
 function MobileNavigation() {
   const { pathname } = useLocation()
+  const normalizedPathname = normalizePathname(pathname)
   const profileDirect = canOpenProfileDirect()
 
   return (
@@ -99,7 +105,7 @@ function MobileNavigation() {
         className="flex h-[72px] border-t border-border-default bg-surface p-1"
       >
         {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
-          const active = matches(pathname)
+          const active = matches(normalizedPathname)
           const destination = to === '/profile' && !profileDirect ? '/login' : to
           return (
             <Link

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight, MapPin, Search, SlidersHorizontal, UserRound, WifiOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -6,32 +6,21 @@ import { FoodListingCard } from '@/components/ui/FoodListingCard'
 import { Modal } from '@/components/ui/Modal'
 import { Radio } from '@/components/ui/Radio'
 import { SearchField } from '@/components/ui/SearchField'
-import { discoveryOffers, type DiscoveryOffer } from '@/features/discovery/mockData'
+import { InlineAlert } from '@/components/ui/InlineAlert'
+import { catalogueService, type CatalogueFilters } from '@/services/catalogueService'
+import type { DiscoveryOffer } from '@/types/discoveryTypes'
+import type { CatalogueSort } from '@/types/catalogueTypes'
 import { formatPrice } from '@/lib/format'
-import { toEnglishDigits } from '@/lib/digits'
 
-const categories = ['همه', 'نانوایی', 'غذای آماده', 'کافه', 'خواربار', 'تخفیف ویژه']
-const sortOptions = [
-  { value: 'distance', label: 'نزدیک‌ترین' },
-  { value: 'price', label: 'ارزان‌ترین' },
-  { value: 'time', label: 'زمان تحویل' },
-] as const
-const allergenOptions = [
-  { value: 'gluten', label: 'گلوتن' },
-  { value: 'dairy', label: 'لبنیات' },
-  { value: 'nuts', label: 'آجیل و مغزها' },
-  { value: 'sesame', label: 'کنجد' },
-] as const
+const sortValues: CatalogueSort[] = ['nearest', 'price_asc', 'price_desc', 'newest']
 
-type SortOrder = (typeof sortOptions)[number]['value']
-
-function isSortOrder(value: string | null): value is SortOrder {
-  return sortOptions.some((option) => option.value === value)
+function isSortOrder(value: string | null): value is CatalogueSort {
+  return sortValues.some((option) => option === value)
 }
 
 interface DiscoveryFilters {
   category: string
-  sort: SortOrder
+  sort: CatalogueSort
   minPrice: number
   maxPrice: number
   maxDistance: number
@@ -42,7 +31,7 @@ interface DiscoveryFilters {
 
 const defaultFilters: DiscoveryFilters = {
   category: 'همه',
-  sort: 'distance',
+  sort: 'newest',
   minPrice: 0,
   maxPrice: 160000,
   maxDistance: 5,
@@ -51,17 +40,14 @@ const defaultFilters: DiscoveryFilters = {
   excludedAllergens: [],
 }
 
-function parsePickupHour(pickup: string): number {
-  const time = pickup.match(/[0-9۰-۹]{1,2}:[0-9۰-۹]{2}/)?.[0]
-  if (!time) return Infinity
-  return Number(toEnglishDigits(time).split(':')[0])
-}
-
 function formatHour(hour: number): string {
   return `${hour.toLocaleString('fa-IR', { minimumIntegerDigits: 2, useGrouping: false })}:۰۰`
 }
 
-function readFilters(params: URLSearchParams): DiscoveryFilters {
+function readFilters(
+  params: URLSearchParams,
+  defaults: DiscoveryFilters = defaultFilters,
+): DiscoveryFilters {
   const category = params.get('category')
   const sort = params.get('sort')
   const numberParam = (key: string, fallback: number, min: number, max: number) => {
@@ -70,33 +56,38 @@ function readFilters(params: URLSearchParams): DiscoveryFilters {
     const value = Number(raw)
     return Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback
   }
-  const minPrice = numberParam('minPrice', defaultFilters.minPrice, 0, 150000)
-  const startHour = numberParam('start', defaultFilters.startHour, 7, 22)
+  const minPrice = numberParam('minPrice', defaults.minPrice, 0, defaults.maxPrice)
+  const startHour = numberParam('start', defaults.startHour, 7, 22)
 
   return {
-    category: category && categories.includes(category) ? category : defaultFilters.category,
-    sort: isSortOrder(sort) ? sort : defaultFilters.sort,
+    category: category ?? defaults.category,
+    sort: isSortOrder(sort) ? sort : defaults.sort,
     minPrice,
-    maxPrice: Math.max(minPrice, numberParam('maxPrice', defaultFilters.maxPrice, 10000, 160000)),
-    maxDistance: numberParam('distance', defaultFilters.maxDistance, 1, 10),
+    maxPrice: Math.max(
+      minPrice,
+      numberParam('maxPrice', defaults.maxPrice, defaults.minPrice, defaults.maxPrice),
+    ),
+    maxDistance: numberParam('distance', defaults.maxDistance, 1, 10),
     startHour,
-    endHour: Math.max(startHour, numberParam('end', defaultFilters.endHour, 8, 23)),
-    excludedAllergens: (params.get('allergens') ?? '')
-      .split(',')
-      .filter((allergen) => allergenOptions.some((option) => option.value === allergen)),
+    endHour: Math.max(startHour, numberParam('end', defaults.endHour, 8, 23)),
+    excludedAllergens: (params.get('allergens') ?? '').split(',').filter(Boolean),
   }
 }
 
-function writeFilters(params: URLSearchParams, filters: DiscoveryFilters): URLSearchParams {
+function writeFilters(
+  params: URLSearchParams,
+  filters: DiscoveryFilters,
+  defaults: DiscoveryFilters = defaultFilters,
+): URLSearchParams {
   const next = new URLSearchParams(params)
   const values: Array<[string, string, string]> = [
-    ['category', filters.category, defaultFilters.category],
-    ['sort', filters.sort, defaultFilters.sort],
-    ['minPrice', String(filters.minPrice), String(defaultFilters.minPrice)],
-    ['maxPrice', String(filters.maxPrice), String(defaultFilters.maxPrice)],
-    ['distance', String(filters.maxDistance), String(defaultFilters.maxDistance)],
-    ['start', String(filters.startHour), String(defaultFilters.startHour)],
-    ['end', String(filters.endHour), String(defaultFilters.endHour)],
+    ['category', filters.category, defaults.category],
+    ['sort', filters.sort, defaults.sort],
+    ['minPrice', String(filters.minPrice), String(defaults.minPrice)],
+    ['maxPrice', String(filters.maxPrice), String(defaults.maxPrice)],
+    ['distance', String(filters.maxDistance), String(defaults.maxDistance)],
+    ['start', String(filters.startHour), String(defaults.startHour)],
+    ['end', String(filters.endHour), String(defaults.endHour)],
   ]
 
   values.forEach(([key, value, defaultValue]) => {
@@ -113,46 +104,15 @@ function writeFilters(params: URLSearchParams, filters: DiscoveryFilters): URLSe
   return next
 }
 
-function filterOffers(
-  offers: DiscoveryOffer[],
-  query: string,
-  filters: DiscoveryFilters,
-): DiscoveryOffer[] {
-  const search = query.trim().toLocaleLowerCase()
-  const filtered = offers.filter((offer) => {
-    const matchesCategory =
-      filters.category === 'همه' ||
-      (filters.category === 'تخفیف ویژه'
-        ? offer.referenceValue >= offer.price * 1.5
-        : offer.category === filters.category)
-    const matchesSearch =
-      !search ||
-      `${offer.merchantName} ${offer.category} ${offer.description}`
-        .toLocaleLowerCase()
-        .includes(search)
-    const pickupHour = parsePickupHour(offer.pickup)
-    const matchesTime = pickupHour >= filters.startHour && pickupHour <= filters.endHour
-    const matchesAllergens = !filters.excludedAllergens.some((allergen) =>
-      offer.allergens.includes(allergen),
-    )
-
-    return (
-      matchesCategory &&
-      matchesSearch &&
-      offer.price >= filters.minPrice &&
-      offer.price <= filters.maxPrice &&
-      offer.distanceKm <= filters.maxDistance &&
-      matchesTime &&
-      matchesAllergens
-    )
-  })
-
-  return filtered.sort((first, second) => {
-    if (filters.sort === 'price') return first.price - second.price
-    if (filters.sort === 'time')
-      return parsePickupHour(first.pickup) - parsePickupHour(second.pickup)
-    return first.distanceKm - second.distanceKm
-  })
+function tehranDateTime(hour: number): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tehran',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const date = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${date.year}-${date.month}-${date.day}T${String(hour).padStart(2, '0')}:00:00+03:30`
 }
 
 function SearchHeader() {
@@ -167,11 +127,13 @@ function SearchHeader() {
           >
             <ArrowRight strokeWidth={1.75} />
           </Link>
-          <span className="inline-flex items-center gap-2 text-caption text-text-secondary sm:text-body-md">
+          <Link
+            to="/map"
+            className="inline-flex items-center gap-2 text-caption text-text-secondary sm:text-body-md"
+          >
             <MapPin className="size-5 text-primary" strokeWidth={1.75} />
-            <span className="hidden sm:inline">تهران، ولیعصر</span>
-            <span className="sm:hidden">ولیعصر</span>
-          </span>
+            <span>انتخاب محدوده</span>
+          </Link>
         </div>
 
         <Link to="/" className="text-title-lg font-bold text-primary sm:text-title-xl">
@@ -247,7 +209,7 @@ function EmptyResults({
   )
 }
 
-function NetworkError({ onRetry }: { onRetry: () => void }) {
+function NetworkError({ onRetry, message }: { onRetry: () => void; message: string }) {
   return (
     <section
       role="alert"
@@ -259,7 +221,8 @@ function NetworkError({ onRetry }: { onRetry: () => void }) {
         </div>
         <h2 className="text-title-md text-primary">ارتباط برقرار نشد</h2>
         <p className="text-body-md text-text-secondary">
-          دریافت پیشنهادها با مشکل روبه‌رو شد. اتصال اینترنتت را بررسی کن و دوباره تلاش کن.
+          {message ||
+            'دریافت پیشنهادها با مشکل روبه‌رو شد. اتصال اینترنتت را بررسی کن و دوباره تلاش کن.'}
         </p>
         <Button onClick={onRetry}>تلاش دوباره</Button>
       </div>
@@ -270,21 +233,111 @@ function NetworkError({ onRetry }: { onRetry: () => void }) {
 export default function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const query = searchParams.get('q') ?? ''
-  const filters = useMemo(() => readFilters(searchParams), [searchParams])
-  const [draftFilters, setDraftFilters] = useState(filters)
-  const [filtersOpen, setFiltersOpen] = useState(false)
-  const [savedOffers, setSavedOffers] = useState<Record<string, boolean>>({})
-
-  const results = useMemo(() => filterOffers(discoveryOffers, query, filters), [query, filters])
-  const draftResultCount = useMemo(
-    () => filterOffers(discoveryOffers, query, draftFilters).length,
-    [query, draftFilters],
+  const [filterData, setFilterData] = useState<CatalogueFilters>()
+  const [location] = useState(() => catalogueService.getLocation())
+  const defaults = useMemo(
+    () => ({
+      ...defaultFilters,
+      minPrice: filterData?.price.min ?? defaultFilters.minPrice,
+      maxPrice: filterData?.price.max ?? defaultFilters.maxPrice,
+      sort: location ? ('nearest' as const) : ('newest' as const),
+    }),
+    [filterData, location],
   )
+  const filters = useMemo(() => readFilters(searchParams, defaults), [defaults, searchParams])
+  const [draftFilters, setDraftFilters] = useState(defaultFilters)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [offers, setOffers] = useState<DiscoveryOffer[]>([])
+  const [savedOffers, setSavedOffers] = useState<Record<string, boolean>>({})
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [favoriteError, setFavoriteError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+  const categories = useMemo(
+    () => ['همه', ...(filterData?.categories.map((category) => category.name) ?? [])],
+    [filterData],
+  )
+  const allergenOptions = filterData?.allergens ?? []
+  const sliderPriceMax = Math.max(
+    filterData?.price.max ?? defaults.maxPrice,
+    draftFilters.maxPrice,
+    10000,
+  )
+  const sortOptions =
+    filterData?.sort_options.filter((option) => location || option.value !== 'nearest') ?? []
   const activeAllergens = allergenOptions.filter((option) =>
     filters.excludedAllergens.includes(option.value),
   )
-  const isLoadingPreview = searchParams.get('preview') === 'loading'
-  const isErrorPreview = searchParams.get('preview') === 'error'
+
+  useEffect(() => {
+    let active = true
+    catalogueService
+      .getFilters()
+      .then((data) => {
+        if (active) setFilterData(data)
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setLoadError(error instanceof Error ? error.message : 'دریافت فیلترها ناموفق بود.')
+          setLoading(false)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [reloadKey])
+
+  useEffect(() => {
+    if (!filterData) return
+    let active = true
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return undefined
+        setLoading(true)
+        setLoadError('')
+        const categoryId =
+          filters.category === 'همه'
+            ? undefined
+            : filterData.categories.find((category) => category.name === filters.category)?.id
+        const sort = filters.sort === 'nearest' && !location ? 'newest' : filters.sort
+        const supportedAllergens = filters.excludedAllergens.filter((allergen) =>
+          filterData.allergens.some((option) => option.value === allergen),
+        )
+        return catalogueService.search(
+          {
+            q: query,
+            categoryIds: categoryId === undefined ? undefined : [categoryId],
+            priceMin: filters.minPrice,
+            priceMax: filters.maxPrice,
+            pickupFrom: tehranDateTime(filters.startHour),
+            pickupTo: tehranDateTime(filters.endHour),
+            excludeAllergens: supportedAllergens,
+            location,
+            radiusKm: location ? filters.maxDistance : undefined,
+            sort,
+            limit: 50,
+          },
+          filterData.categories,
+        )
+      })
+      .then((nextOffers) => {
+        if (!active || !nextOffers) return
+        setOffers(nextOffers)
+        setSavedOffers(Object.fromEntries(nextOffers.map((offer) => [offer.id, offer.isFavorite])))
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setLoadError(error instanceof Error ? error.message : 'دریافت پیشنهادها ناموفق بود.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [filterData, filters, location, query, reloadKey])
+
+  const results = offers
 
   function updateQuery(value: string) {
     const next = new URLSearchParams(searchParams)
@@ -294,22 +347,16 @@ export default function SearchResultsPage() {
   }
 
   function updateFilters(nextFilters: DiscoveryFilters) {
-    setSearchParams(writeFilters(searchParams, nextFilters), { replace: true })
+    setSearchParams(writeFilters(searchParams, nextFilters, defaults), { replace: true })
   }
 
   function updateDraft(patch: Partial<DiscoveryFilters>) {
     setDraftFilters((current) => ({ ...current, ...patch }))
   }
 
-  function clearPreviewState() {
-    const next = new URLSearchParams(searchParams)
-    next.delete('preview')
-    setSearchParams(next, { replace: true })
-  }
-
   function clearAllFilters() {
-    setDraftFilters(defaultFilters)
-    const next = writeFilters(searchParams, defaultFilters)
+    setDraftFilters(defaults)
+    const next = writeFilters(searchParams, defaults, defaults)
     next.delete('q')
     setSearchParams(next, { replace: true })
     setFiltersOpen(false)
@@ -322,15 +369,21 @@ export default function SearchResultsPage() {
     updateDraft({ excludedAllergens })
   }
 
+  async function updateSaved(id: string, value: boolean) {
+    setFavoriteError('')
+    try {
+      await catalogueService.setFavorite(id, value)
+      setSavedOffers((current) => ({ ...current, [id]: value }))
+    } catch (error) {
+      setFavoriteError(error instanceof Error ? error.message : 'ذخیره پیشنهاد ناموفق بود.')
+    }
+  }
+
   const activeFilterCount =
     Number(filters.category !== 'همه') +
-    Number(
-      filters.minPrice !== defaultFilters.minPrice || filters.maxPrice !== defaultFilters.maxPrice,
-    ) +
-    Number(filters.maxDistance !== defaultFilters.maxDistance) +
-    Number(
-      filters.startHour !== defaultFilters.startHour || filters.endHour !== defaultFilters.endHour,
-    ) +
+    Number(filters.minPrice !== defaults.minPrice || filters.maxPrice !== defaults.maxPrice) +
+    Number(filters.maxDistance !== defaults.maxDistance) +
+    Number(filters.startHour !== defaults.startHour || filters.endHour !== defaults.endHour) +
     filters.excludedAllergens.length
 
   return (
@@ -409,11 +462,11 @@ export default function SearchResultsPage() {
         </section>
 
         {(filters.category !== 'همه' ||
-          filters.minPrice !== defaultFilters.minPrice ||
-          filters.maxPrice !== defaultFilters.maxPrice ||
-          filters.maxDistance !== defaultFilters.maxDistance ||
-          filters.startHour !== defaultFilters.startHour ||
-          filters.endHour !== defaultFilters.endHour ||
+          filters.minPrice !== defaults.minPrice ||
+          filters.maxPrice !== defaults.maxPrice ||
+          filters.maxDistance !== defaults.maxDistance ||
+          filters.startHour !== defaults.startHour ||
+          filters.endHour !== defaults.endHour ||
           activeAllergens.length > 0) && (
           <div className="flex flex-wrap items-center gap-2" aria-label="فیلترهای فعال">
             {filters.category !== 'همه' && (
@@ -422,36 +475,32 @@ export default function SearchResultsPage() {
                 onClear={() => updateFilters({ ...filters, category: 'همه' })}
               />
             )}
-            {(filters.minPrice !== defaultFilters.minPrice ||
-              filters.maxPrice !== defaultFilters.maxPrice) && (
+            {(filters.minPrice !== defaults.minPrice || filters.maxPrice !== defaults.maxPrice) && (
               <ActiveFilter
                 label={`${formatPrice(filters.minPrice)} تا ${formatPrice(filters.maxPrice)}`}
                 onClear={() =>
                   updateFilters({
                     ...filters,
-                    minPrice: defaultFilters.minPrice,
-                    maxPrice: defaultFilters.maxPrice,
+                    minPrice: defaults.minPrice,
+                    maxPrice: defaults.maxPrice,
                   })
                 }
               />
             )}
-            {filters.maxDistance !== defaultFilters.maxDistance && (
+            {filters.maxDistance !== defaults.maxDistance && (
               <ActiveFilter
                 label={`تا ${filters.maxDistance.toLocaleString('fa-IR')} کیلومتر`}
-                onClear={() =>
-                  updateFilters({ ...filters, maxDistance: defaultFilters.maxDistance })
-                }
+                onClear={() => updateFilters({ ...filters, maxDistance: defaults.maxDistance })}
               />
             )}
-            {(filters.startHour !== defaultFilters.startHour ||
-              filters.endHour !== defaultFilters.endHour) && (
+            {(filters.startHour !== defaults.startHour || filters.endHour !== defaults.endHour) && (
               <ActiveFilter
                 label={`${formatHour(filters.startHour)} تا ${formatHour(filters.endHour)}`}
                 onClear={() =>
                   updateFilters({
                     ...filters,
-                    startHour: defaultFilters.startHour,
-                    endHour: defaultFilters.endHour,
+                    startHour: defaults.startHour,
+                    endHour: defaults.endHour,
                   })
                 }
               />
@@ -487,7 +536,7 @@ export default function SearchResultsPage() {
             مرتب‌سازی:
             <select
               aria-label="مرتب‌سازی پیشنهادها"
-              value={filters.sort}
+              value={filters.sort === 'nearest' && !location ? 'newest' : filters.sort}
               onChange={(event) => {
                 if (isSortOrder(event.target.value)) {
                   updateFilters({ ...filters, sort: event.target.value })
@@ -504,50 +553,59 @@ export default function SearchResultsPage() {
           </label>
         </div>
 
-        {isErrorPreview ? (
-          <NetworkError onRetry={clearPreviewState} />
-        ) : isLoadingPreview ? (
-          <div
-            aria-label="در حال بارگذاری پیشنهادها"
-            aria-busy="true"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 sm:gap-6"
-          >
-            {Array.from({ length: 6 }, (_, index) => (
-              <FoodListingCard key={index} state="loading" className="min-h-full" />
-            ))}
-          </div>
-        ) : results.length > 0 ? (
-          <div
-            aria-label="پیشنهادهای جستجو"
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 sm:gap-6"
-          >
-            {results.map((offer) => (
-              <FoodListingCard
-                key={offer.id}
-                {...offer}
-                renderLink={
-                  offer.storeId
-                    ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
-                    : undefined
-                }
-                headingLevel={2}
-                saved={Boolean(savedOffers[offer.id])}
-                onSaveChange={(saved) =>
-                  setSavedOffers((current) => ({ ...current, [offer.id]: saved }))
-                }
-                className="min-h-full"
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyResults
-            query={query}
-            onClear={clearAllFilters}
-            onOpenFilters={() => {
-              setDraftFilters({ ...filters, maxDistance: 10 })
-              setFiltersOpen(true)
+        {loadError ? (
+          <NetworkError
+            message={loadError}
+            onRetry={() => {
+              setFilterData(undefined)
+              setReloadKey((key) => key + 1)
             }}
           />
+        ) : (
+          <>
+            {favoriteError && <InlineAlert tone="error">{favoriteError}</InlineAlert>}
+            {loading ? (
+              <div
+                aria-label="در حال بارگذاری پیشنهادها"
+                aria-busy="true"
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 sm:gap-6"
+              >
+                {Array.from({ length: 6 }, (_, index) => (
+                  <FoodListingCard key={index} state="loading" className="min-h-full" />
+                ))}
+              </div>
+            ) : results.length > 0 ? (
+              <div
+                aria-label="پیشنهادهای جستجو"
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 sm:gap-6"
+              >
+                {results.map((offer) => (
+                  <FoodListingCard
+                    key={offer.id}
+                    {...offer}
+                    renderLink={
+                      offer.storeId
+                        ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                        : undefined
+                    }
+                    headingLevel={2}
+                    saved={savedOffers[offer.id] ?? offer.isFavorite}
+                    onSaveChange={(saved) => void updateSaved(offer.id, saved)}
+                    className="min-h-full"
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyResults
+                query={query}
+                onClear={clearAllFilters}
+                onOpenFilters={() => {
+                  setDraftFilters({ ...filters, maxDistance: 10 })
+                  setFiltersOpen(true)
+                }}
+              />
+            )}
+          </>
         )}
       </main>
 
@@ -557,7 +615,7 @@ export default function SearchResultsPage() {
         variant="sheet"
         title="فیلترها"
         headerAction={
-          <Button variant="tertiary" size="sm" onClick={() => setDraftFilters(defaultFilters)}>
+          <Button variant="tertiary" size="sm" onClick={() => setDraftFilters(defaults)}>
             پاک کردن همه
           </Button>
         }
@@ -569,7 +627,7 @@ export default function SearchResultsPage() {
               setFiltersOpen(false)
             }}
           >
-            نمایش {draftResultCount.toLocaleString('fa-IR')} نتیجه
+            نمایش {results.length.toLocaleString('fa-IR')} نتیجه
           </Button>
         }
       >
@@ -579,7 +637,7 @@ export default function SearchResultsPage() {
               {draftFilters.category}
             </span>
           )}
-          {draftFilters.maxDistance !== defaultFilters.maxDistance && (
+          {draftFilters.maxDistance !== defaults.maxDistance && (
             <span className="rounded-full bg-primary-subtle px-3 py-2 text-caption text-primary">
               تا {draftFilters.maxDistance.toLocaleString('fa-IR')} کیلومتر
             </span>
@@ -607,6 +665,12 @@ export default function SearchResultsPage() {
 
         <fieldset className="space-y-3 border-b border-border-default pb-5">
           <legend className="mb-2 text-label-lg">محدوده قیمت</legend>
+          {filterData && (
+            <p className="text-caption text-text-secondary">
+              بازه پیشنهادها: {formatPrice(filterData.price.min)} تا{' '}
+              {formatPrice(filterData.price.max)}
+            </p>
+          )}
           <div className="flex items-center justify-between text-caption text-text-secondary">
             <span>حداقل {formatPrice(draftFilters.minPrice)}</span>
             <span>حداکثر {formatPrice(draftFilters.maxPrice)}</span>
@@ -617,7 +681,7 @@ export default function SearchResultsPage() {
               aria-label="حداقل قیمت"
               type="range"
               min="0"
-              max="150000"
+              max={sliderPriceMax}
               step="5000"
               value={draftFilters.minPrice}
               onChange={(event) =>
@@ -633,8 +697,8 @@ export default function SearchResultsPage() {
             <input
               aria-label="حداکثر قیمت"
               type="range"
-              min="10000"
-              max="160000"
+              min="0"
+              max={sliderPriceMax}
               step="5000"
               value={draftFilters.maxPrice}
               onChange={(event) =>
@@ -649,6 +713,15 @@ export default function SearchResultsPage() {
 
         <fieldset className="space-y-2 border-b border-border-default pb-5">
           <legend className="mb-2 text-label-lg">فاصله از شما</legend>
+          {!location && (
+            <p className="text-caption text-text-secondary">
+              برای فیلتر فاصله ابتدا{' '}
+              <Link to="/map" className="text-primary underline">
+                محدوده را انتخاب کن
+              </Link>
+              .
+            </p>
+          )}
           {[1, 2, 5, 10].map((distance) => (
             <Radio
               key={distance}
@@ -656,6 +729,7 @@ export default function SearchResultsPage() {
               value={String(distance)}
               label={`تا ${distance.toLocaleString('fa-IR')} کیلومتر`}
               checked={draftFilters.maxDistance === distance}
+              disabled={!location}
               onChange={() => updateDraft({ maxDistance: distance })}
             />
           ))}
@@ -706,7 +780,8 @@ export default function SearchResultsPage() {
         <fieldset className="space-y-2">
           <legend className="mb-2 text-label-lg">حذف آلرژن‌ها</legend>
           <p className="mb-2 text-caption text-text-secondary">
-            اطلاعات آلرژن‌ها نمونه‌ای است؛ پیش از سفارش با فروشگاه بررسی کن.
+            این فیلتر بر اساس آلرژن‌های ثبت‌شده برای پیشنهادها اعمال می‌شود؛ پیش از سفارش با فروشگاه
+            بررسی کن.
           </p>
           {allergenOptions.map((allergen) => (
             <label key={allergen.value} className="flex min-h-11 items-center gap-3">
