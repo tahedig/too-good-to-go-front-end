@@ -1,21 +1,18 @@
-import React from 'react';
-import type { VendorOrder } from '../types';
-import { toPersianDigits } from '@/lib/digits';
-import { formatNumber } from '@/lib/format';
-import { formatTimeSlot } from '../utils/dateUtils';
-import { Check } from 'lucide-react';
+import React from 'react'
+import type { VendorOrder } from '../types'
+import { toPersianDigits } from '@/lib/digits'
+import { formatNumber } from '@/lib/format'
+import { formatJalaliDate, formatTimeSlot } from '../utils/dateUtils'
+import { Check } from 'lucide-react'
 
 interface VendorOrderCardProps {
-  order: VendorOrder;
-  onVerifyPickup: (order: VendorOrder) => void;
+  order: VendorOrder
+  onVerifyPickup: (order: VendorOrder) => void
 }
 
-export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
-  order,
-  onVerifyPickup,
-}) => {
-  const isDelivered = order.status === 'delivered';
-  const isCancelled = order.status === 'cancelled';
+export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({ order, onVerifyPickup }) => {
+  const isDelivered = order.status === 'delivered'
+  const isCancelled = order.status === 'cancelled'
 
   const getStatusBadge = () => {
     switch (order.status) {
@@ -24,32 +21,30 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
           <span className="inline-flex items-center rounded-lg bg-surface-sage/70 px-2.5 py-1 text-xs font-semibold text-primary">
             رزرو فعال
           </span>
-        );
+        )
       case 'ready_for_pickup':
         return (
           <span className="inline-flex items-center rounded-lg bg-accent-subtle px-2.5 py-1 text-xs font-semibold text-warning">
             در انتظار تحویل
           </span>
-        );
+        )
       case 'delivered':
         return (
           <span className="inline-flex items-center gap-1 rounded-lg bg-success-subtle px-2.5 py-1 text-xs font-semibold text-success">
             <Check className="size-3.5" />
             تحویل‌شده
           </span>
-        );
+        )
       case 'cancelled':
         return (
           <span className="inline-flex items-center rounded-lg bg-error-subtle px-2.5 py-1 text-xs font-semibold text-error">
             لغوشده
           </span>
-        );
+        )
     }
-  };
+  }
 
-  const formattedDate = order.pickup_date.includes('۱۴۰') || order.pickup_date.includes('140')
-    ? order.pickup_date.replace('1405-07-27', '۲۷ مهر ۱۴۰۵').replace('1405-07-28', '۲۸ مهر ۱۴۰۵')
-    : order.pickup_date;
+  const formattedDate = formatJalaliDate(order.pickup_date)
 
   return (
     <div className="w-full rounded-xl border border-border-default bg-surface p-4 shadow-1 transition-shadow hover:shadow-2">
@@ -58,12 +53,8 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
         {/* Customer & Status Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-base font-bold text-text-primary">
-              {order.customer.name}
-            </h3>
-            <p className="mt-0.5 text-xs text-text-secondary">
-              {order.package.title}
-            </p>
+            <h3 className="text-base font-bold text-text-primary">{order.customer.name}</h3>
+            <p className="mt-0.5 text-xs text-text-secondary">{order.package.title}</p>
           </div>
           {getStatusBadge()}
         </div>
@@ -89,10 +80,7 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
           <div>
             <span className="text-[11px] text-text-secondary block">ساعت تحویل</span>
             <span className="text-xs font-bold text-text-primary mt-1 block dir-ltr">
-              {formatTimeSlot(
-                order.pickup_time_slot.start_time,
-                order.pickup_time_slot.end_time
-              )}
+              {formatTimeSlot(order.pickup_time_slot.start_time, order.pickup_time_slot.end_time)}
             </span>
           </div>
           <div>
@@ -143,24 +131,17 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
         {/* Center: Info */}
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h3 className="text-base font-bold text-text-primary">
-              {order.customer.name}
-            </h3>
+            <h3 className="text-base font-bold text-text-primary">{order.customer.name}</h3>
             {getStatusBadge()}
           </div>
-          <p className="mt-1 text-sm text-text-secondary">
-            {order.package.title}
-          </p>
+          <p className="mt-1 text-sm text-text-secondary">{order.package.title}</p>
           <div className="mt-2 text-xs text-text-secondary flex items-center gap-2">
             <span>{toPersianDigits(order.quantity)} بسته</span>
             <span>•</span>
             <span>{toPersianDigits(formattedDate)}</span>
             <span>•</span>
             <span>
-              {formatTimeSlot(
-                order.pickup_time_slot.start_time,
-                order.pickup_time_slot.end_time
-              )}
+              {formatTimeSlot(order.pickup_time_slot.start_time, order.pickup_time_slot.end_time)}
             </span>
           </div>
         </div>
@@ -186,5 +167,5 @@ export const VendorOrderCard: React.FC<VendorOrderCardProps> = ({
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

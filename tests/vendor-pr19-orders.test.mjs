@@ -9,6 +9,9 @@ let vite
 let vendorApi
 let VendorOrdersPage
 let VendorReservationsPage
+let OrderDateSelector
+let VendorOrderCard
+let formatJalaliDate
 
 before(async () => {
   process.env.VITE_API_BASE_URL = '/api'
@@ -23,13 +26,20 @@ before(async () => {
   })
   vite = await createServer({
     server: { middlewareMode: true, watch: null, hmr: false },
-    ssr: { external: ['react', 'react-dom', 'react-router-dom', 'lucide-react'] },
+    ssr: { external: ['react', 'react-dom', 'react-router-dom', 'lucide-react', 'jalaali-js'] },
   })
   ;({ vendorApi } = await vite.ssrLoadModule('/src/features/vendor/api/vendorApi.ts'))
   ;({ default: VendorOrdersPage } = await vite.ssrLoadModule('/src/pages/vendor/OrdersPage.tsx'))
   ;({ default: VendorReservationsPage } = await vite.ssrLoadModule(
     '/src/pages/vendor/ReservationsPage.tsx',
   ))
+  ;({ OrderDateSelector } = await vite.ssrLoadModule(
+    '/src/features/vendor/components/OrderDateSelector.tsx',
+  ))
+  ;({ VendorOrderCard } = await vite.ssrLoadModule(
+    '/src/features/vendor/components/VendorOrderCard.tsx',
+  ))
+  ;({ formatJalaliDate } = await vite.ssrLoadModule('/src/features/vendor/utils/dateUtils.ts'))
 })
 
 after(async () => {
@@ -99,5 +109,43 @@ test('PR #19 VendorOrdersPage and VendorReservationsPage render cleanly on SSR',
     React.createElement(MemoryRouter, null, React.createElement(VendorReservationsPage)),
   )
   assert.match(ordersHtml, /سفارشات/)
+  assert.match(ordersHtml, /aria-haspopup="dialog"/)
   assert.match(reservationsHtml, /رزروها/)
+  assert.match(reservationsHtml, /aria-haspopup="dialog"/)
+})
+
+test('OrderDateSelector uses themed VendorDatePicker and formats ISO pickup dates in Jalali', () => {
+  assert.equal(formatJalaliDate('2026-11-26'), '۵ آذر ۱۴۰۵')
+
+  const selectorHtml = renderToStaticMarkup(
+    React.createElement(OrderDateSelector, {
+      selectedDate: '2026-11-26',
+      onDateChange: () => {},
+      allowClear: true,
+    }),
+  )
+  assert.match(selectorHtml, /aria-haspopup="dialog"/)
+  assert.match(selectorHtml, /۵ آذر ۱۴۰۵/)
+  assert.match(selectorHtml, /همه تاریخ‌ها/)
+  assert.doesNotMatch(selectorHtml, /<select/)
+
+  const cardHtml = renderToStaticMarkup(
+    React.createElement(VendorOrderCard, {
+      order: {
+        id: 'ord-1',
+        order_number: 'TG-0001',
+        customer: { id: 'c1', name: 'لیلا علیزاده', phone: '09121112233' },
+        package: { id: 'p1', title: 'بسته صبحانه', image_url: '' },
+        quantity: 1,
+        unit_price: 45000,
+        total_price: 45000,
+        status: 'active',
+        pickup_date: '2026-11-26',
+        pickup_time_slot: { start_time: '18:00', end_time: '19:00' },
+        created_at: '2026-11-26T10:00:00Z',
+      },
+      onVerifyPickup: () => {},
+    }),
+  )
+  assert.match(cardHtml, /۵ آذر ۱۴۰۵/)
 })
