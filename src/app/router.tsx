@@ -12,6 +12,8 @@ import VendorStoresPage from '@/pages/vendor/StoresPage'
 import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
+import VendorOrdersPage from '@/pages/vendor/OrdersPage'
+import VendorReservationsPage from '@/pages/vendor/ReservationsPage'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import VendorFinancePage from '@/pages/vendor/FinancePage'
@@ -78,6 +80,8 @@ export const router = createBrowserRouter([
       },
       { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
       { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
+      { path: 'orders/list', element: <VendorOrdersPage /> },
+      { path: 'reservations', element: <VendorReservationsPage /> },
       {
         path: 'stores',
         element: <VendorStoresPage />,
