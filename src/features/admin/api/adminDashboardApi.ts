@@ -1,8 +1,9 @@
+import type { ListingStatus } from '@/components/ui/StatusBadge'
 import { env } from '@/config/env'
 import { ApiError, apiRequest } from '@/lib/api/client'
 import { adminVendorsApi, type AdminVendorListDto } from './adminVendorsApi'
 
-export type AdminRequestStatus = 'pending' | 'approved' | 'rejected' | 'suspended'
+export type AdminActivityType = 'store_application' | 'store_decision' | 'reservation'
 
 export type AdminDashboardMetrics = {
   registeredStores: number
@@ -19,15 +20,18 @@ export type AdminRequestStatusCounts = {
   pending: number
   approved: number
   rejected: number
+  suspended: number
 }
 
 export type AdminRecentActivityItem = {
   id: string
+  type: AdminActivityType
   storeName: string
   ownerName: string
   dateLabel: string
-  status: AdminRequestStatus
+  badgeStatus: ListingStatus
   statusLabel: string
+  amount: number | null
 }
 
 export type AdminDashboardData = {
@@ -36,47 +40,61 @@ export type AdminDashboardData = {
   recentActivity: AdminRecentActivityItem[]
 }
 
-type AdminDashboardDto = {
-  metrics?: Partial<AdminDashboardMetrics> & {
-    registered_stores?: number
-    known_customers?: number
-    active_products?: number
-    active_stores?: number
-    completed_reservations?: number
-    active_reservations?: number
-    pending_requests?: number
-    platform_commission?: number
-  }
-  request_status?: Partial<AdminRequestStatusCounts>
-  requestStatus?: Partial<AdminRequestStatusCounts>
-  recent_activity?: Array<{
-    id?: string | number
-    store_name?: string
-    storeName?: string
-    owner_name?: string
-    ownerName?: string
-    date_label?: string
-    dateLabel?: string
-    created_at?: string
-    submitted_at?: string
-    status?: string
-    status_label?: string
-    statusLabel?: string
-  }>
-  recentActivity?: Array<{
-    id?: string | number
-    store_name?: string
-    storeName?: string
-    owner_name?: string
-    ownerName?: string
-    date_label?: string
-    dateLabel?: string
-    created_at?: string
-    submitted_at?: string
-    status?: string
-    status_label?: string
-    statusLabel?: string
-  }>
+export type AdminDashboardQuery = {
+  activityLimit?: number
+  activityType?: string
+}
+
+// Matches tahedig/too-good-to-go-back-end PR #29 (feat/TEAM-58/admin-dashboard)
+// internal/application/dto/admin_dashboard_dto.go
+export type AdminDashboardTotalsDto = {
+  customers: number
+  vendors: number
+  registered_stores: number
+  active_stores: number
+  active_offers: number
+  pending_applications: number
+  total_reservations: number
+  active_reservations: number
+  completed_reservations: number
+  platform_commission: number
+}
+
+export type AdminApplicationBreakdownDto = {
+  pending: number
+  approved: number
+  rejected: number
+  suspended: number
+}
+
+export type AdminReservationBreakdownDto = {
+  pending_payment: number
+  paid: number
+  ready: number
+  completed: number
+  cancelled: number
+  expired: number
+  no_show: number
+  active: number
+  total: number
+}
+
+export type AdminActivityItemDto = {
+  type: AdminActivityType
+  entity_id: string
+  title: string
+  actor_name: string
+  status: string
+  action?: string
+  amount?: number | null
+  occurred_at: string
+}
+
+export type AdminDashboardResponseDto = {
+  totals: AdminDashboardTotalsDto
+  applications: AdminApplicationBreakdownDto
+  reservations: AdminReservationBreakdownDto
+  recent_activity: AdminActivityItemDto[]
 }
 
 const DEMO_DASHBOARD_DATA: AdminDashboardData = {
@@ -94,52 +112,67 @@ const DEMO_DASHBOARD_DATA: AdminDashboardData = {
     pending: 3,
     approved: 1,
     rejected: 1,
+    suspended: 0,
   },
   recentActivity: [
     {
       id: 'activity-1',
+      type: 'store_application',
       storeName: 'نان صبحگاهی · شعبه شریعتی',
       ownerName: 'آیدا کریمی',
       dateLabel: '۲۷ مهر ۱۴۰۵',
-      status: 'pending',
+      badgeStatus: 'pending',
       statusLabel: 'در انتظار بررسی',
+      amount: null,
     },
     {
       id: 'activity-2',
+      type: 'store_application',
       storeName: 'نانوایی سنتی و آشپزخانهٔ صبحانهٔ محلهٔ ولیعصر',
       ownerName: 'سمیرا محمدی',
       dateLabel: '۲۷ مهر ۱۴۰۵',
-      status: 'pending',
+      badgeStatus: 'pending',
       statusLabel: 'در انتظار بررسی',
+      amount: null,
     },
     {
       id: 'activity-3',
+      type: 'store_application',
       storeName: 'خواربار کاسپین',
       ownerName: 'رضا حسینی',
       dateLabel: '۲۶ مهر ۱۴۰۵',
-      status: 'pending',
+      badgeStatus: 'pending',
       statusLabel: 'در انتظار بررسی',
+      amount: null,
     },
   ],
 }
 
-function mapStatus(value?: string): AdminRequestStatus {
-  if (value === 'approved' || value === 'active') return 'approved'
-  if (value === 'rejected') return 'rejected'
-  if (value === 'suspended') return 'suspended'
-  return 'pending'
-}
-
-function defaultStatusLabel(status: AdminRequestStatus): string {
+function mapStatusBadge(status?: string): { badgeStatus: ListingStatus; statusLabel: string } {
   switch (status) {
     case 'approved':
-      return 'تأییدشده'
+    case 'active':
+      return { badgeStatus: 'approved', statusLabel: 'تأییدشده' }
     case 'rejected':
-      return 'ردشده'
+      return { badgeStatus: 'rejected', statusLabel: 'ردشده' }
     case 'suspended':
-      return 'تعلیق‌شده'
+      return { badgeStatus: 'suspended', statusLabel: 'تعلیق‌شده' }
+    case 'pending_payment':
+      return { badgeStatus: 'pending', statusLabel: 'در انتظار پرداخت' }
+    case 'paid':
+      return { badgeStatus: 'approved', statusLabel: 'پرداخت‌شده' }
+    case 'ready':
+      return { badgeStatus: 'approved', statusLabel: 'آماده تحویل' }
+    case 'completed':
+      return { badgeStatus: 'approved', statusLabel: 'تحویل‌شده' }
+    case 'cancelled':
+      return { badgeStatus: 'rejected', statusLabel: 'لغوشده' }
+    case 'expired':
+      return { badgeStatus: 'inactive', statusLabel: 'منقضی‌شده' }
+    case 'no_show':
+      return { badgeStatus: 'inactive', statusLabel: 'عدم مراجعه' }
     default:
-      return 'در انتظار بررسی'
+      return { badgeStatus: 'pending', statusLabel: 'در انتظار بررسی' }
   }
 }
 
@@ -151,42 +184,52 @@ function formatActivityDate(dateString?: string): string {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
+    timeZone: 'Asia/Tehran',
   }).format(date)
 }
 
-function normalizeDashboardDto(dto: AdminDashboardDto): AdminDashboardData {
-  const metrics = dto.metrics ?? {}
-  const statusCounts = dto.request_status ?? dto.requestStatus ?? {}
-  const rawActivity = dto.recent_activity ?? dto.recentActivity ?? []
+function buildDashboardQueryString(query: AdminDashboardQuery = {}): string {
+  const params = new URLSearchParams()
+  const limit = query.activityLimit ?? 5
+  params.set('activity_limit', String(limit))
+  if (query.activityType) params.set('activity_type', query.activityType)
+  const serialized = params.toString()
+  return serialized ? `?${serialized}` : ''
+}
+
+function normalizeDashboardResponse(dto: AdminDashboardResponseDto): AdminDashboardData {
+  const totals = dto.totals
+  const applications = dto.applications
+  const recentActivity = dto.recent_activity ?? []
 
   return {
     metrics: {
-      registeredStores: metrics.registeredStores ?? metrics.registered_stores ?? 0,
-      knownCustomers: metrics.knownCustomers ?? metrics.known_customers ?? 0,
-      activeProducts: metrics.activeProducts ?? metrics.active_products ?? 0,
-      activeStores: metrics.activeStores ?? metrics.active_stores ?? 0,
-      completedReservations: metrics.completedReservations ?? metrics.completed_reservations ?? 0,
-      activeReservations: metrics.activeReservations ?? metrics.active_reservations ?? 0,
-      pendingRequests: metrics.pendingRequests ?? metrics.pending_requests ?? 0,
-      platformCommission: metrics.platformCommission ?? metrics.platform_commission ?? 0,
+      registeredStores: totals.registered_stores,
+      knownCustomers: totals.customers,
+      activeProducts: totals.active_offers,
+      activeStores: totals.active_stores,
+      completedReservations: totals.completed_reservations,
+      activeReservations: totals.active_reservations,
+      pendingRequests: totals.pending_applications,
+      platformCommission: totals.platform_commission,
     },
     requestStatus: {
-      pending: statusCounts.pending ?? 0,
-      approved: statusCounts.approved ?? 0,
-      rejected: statusCounts.rejected ?? 0,
+      pending: applications.pending,
+      approved: applications.approved,
+      rejected: applications.rejected,
+      suspended: applications.suspended,
     },
-    recentActivity: rawActivity.map((item, index) => {
-      const status = mapStatus(item.status)
+    recentActivity: recentActivity.map((item, index) => {
+      const { badgeStatus, statusLabel } = mapStatusBadge(item.status)
       return {
-        id: String(item.id ?? `activity-${index + 1}`),
-        storeName: item.storeName ?? item.store_name ?? '',
-        ownerName: item.ownerName ?? item.owner_name ?? '',
-        dateLabel:
-          item.dateLabel ??
-          item.date_label ??
-          formatActivityDate(item.submitted_at ?? item.created_at),
-        status,
-        statusLabel: item.statusLabel ?? item.status_label ?? defaultStatusLabel(status),
+        id: item.entity_id || `activity-${index + 1}`,
+        type: item.type ?? 'store_application',
+        storeName: item.title,
+        ownerName: item.actor_name || '—',
+        dateLabel: formatActivityDate(item.occurred_at),
+        badgeStatus,
+        statusLabel,
+        amount: item.amount ?? null,
       }
     }),
   }
@@ -196,7 +239,7 @@ function buildFromVendorsSummary(vendors: AdminVendorListDto): AdminDashboardDat
   const { pending, approved, rejected, suspended } = vendors.counts
   return {
     metrics: {
-      registeredStores: approved + suspended,
+      registeredStores: pending + approved + rejected + suspended,
       knownCustomers: 0,
       activeProducts: 0,
       activeStores: approved,
@@ -209,41 +252,60 @@ function buildFromVendorsSummary(vendors: AdminVendorListDto): AdminDashboardDat
       pending,
       approved,
       rejected,
+      suspended,
     },
-    recentActivity: vendors.items.slice(0, 3).map((item) => {
-      const status = mapStatus(item.status)
+    recentActivity: vendors.items.slice(0, 5).map((item) => {
+      const { badgeStatus, statusLabel } = mapStatusBadge(item.status)
       return {
         id: item.id,
+        type: 'store_application',
         storeName: item.store_name,
-        ownerName: item.owner_name,
+        ownerName: item.owner_name || '—',
         dateLabel: formatActivityDate(item.submitted_at),
-        status,
-        statusLabel: defaultStatusLabel(status),
+        badgeStatus,
+        statusLabel,
+        amount: null,
       }
     }),
   }
 }
 
-/**
- * Backend alignment notes (tahedig/too-good-to-go-back-end):
- * - GET /admin/vendors already exists on `main` and supplies request status counts + recent submitted stores.
- * - A unified GET /admin/dashboard endpoint for aggregate customer, product, reservation, and commission metrics
- *   is not yet implemented on the backend; `env.adminApiMode === 'mock'` renders demo data in the meantime.
- */
 export const adminDashboardApi = {
-  async getSummary(): Promise<AdminDashboardData> {
+  async getSummary(query: AdminDashboardQuery = {}): Promise<AdminDashboardData> {
     if (env.adminApiMode === 'mock') {
       return DEMO_DASHBOARD_DATA
     }
 
     try {
-      const dto = await apiRequest<AdminDashboardDto>('/admin/dashboard')
-      return normalizeDashboardDto(dto)
+      const dto = await apiRequest<AdminDashboardResponseDto>(
+        `/admin/dashboard${buildDashboardQueryString(query)}`,
+      )
+      return normalizeDashboardResponse(dto)
     } catch (error) {
       if (error instanceof ApiError && [404, 405, 501].includes(error.status)) {
-        const vendors = await adminVendorsApi.listVendors({ page: 1, pageSize: 3 })
-        return buildFromVendorsSummary(vendors)
+        try {
+          const vendors = await adminVendorsApi.listVendors({ page: 1, pageSize: 5 })
+          return buildFromVendorsSummary(vendors)
+        } catch (vendorError) {
+          if (
+            import.meta.env.DEV &&
+            vendorError instanceof ApiError &&
+            [0, 502, 503, 504].includes(vendorError.status)
+          ) {
+            return DEMO_DASHBOARD_DATA
+          }
+          throw vendorError
+        }
       }
+
+      if (
+        import.meta.env.DEV &&
+        error instanceof ApiError &&
+        [0, 502, 503, 504].includes(error.status)
+      ) {
+        return DEMO_DASHBOARD_DATA
+      }
+
       throw error
     }
   },

@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { StatCard } from '@/components/ui/StatCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
-import { adminDashboardApi, type AdminDashboardData } from '@/features/admin/api/adminDashboardApi'
+import {
+  adminDashboardApi,
+  type AdminActivityType,
+  type AdminDashboardData,
+} from '@/features/admin/api/adminDashboardApi'
 import { ApiError } from '@/lib/api/client'
 import { formatNumber } from '@/lib/format'
 
@@ -29,9 +33,21 @@ function DashboardLoading() {
   )
 }
 
+function getActivityRoute(type: AdminActivityType): string {
+  switch (type) {
+    case 'reservation':
+      return '/admin/orders'
+    case 'store_decision':
+      return '/admin/stores'
+    default:
+      return '/admin/store-requests'
+  }
+}
+
 export default function AdminDashboardPage() {
+  const navigate = useNavigate()
   const [data, setData] = useState<AdminDashboardData | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<{ message: string; status?: number } | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
@@ -45,17 +61,31 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     let active = true
     adminDashboardApi
-      .getSummary()
+      .getSummary({ activityLimit: 5 })
       .then((summary) => {
         if (active) setData(summary)
       })
       .catch((requestError: unknown) => {
         if (!active) return
-        setError(
-          requestError instanceof ApiError
-            ? requestError.message
-            : 'بارگذاری اطلاعات داشبورد انجام نشد.',
-        )
+        if (requestError instanceof ApiError) {
+          if (requestError.status === 401) {
+            setError({
+              status: 401,
+              message: 'برای مشاهده داشبورد مدیریت، ابتدا با حساب مدیر وارد شوید.',
+            })
+            return
+          }
+          if (requestError.status === 403) {
+            setError({
+              status: 403,
+              message: 'حساب کاربری فعلی دسترسی مدیریت ندارد.',
+            })
+            return
+          }
+          setError({ status: requestError.status, message: requestError.message })
+          return
+        }
+        setError({ message: 'بارگذاری اطلاعات داشبورد انجام نشد.' })
       })
 
     return () => {
@@ -73,15 +103,22 @@ export default function AdminDashboardPage() {
   }
 
   if (error || !data) {
+    const needsAuth = error?.status === 401 || error?.status === 403
     return (
       <div className="flex flex-col gap-4">
         <h1 className="sr-only">داشبورد مدیریت</h1>
-        <InlineAlert tone="error">{error || 'اطلاعات داشبورد در دسترس نیست.'}</InlineAlert>
-        <div>
+        <InlineAlert tone="error">{error?.message || 'اطلاعات داشبورد در دسترس نیست.'}</InlineAlert>
+        <div className="flex flex-wrap items-center gap-3">
+          {needsAuth && (
+            <Button size="md" onClick={() => void navigate('/admin/login?returnTo=/admin')}>
+              ورود به پنل مدیریت
+            </Button>
+          )}
           <Button
             size="md"
+            variant={needsAuth ? 'secondary' : 'primary'}
             onClick={() => {
-              setError('')
+              setError(null)
               setData(null)
               setReloadKey((key) => key + 1)
             }}
@@ -235,13 +272,13 @@ export default function AdminDashboardPage() {
             {recentActivity.map((item) => (
               <li key={item.id}>
                 <Link
-                  to="/admin/store-requests"
+                  to={getActivityRoute(item.type)}
                   className="flex flex-col gap-2.5 rounded-sm transition-opacity hover:opacity-80 lg:gap-4"
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="min-w-0 text-title-sm text-primary">{item.storeName}</span>
                     <StatusBadge
-                      status={item.status}
+                      status={item.badgeStatus}
                       label={item.statusLabel}
                       showIcon={false}
                       className="h-auto shrink-0"
