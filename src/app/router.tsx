@@ -22,8 +22,13 @@ import OrdersPage from '@/pages/OrdersPage'
 import PublicStorePage from '@/pages/PublicStorePage'
 import ProfilePage from '@/pages/ProfilePage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
+import ProductDetailsPage from '@/pages/ProductDetailsPage'
 
 export const router = createBrowserRouter([
+  {
+    path: '/products/:productId',
+    element: <ProductDetailsPage />,
+  },
   {
     path: '/',
     element: <UserLayout />,

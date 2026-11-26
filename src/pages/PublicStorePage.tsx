@@ -169,13 +169,17 @@ function ProductSection({ store }: { store: PublicStore }) {
               statusLabel={`${product.remaining.toLocaleString('fa-IR')} بسته موجود`}
               saved={saved}
               onSaveChange={setSaved}
+              renderLink={(props) => <Link to={`/products/${product.id}`} {...props} />}
               showDescription={false}
               showDisclaimer={false}
               swapImageActions
               className="min-h-[522px]"
             />
           ))}
-          <Button fullWidth onClick={() => navigate(`/search?q=${encodeURIComponent(store.name)}`)}>
+          <Button
+            fullWidth
+            onClick={() => navigate(`/products/${store.products[0].id}`)}
+          >
             مشاهده محصول
           </Button>
         </div>

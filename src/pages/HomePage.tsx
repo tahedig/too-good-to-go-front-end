@@ -192,8 +192,8 @@ function OfferCarousel({
               key={offer.id}
               {...offer}
               renderLink={
-                offer.storeId
-                  ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
+                offer.productId
+                  ? (props) => <Link to={`/products/${offer.productId}`} {...props} />
                   : undefined
               }
               saved={Boolean(saved[offer.id])}

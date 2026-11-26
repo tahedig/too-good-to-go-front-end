@@ -15,6 +15,7 @@ function createIllustration(background: string, food: string, garnish: string): 
 export interface DiscoveryOffer {
   id: string
   storeId?: string
+  productId?: string
   merchantName: string
   category: string
   distanceKm: number
@@ -30,6 +31,7 @@ export const discoveryOffers: DiscoveryOffer[] = [
   {
     id: 'morning-bakery',
     storeId: 'morning-bakery',
+    productId: 'morning-bread-bag',
     merchantName: 'نان صبحگاهی',
     category: 'نانوایی',
     distanceKm: 0.6,
