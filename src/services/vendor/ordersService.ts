@@ -25,6 +25,12 @@ type VerifyPickupDto = {
   status: 'delivered'
 }
 
+type UpdateVendorOrderStatusDto = {
+  success: boolean
+  order_id: string
+  status: string
+}
+
 function mapOrder(order: VendorOrderDto): Reservation {
   if (
     !order.id ||
@@ -90,5 +96,26 @@ export async function verifyVendorPickup(id: string, code: string): Promise<void
   )
   if (!result?.success || result.order_id !== id || result.status !== 'delivered') {
     throw new Error('ثبت تحویل از طرف سرور تأیید نشد.')
+  }
+}
+
+export async function updateVendorOrderStatus(
+  id: string,
+  status: 'ready_for_pickup' | 'cancelled' | 'no_show',
+  reason?: string,
+): Promise<void> {
+  const payload: { status: string; reason?: string } = { status }
+  const trimmedReason = reason?.trim()
+  if (trimmedReason) payload.reason = trimmedReason
+
+  const result = await apiRequest<UpdateVendorOrderStatusDto>(
+    `/vendor/orders/${encodeURIComponent(id)}/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    },
+  )
+  if (!result?.success || result.order_id !== id) {
+    throw new Error('تغییر وضعیت سفارش از طرف سرور تأیید نشد.')
   }
 }

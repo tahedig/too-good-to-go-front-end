@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, ImagePlus, MapPin, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { TextArea } from '@/components/ui/TextArea'
-import { storeService } from '@/services/storeService'
+import { ApiError } from '@/lib/api/client'
+import { DEFAULT_STORE_CATEGORIES, storeService } from '@/services/storeService'
 import type {
   OpeningDay,
   StoreLocationDto,
@@ -16,29 +17,37 @@ import type {
   VendorStoreImage,
 } from '@/types/storeTypes'
 
-const CATEGORY_OPTIONS = [
-  { value: '1', label: 'رستوران' },
-  { value: '2', label: 'فست‌فود' },
-  { value: '3', label: 'نانوایی' },
-  { value: '4', label: 'قنادی' },
-  { value: '5', label: 'کافه' },
-  { value: '6', label: 'سوپرمارکت' },
-  { value: '7', label: 'میوه و تره‌بار' },
-]
+const DEFAULT_CATEGORY_OPTIONS = DEFAULT_STORE_CATEGORIES.map((category) => ({
+  value: String(category.id),
+  label: category.name,
+}))
 
-const MAP_BOUNDS = { minLatitude: 35.62, maxLatitude: 35.75, minLongitude: 51.3, maxLongitude: 51.48 }
+const MAP_BOUNDS = {
+  minLatitude: 35.62,
+  maxLatitude: 35.75,
+  minLongitude: 51.3,
+  maxLongitude: 51.48,
+}
 
 function mapPosition(location: StoreLocationDto) {
   return {
     x: Math.max(
       0,
-      Math.min(100, ((location.longitude - MAP_BOUNDS.minLongitude) /
-        (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude)) * 100),
+      Math.min(
+        100,
+        ((location.longitude - MAP_BOUNDS.minLongitude) /
+          (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude)) *
+          100,
+      ),
     ),
     y: Math.max(
       0,
-      Math.min(100, ((MAP_BOUNDS.maxLatitude - location.latitude) /
-        (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude)) * 100),
+      Math.min(
+        100,
+        ((MAP_BOUNDS.maxLatitude - location.latitude) /
+          (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude)) *
+          100,
+      ),
     ),
   }
 }
@@ -117,7 +126,10 @@ function HoursEditor({
       </div>
       <div className="flex flex-col divide-y divide-border-default">
         {days.map((day, index) => (
-          <div key={day.day} className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center">
+          <div
+            key={day.day}
+            className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center"
+          >
             <label className="flex items-center gap-3 text-label-md text-text-primary">
               <input
                 type="checkbox"
@@ -167,6 +179,8 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
   const params = useParams()
   const id = storeId ?? params.id ?? ''
   const navigate = useNavigate()
+  const { pathname, search } = useLocation()
+  const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORY_OPTIONS)
   const [profile, setProfile] = useState<{
     id: string
     store?: VendorStore
@@ -174,11 +188,30 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
     form?: VendorStoreForm
     originalImages?: VendorStoreImage[]
     error?: string
+    errorStatus?: number | null
   } | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [selectingLocation, setSelectingLocation] = useState(false)
   const loading = !profile || profile.id !== id
+
+  useEffect(() => {
+    const controller = new AbortController()
+    storeService
+      .listCategories(controller.signal)
+      .then((categories) => {
+        if (!controller.signal.aborted && categories.length > 0) {
+          setCategoryOptions(
+            categories.map((category) => ({
+              value: String(category.id),
+              label: category.name,
+            })),
+          )
+        }
+      })
+      .catch(() => {})
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -211,8 +244,8 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
         if (active)
           setProfile({
             id,
-            error:
-              reason instanceof Error ? reason.message : 'دریافت اطلاعات فروشگاه ممکن نیست.',
+            errorStatus: reason instanceof ApiError ? reason.status : null,
+            error: reason instanceof Error ? reason.message : 'دریافت اطلاعات فروشگاه ممکن نیست.',
           })
       })
     return () => {
@@ -255,15 +288,33 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
       </p>
     )
 
-  if (!profile?.store || !profile.form)
+  if (!profile?.store || !profile.form) {
+    const authError = profile?.errorStatus === 401 || profile?.errorStatus === 403
     return (
-      <div className="flex flex-col gap-4 p-4 lg:p-8">
-        <InlineAlert tone="error">{error || profile?.error || 'مشخصات فروشگاه در دسترس نیست.'}</InlineAlert>
-        <Link to="/vendor/stores" className="text-label-md text-primary">
-          بازگشت به فروشگاه‌ها
-        </Link>
+      <div className="flex flex-col items-start gap-4 p-4 lg:p-8">
+        <InlineAlert tone={authError ? 'warning' : 'error'}>
+          {profile?.errorStatus === 403
+            ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+            : profile?.errorStatus === 401
+              ? 'برای مشاهدهٔ مشخصات فروشگاه وارد حساب فروشنده شوید.'
+              : error || profile?.error || 'مشخصات فروشگاه در دسترس نیست.'}
+        </InlineAlert>
+        {authError ? (
+          <ButtonLink
+            to={`/login?returnTo=${encodeURIComponent(pathname + search)}`}
+            variant="secondary"
+            size="md"
+          >
+            ورود با حساب فروشنده
+          </ButtonLink>
+        ) : (
+          <Link to="/vendor/stores" className="text-label-md text-primary">
+            بازگشت به فروشگاه‌ها
+          </Link>
+        )}
       </div>
     )
+  }
 
   const { store, form } = profile
   const source = profile.source ?? 'request'
@@ -303,8 +354,8 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
       {isNewRequest && (
         <InlineAlert tone="info">
-          برای ثبت درخواست، نام فروشگاه، دسته‌بندی، مالک و آدرس به سرور ارسال می‌شوند. سایر
-          مشخصات پس از تأیید فروشگاه قابل ویرایش هستند.
+          برای ثبت درخواست، نام فروشگاه، دسته‌بندی، مالک و آدرس به سرور ارسال می‌شوند. سایر مشخصات
+          پس از تأیید فروشگاه قابل ویرایش هستند.
         </InlineAlert>
       )}
       {isReadOnly && (
@@ -319,7 +370,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-title-md text-text-primary">تصویر فروشگاه</h2>
-                <p className="mt-1 text-body-md text-text-secondary">تصاویر فروشگاه را انتخاب کنید.</p>
+                <p className="mt-1 text-body-md text-text-secondary">
+                  تصاویر فروشگاه را انتخاب کنید.
+                </p>
               </div>
               <span className="text-caption text-text-secondary">{form.images.length} تصویر</span>
             </div>
@@ -396,7 +449,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
               </Button>
             </div>
             {selectingLocation && (
-              <p className="text-caption text-primary">برای ثبت موقعیت، نقطهٔ موردنظر را روی نقشه بزنید.</p>
+              <p className="text-caption text-primary">
+                برای ثبت موقعیت، نقطهٔ موردنظر را روی نقشه بزنید.
+              </p>
             )}
             <MapPreview
               location={form.location}
@@ -411,9 +466,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
         <div className="flex flex-col gap-5">
           <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
-            <h2 className="text-title-md text-text-primary">
-              {store.name || 'مشخصات فروشگاه'}
-            </h2>
+            <h2 className="text-title-md text-text-primary">{store.name || 'مشخصات فروشگاه'}</h2>
             <Input
               label="نام فروشگاه"
               value={form.name}
@@ -425,7 +478,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
               label="دسته‌بندی فعالیت"
               value={form.categoryId === null ? '' : String(form.categoryId)}
               onChange={(event) => updateForm({ categoryId: Number(event.target.value) })}
-              options={CATEGORY_OPTIONS}
+              options={categoryOptions}
               disabled={isReadOnly}
             />
             <Input
@@ -469,9 +522,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
           <HoursEditor
             days={form.openingHours}
-            onChange={(openingHours) =>
-              updateForm({ openingHours, workingHoursConfigured: true })
-            }
+            onChange={(openingHours) => updateForm({ openingHours, workingHoursConfigured: true })}
             disabled={source !== 'store'}
           />
         </div>

@@ -78,6 +78,7 @@ function DashboardOverview({ preview }: { preview: boolean }) {
   const [attempt, setAttempt] = useState(0)
   const [selected, setSelected] = useState<Reservation | null>(null)
   const [verified, setVerified] = useState(false)
+  const [statusNotice, setStatusNotice] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -102,7 +103,9 @@ function DashboardOverview({ preview }: { preview: boolean }) {
     setAttempt((previous) => previous + 1)
   }
 
-  const verifiedNotice = verified && <InlineAlert tone="success">تحویل بسته ثبت شد.</InlineAlert>
+  const verifiedNotice = (verified || statusNotice) && (
+    <InlineAlert tone="success">{statusNotice || 'تحویل بسته ثبت شد.'}</InlineAlert>
+  )
   if (!data && !loadFailed) {
     return (
       <div className={`${dashboardContent} pt-6`}>
@@ -225,7 +228,18 @@ function DashboardOverview({ preview }: { preview: boolean }) {
         onClose={() => setSelected(null)}
         onVerified={() => {
           setSelected(null)
+          setStatusNotice('')
           setVerified(true)
+          reload()
+        }}
+        onStatusUpdated={(nextStatus) => {
+          setSelected(null)
+          setVerified(false)
+          setStatusNotice(
+            nextStatus === 'cancelled'
+              ? 'سفارش لغو شد.'
+              : 'وضعیت سفارش به «آماده تحویل» تغییر کرد.',
+          )
           reload()
         }}
       />

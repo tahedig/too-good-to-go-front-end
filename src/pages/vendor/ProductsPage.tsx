@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ChevronDown, ChevronLeft, ChevronRight, Heart, X } from 'lucide-react'
-import { InlineAlert } from '@/components/ui/InlineAlert'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Select } from '@/components/ui/Select'
 import { VendorProductCard } from '@/components/vendor/VendorProductCard'
+import { ApiError } from '@/lib/api/client'
 import { vendorProductsService } from '@/services/vendor/productsService'
-import type { StoredProduct } from '@/services/vendor/productsService'
+import type {
+  VendorProductsLoadResult,
+  VendorProductStoreSummary,
+} from '@/services/vendor/productsService'
 
 type StatusFilter = 'all' | 'active' | 'inactive' | 'draft' | 'ended'
 
@@ -21,31 +25,129 @@ const STATUS_OPTIONS = [
 
 const ALL_OPTION = { value: 'all', label: 'همه' }
 
-function EmptyState({ onCreate, message }: { onCreate: () => void; message: string | null }) {
+function StoreContextStrip({
+  stores,
+  pendingRequests,
+}: {
+  stores: VendorProductStoreSummary[]
+  pendingRequests: VendorProductStoreSummary[]
+}) {
+  if (stores.length === 0 && pendingRequests.length === 0) return null
+
   return (
-    <div className="flex flex-col gap-4 p-4 lg:px-20 lg:py-6">
-      {message && <InlineAlert tone="success">{message}</InlineAlert>}
-      <h1 className="text-title-lg text-text-primary lg:text-title-xl">محصولات</h1>
-      <p className="text-body-lg text-text-secondary">نان صبحگاهی</p>
-
-      <div className="flex flex-col items-center gap-3 rounded-lg bg-surface p-6">
-        <div className="flex w-full items-center gap-3">
-          <Heart className="size-6 shrink-0 text-text-primary" strokeWidth={1.75} />
-          <p className="flex-1 text-title-md font-normal text-text-primary">هنوز محصولی ندارید</p>
-        </div>
-        <p className="w-full text-body-md text-text-secondary">
-          اولین محصول فروشگاه را اضافه کنید.
-        </p>
-      </div>
-
-      <Button fullWidth onClick={onCreate}>
-        ساخت محصول
-      </Button>
+    <div className="hidden min-h-12 flex-row-reverse flex-wrap items-center justify-start gap-3 border-b border-border-default bg-surface px-8 py-1 lg:flex">
+      {stores.map((store) => (
+        <span
+          key={store.id}
+          className="flex h-10 items-center rounded-md border border-primary bg-primary-subtle px-4 text-label-md"
+        >
+          {store.name}
+        </span>
+      ))}
+      {pendingRequests.map((request) => (
+        <span
+          key={request.id}
+          className="flex h-10 items-center rounded-md border border-border-default bg-accent-subtle px-4 text-label-md text-warning"
+        >
+          {request.name} · {request.statusLabel}
+        </span>
+      ))}
     </div>
   )
 }
 
+function ProductsApiNotice({
+  preview,
+  catalogueSupported,
+}: {
+  preview: boolean
+  catalogueSupported: boolean
+}) {
+  if (preview) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary-subtle px-4 py-3 text-body-md text-text-primary">
+        <span>حالت پیش‌نمایش آزمایشی · تغییرات فقط در مرورگر ذخیره می‌شوند.</span>
+        <ButtonLink to="/vendor/products" variant="secondary" size="sm">
+          بازگشت به حالت سرور
+        </ButtonLink>
+      </div>
+    )
+  }
+
+  return (
+    <InlineAlert tone="info">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span>
+          {catalogueSupported
+            ? 'بسته‌های فعال از سرویس فروشگاه‌ها خوانده می‌شوند؛ ثبت، ویرایش، حذف، پیش‌نویس و تغییر وضعیت انتشار محصول هنوز در API بک‌اند پیاده‌سازی نشده است.'
+            : 'نمایش لیست بسته‌های فروشگاه در سرور به دیتابیس متصل است و API ثبت، ویرایش، حذف و انتشار محصول هنوز در بک‌اند پیاده‌سازی نشده است.'}
+        </span>
+        {import.meta.env.DEV && (
+          <ButtonLink to="/vendor/products?preview=1" variant="secondary" size="sm">
+            پیش‌نمایش مدیریت محصولات
+          </ButtonLink>
+        )}
+      </div>
+    </InlineAlert>
+  )
+}
+
+function EmptyState({
+  onCreate,
+  message,
+  actionError,
+  storeSubtitle,
+  preview,
+  catalogueSupported,
+  stores,
+  pendingRequests,
+}: {
+  onCreate: () => void
+  message: string | null
+  actionError: string
+  storeSubtitle: string
+  preview: boolean
+  catalogueSupported: boolean
+  stores: VendorProductStoreSummary[]
+  pendingRequests: VendorProductStoreSummary[]
+}) {
+  return (
+    <>
+      <StoreContextStrip stores={stores} pendingRequests={pendingRequests} />
+      <div className="flex flex-col gap-4 p-4 lg:px-20 lg:py-6">
+        {message && <InlineAlert tone="success">{message}</InlineAlert>}
+        {actionError && <InlineAlert tone="error">{actionError}</InlineAlert>}
+        <ProductsApiNotice preview={preview} catalogueSupported={catalogueSupported} />
+        <h1 className="text-title-lg text-text-primary lg:text-title-xl">محصولات</h1>
+        <p className="text-body-lg text-text-secondary">{storeSubtitle}</p>
+
+        <div className="flex flex-col items-center gap-3 rounded-lg bg-surface p-6">
+          <div className="flex w-full items-center gap-3">
+            <Heart className="size-6 shrink-0 text-text-primary" strokeWidth={1.75} />
+            <p className="flex-1 text-title-md font-normal text-text-primary">هنوز محصولی ندارید</p>
+          </div>
+          <p className="w-full text-body-md text-text-secondary">
+            اولین محصول فروشگاه را اضافه کنید.
+          </p>
+        </div>
+
+        <Button fullWidth onClick={onCreate}>
+          ساخت محصول
+        </Button>
+      </div>
+    </>
+  )
+}
+
 export default function ProductsPage() {
+  const [params] = useSearchParams()
+  const preview = import.meta.env.DEV && params.get('preview') === '1'
+  return <ProductsContent key={preview ? 'preview' : 'live'} preview={preview} />
+}
+
+function ProductsContent({ preview }: { preview: boolean }) {
+  const previewSuffix = preview ? '?preview=1' : ''
+
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [storeFilter, setStoreFilter] = useState('all')
@@ -53,9 +155,11 @@ export default function ProductsPage() {
   const [showAll, setShowAll] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
-  const [products, setProducts] = useState<StoredProduct[] | null>(null)
+  const [result, setResult] = useState<VendorProductsLoadResult | null>(null)
   const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState('')
+  const [loadError, setLoadError] = useState<{ status: number | null; message: string } | null>(
+    null,
+  )
   const [reloadKey, setReloadKey] = useState(0)
   const [unpublishId, setUnpublishId] = useState<string | null>(null)
   const [actionError, setActionError] = useState('')
@@ -65,28 +169,33 @@ export default function ProductsPage() {
   )
 
   useEffect(() => {
-    let mounted = true
+    const controller = new AbortController()
     vendorProductsService
-      .list()
-      .then((items) => {
-        if (mounted) setProducts(items)
+      .listWithContext({ preview, signal: controller.signal })
+      .then((loaded) => {
+        if (!controller.signal.aborted) {
+          setResult(loaded)
+        }
       })
       .catch((error: unknown) => {
-        if (mounted) {
-          setLoadError(error instanceof Error ? error.message : 'دریافت محصولات ممکن نیست.')
+        if (!controller.signal.aborted) {
+          setLoadError({
+            status: error instanceof ApiError ? error.status : null,
+            message: error instanceof Error ? error.message : 'دریافت محصولات ممکن نیست.',
+          })
         }
       })
       .finally(() => {
-        if (mounted) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
     return () => {
-      mounted = false
+      controller.abort()
     }
-  }, [reloadKey])
+  }, [preview, reloadKey])
 
   function retryLoad() {
-    setProducts(null)
-    setLoadError('')
+    setResult(null)
+    setLoadError(null)
     setLoading(true)
     setReloadKey((key) => key + 1)
   }
@@ -98,6 +207,10 @@ export default function ProductsPage() {
       state: null,
     })
   }, [location.hash, location.pathname, location.search, location.state, navigate])
+
+  const products = result?.products ?? null
+  const stores = useMemo(() => result?.stores ?? [], [result])
+  const pendingRequests = useMemo(() => result?.pendingRequests ?? [], [result])
 
   const categoryOptions = useMemo(
     () => [
@@ -111,33 +224,74 @@ export default function ProductsPage() {
   const storeOptions = useMemo(
     () => [
       ALL_OPTION,
-      ...Array.from(new Set((products ?? []).map((product) => product.store)))
+      ...Array.from(
+        new Set([
+          ...stores.map((store) => store.name),
+          ...(products ?? []).map((product) => product.store),
+        ]),
+      )
+        .filter(Boolean)
         .sort()
         .map((value) => ({ value, label: value })),
     ],
-    [products],
+    [products, stores],
   )
 
-  if (loadError && !products)
+  if (loadError && !products) {
+    const authError = loadError.status === 401 || loadError.status === 403
     return (
-      <div className="flex flex-col items-start gap-4 p-6">
-        <p role="alert" className="text-error">
-          {loadError}
-        </p>
-        <Button variant="secondary" onClick={retryLoad}>
-          تلاش دوباره
-        </Button>
+      <div className="flex flex-col items-start gap-4 p-4 lg:px-20 lg:py-8">
+        <InlineAlert tone={authError ? 'warning' : 'error'}>
+          {loadError.status === 403
+            ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+            : loadError.status === 401
+              ? 'برای مشاهدهٔ محصولات وارد حساب فروشنده شوید.'
+              : loadError.message}
+        </InlineAlert>
+        {authError ? (
+          <ButtonLink
+            to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+            variant="secondary"
+            size="md"
+          >
+            ورود با حساب فروشنده
+          </ButtonLink>
+        ) : (
+          <Button variant="secondary" onClick={retryLoad}>
+            تلاش دوباره
+          </Button>
+        )}
       </div>
     )
+  }
   if (loading && !products)
     return (
       <p role="status" className="p-6">
         در حال دریافت محصولات...
       </p>
     )
-  if (!products) return null
+  if (!products || !result) return null
+
+  const storeSubtitle =
+    stores.length > 0
+      ? stores.map((store) => store.name).join(' · ')
+      : pendingRequests.length > 0
+        ? pendingRequests.map((req) => `${req.name} (${req.statusLabel})`).join(' · ')
+        : 'فروشگاه‌های شما'
+
   if (products.length === 0)
-    return <EmptyState onCreate={() => navigate('/vendor/products/new')} message={message} />
+    return (
+      <EmptyState
+        onCreate={() => navigate(`/vendor/products/new${previewSuffix}`)}
+        message={message}
+        actionError={actionError}
+        storeSubtitle={storeSubtitle}
+        preview={preview}
+        catalogueSupported={result.catalogueSupported}
+        stores={stores}
+        pendingRequests={pendingRequests}
+      />
+    )
 
   const visibleProducts = products.filter((product) => {
     if (statusFilter === 'active' && product.status !== 'active') return false
@@ -154,18 +308,48 @@ export default function ProductsPage() {
     setActing(true)
     setActionError('')
     try {
-      await vendorProductsService.unpublish(unpublishId)
-      setProducts(
-        (current) =>
-          current?.map((product) =>
-            product.id === unpublishId ? { ...product, status: 'inactive' } : product,
-          ) ?? null,
+      await vendorProductsService.unpublish(unpublishId, { preview })
+      setResult((current) =>
+        current
+          ? {
+              ...current,
+              products: current.products.map((product) =>
+                product.id === unpublishId ? { ...product, status: 'inactive' } : product,
+              ),
+            }
+          : null,
       )
       setUnpublishId(null)
       setMessage('انتشار محصول لغو شد.')
     } catch (error) {
       setActionError(
         error instanceof Error ? error.message : 'لغو انتشار ممکن نیست. دوباره تلاش کنید.',
+      )
+    } finally {
+      setActing(false)
+    }
+  }
+
+  async function publish(id: string) {
+    if (acting) return
+    setActing(true)
+    setActionError('')
+    try {
+      await vendorProductsService.publish(id, { preview })
+      setResult((current) =>
+        current
+          ? {
+              ...current,
+              products: current.products.map((product) =>
+                product.id === id ? { ...product, status: 'active' } : product,
+              ),
+            }
+          : null,
+      )
+      setMessage('محصول منتشر شد.')
+    } catch (error) {
+      setActionError(
+        error instanceof Error ? error.message : 'انتشار محصول ممکن نیست. دوباره تلاش کنید.',
       )
     } finally {
       setActing(false)
@@ -181,14 +365,7 @@ export default function ProductsPage() {
 
   return (
     <>
-      <div className="hidden h-12 flex-row-reverse items-center justify-start gap-3 border-b border-border-default bg-surface px-8 lg:flex">
-        <span className="flex h-10 items-center rounded-md border border-primary bg-primary-subtle px-4 text-label-md">
-          نان صبحگاهی
-        </span>
-        <span className="flex h-10 items-center rounded-md border border-border-default bg-accent-subtle px-4 text-label-md text-warning">
-          شعبه شریعتی · در انتظار بررسی
-        </span>
-      </div>
+      <StoreContextStrip stores={stores} pendingRequests={pendingRequests} />
       <div className="relative flex flex-col gap-6 p-4 lg:px-20 lg:py-6">
         {message && (
           <div
@@ -209,11 +386,17 @@ export default function ProductsPage() {
             </Button>
           </div>
         )}
+        <ProductsApiNotice preview={preview} catalogueSupported={result.catalogueSupported} />
+        {actionError && <InlineAlert tone="error">{actionError}</InlineAlert>}
         <h1 className="text-title-xl text-text-primary lg:text-display-xl">محصولات</h1>
 
         {/* Toolbar */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <Button fullWidth className="lg:w-auto" onClick={() => navigate('/vendor/products/new')}>
+          <Button
+            fullWidth
+            className="lg:w-auto"
+            onClick={() => navigate(`/vendor/products/new${previewSuffix}`)}
+          >
             ساخت محصول
           </Button>
 
@@ -330,11 +513,16 @@ export default function ProductsPage() {
               <VendorProductCard
                 key={product.id}
                 product={product}
-                onEdit={() => navigate(`/vendor/products/${product.id}/edit`)}
+                onEdit={() =>
+                  navigate(
+                    `/vendor/products/${encodeURIComponent(product.id)}/edit${previewSuffix}`,
+                  )
+                }
                 onUnpublish={() => {
                   setActionError('')
                   setUnpublishId(product.id)
                 }}
+                onPublish={() => void publish(product.id)}
               />
             ))}
             {!showAll && (

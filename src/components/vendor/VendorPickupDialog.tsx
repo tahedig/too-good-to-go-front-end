@@ -14,27 +14,33 @@ import {
   STATUS_LABELS,
 } from '@/lib/vendorReservations'
 import type { Reservation } from '@/lib/vendorReservations'
-import { verifyVendorPickup } from '@/services/vendor/ordersService'
+import { updateVendorOrderStatus, verifyVendorPickup } from '@/services/vendor/ordersService'
 
 export function VendorPickupDialog({
   reservation,
   onClose,
   onVerified,
+  onStatusUpdated,
   preview = false,
 }: {
   reservation: Reservation | null
   onClose: () => void
   onVerified: () => void
+  onStatusUpdated?: (status: 'ready_for_pickup' | 'cancelled') => void
   preview?: boolean
 }) {
   const [code, setCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [confirmCancel, setConfirmCancel] = useState(false)
   const [error, setError] = useState('')
   const active = reservation !== null && isActiveReservation(reservation)
   const canVerify = active && !preview
+  const busy = submitting || updatingStatus
 
   function resetInput() {
     setCode('')
+    setConfirmCancel(false)
     setError('')
   }
 
@@ -45,7 +51,7 @@ export function VendorPickupDialog({
 
   async function submitPickup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!reservation || !canVerify || submitting) return
+    if (!reservation || !canVerify || busy) return
     if (!/^\d{4}$/.test(code)) {
       setError('کد تحویل باید ۴ رقم باشد.')
       return
@@ -64,11 +70,31 @@ export function VendorPickupDialog({
     }
   }
 
+  async function transitionStatus(status: 'ready_for_pickup' | 'cancelled') {
+    if (!reservation || !canVerify || busy) return
+    setError('')
+    setUpdatingStatus(true)
+    try {
+      await updateVendorOrderStatus(reservation.id, status)
+      resetInput()
+      if (onStatusUpdated) onStatusUpdated(status)
+      else onVerified()
+    } catch (error) {
+      setError(
+        error instanceof ApiError
+          ? error.message
+          : 'تغییر وضعیت سفارش انجام نشد. دوباره تلاش کنید.',
+      )
+    } finally {
+      setUpdatingStatus(false)
+    }
+  }
+
   return (
     <Modal
       open={reservation !== null}
       onClose={close}
-      preventClose={submitting}
+      preventClose={busy}
       title={active ? 'بررسی تحویل' : 'جزئیات رزرو'}
     >
       {reservation && (
@@ -103,12 +129,65 @@ export function VendorPickupDialog({
                 ltrValue
                 required
                 autoFocus
-                readOnly={submitting}
+                readOnly={busy}
               />
               {error && <InlineAlert tone="error">{error}</InlineAlert>}
-              <Button type="submit" fullWidth isLoading={submitting}>
+              <Button type="submit" fullWidth isLoading={submitting} disabled={updatingStatus}>
                 تأیید تحویل
               </Button>
+              {reservation.status === 'active' && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  fullWidth
+                  isLoading={updatingStatus && !confirmCancel}
+                  disabled={busy}
+                  onClick={() => void transitionStatus('ready_for_pickup')}
+                >
+                  آماده برای تحویل
+                </Button>
+              )}
+              {confirmCancel ? (
+                <div className="flex flex-col gap-2 rounded-md border border-error bg-error-subtle p-3">
+                  <p className="text-caption text-error">
+                    سفارش لغو شود و موجودی بسته به فروشگاه بازگردد؟
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="flex-1 !border-error !text-error"
+                      isLoading={updatingStatus}
+                      disabled={busy}
+                      onClick={() => void transitionStatus('cancelled')}
+                    >
+                      تأیید لغو
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="tertiary"
+                      size="sm"
+                      className="flex-1"
+                      disabled={busy}
+                      onClick={() => setConfirmCancel(false)}
+                    >
+                      انصراف
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="tertiary"
+                  fullWidth
+                  disabled={busy}
+                  className="!text-error hover:!bg-error-subtle"
+                  onClick={() => setConfirmCancel(true)}
+                >
+                  لغو سفارش
+                </Button>
+              )}
             </form>
           ) : (
             <div className="mt-5 flex flex-col gap-3">

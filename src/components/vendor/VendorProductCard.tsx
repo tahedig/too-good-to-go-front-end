@@ -43,13 +43,16 @@ export function VendorProductCard({
   product,
   onEdit,
   onUnpublish,
+  onPublish,
 }: {
   product: VendorProduct
   onEdit: () => void
   onUnpublish: () => void
+  onPublish?: () => void
 }) {
   const inventory = inventoryText(product)
   const inventoryTone = product.status === 'active' ? 'text-text-primary' : 'text-text-secondary'
+  const canPublish = (product.status === 'draft' || product.status === 'inactive') && onPublish
 
   return (
     <article className="flex min-h-[512px] w-[280px] shrink-0 flex-col overflow-hidden rounded-lg border border-border-default bg-surface lg:min-h-[385px] lg:w-80 lg:shadow-1">
@@ -86,6 +89,11 @@ export function VendorProductCard({
         {product.status === 'active' && (
           <Button variant="tertiary" size="md" fullWidth onClick={onUnpublish}>
             لغو انتشار
+          </Button>
+        )}
+        {canPublish && (
+          <Button variant="tertiary" size="md" fullWidth onClick={onPublish}>
+            انتشار محصول
           </Button>
         )}
       </div>
@@ -135,6 +143,11 @@ export function VendorProductCard({
         {product.status === 'active' && (
           <Button variant="tertiary" size="md" fullWidth onClick={onUnpublish}>
             لغو انتشار
+          </Button>
+        )}
+        {canPublish && (
+          <Button variant="tertiary" size="md" fullWidth onClick={onPublish}>
+            انتشار محصول
           </Button>
         )}
       </div>

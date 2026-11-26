@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, Package, Store, UserRound } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
+import { ApiError } from '@/lib/api/client'
 import { storeService } from '@/services/storeService'
 import type { VendorStore } from '@/types/storeTypes'
 
@@ -73,7 +74,8 @@ function StoreCard({ store }: { store: VendorStore }) {
 
 export default function StoresPage() {
   const [stores, setStores] = useState<VendorStore[] | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<{ status: number | null; message: string } | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
   const [message, setMessage] = useState<string | null>(
@@ -81,31 +83,60 @@ export default function StoresPage() {
   )
 
   useEffect(() => {
-    let active = true
+    const controller = new AbortController()
     storeService
-      .list()
+      .list(controller.signal)
       .then((items) => {
-        if (active) setStores(items)
+        if (!controller.signal.aborted) {
+          setStores(items)
+          setError(null)
+        }
       })
       .catch((reason: unknown) => {
-        if (active)
-          setError(reason instanceof Error ? reason.message : 'دریافت فروشگاه‌ها ممکن نیست.')
+        if (controller.signal.aborted) return
+        setError({
+          status: reason instanceof ApiError ? reason.status : null,
+          message: reason instanceof Error ? reason.message : 'دریافت فروشگاه‌ها ممکن نیست.',
+        })
       })
     return () => {
-      active = false
+      controller.abort()
     }
-  }, [])
+  }, [reloadKey])
+
+  function retryLoad() {
+    setStores(null)
+    setError(null)
+    setReloadKey((key) => key + 1)
+  }
 
   useEffect(() => {
     if (location.state) window.history.replaceState({ ...window.history.state, usr: null }, '')
   }, [location.state])
 
-  if (error)
+  if (error) {
+    const authError = error.status === 401 || error.status === 403
     return (
-      <p role="alert" className="p-6 text-error">
-        {error}
-      </p>
+      <div className="flex flex-col items-start gap-4 p-4 lg:px-20 lg:py-8">
+        <InlineAlert tone={authError ? 'warning' : 'error'}>
+          {error.status === 403
+            ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+            : error.status === 401
+              ? 'برای مشاهدهٔ فروشگاه‌ها وارد حساب فروشنده شوید.'
+              : error.message}
+        </InlineAlert>
+        {authError ? (
+          <ButtonLink to="/login?returnTo=%2Fvendor%2Fstores" variant="secondary" size="md">
+            ورود با حساب فروشنده
+          </ButtonLink>
+        ) : (
+          <Button variant="secondary" size="md" onClick={retryLoad}>
+            تلاش دوباره
+          </Button>
+        )}
+      </div>
     )
+  }
   if (!stores)
     return (
       <p role="status" className="p-6">

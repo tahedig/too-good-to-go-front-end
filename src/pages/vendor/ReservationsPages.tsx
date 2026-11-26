@@ -209,6 +209,7 @@ export default function ReservationsPages({
   const [filter, setFilter] = useState<Filter>('all')
   const [selected, setSelected] = useState<Reservation | null>(null)
   const [verified, setVerified] = useState(false)
+  const [noticeMessage, setNoticeMessage] = useState('')
   const [dateDialog, setDateDialog] = useState(false)
   const [draftDate, setDraftDate] = useState(localDate)
   const [params, setParams] = useSearchParams()
@@ -289,7 +290,9 @@ export default function ReservationsPages({
         </h1>
         <p className="text-body-lg text-text-secondary">فروشگاه‌های شما</p>
       </header>
-      {verified && <InlineAlert tone="success">تحویل بسته ثبت شد.</InlineAlert>}
+      {(verified || noticeMessage) && (
+        <InlineAlert tone="success">{noticeMessage || 'تحویل بسته ثبت شد.'}</InlineAlert>
+      )}
       {noDayOrders ? (
         <>
           <div className="flex flex-col gap-4 rounded-lg bg-surface p-4">
@@ -437,7 +440,18 @@ export default function ReservationsPages({
         onClose={() => setSelected(null)}
         onVerified={() => {
           setSelected(null)
+          setNoticeMessage('')
           setVerified(true)
+          retryLoad()
+        }}
+        onStatusUpdated={(nextStatus) => {
+          setSelected(null)
+          setVerified(false)
+          setNoticeMessage(
+            nextStatus === 'cancelled'
+              ? 'سفارش لغو شد.'
+              : 'وضعیت سفارش به «آماده تحویل» تغییر کرد.',
+          )
           retryLoad()
         }}
       />

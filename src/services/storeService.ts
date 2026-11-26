@@ -15,18 +15,46 @@ import type {
   VendorStoreImage,
 } from '@/types/storeTypes'
 
+export type StoreCategoryOption = {
+  id: number
+  slug: string
+  name: string
+  kind: string
+}
+
+// Matches migrations/000007_create_stores.up.sql categories seed IDs.
+export const DEFAULT_STORE_CATEGORIES: StoreCategoryOption[] = [
+  { id: 1, slug: 'bakery', name: 'نانوایی', kind: 'bakery' },
+  { id: 2, slug: 'sweets-desserts', name: 'شیرینی و دسر', kind: 'bakery' },
+  { id: 3, slug: 'cafe', name: 'کافه', kind: 'ready_meal' },
+  { id: 4, slug: 'restaurant', name: 'رستوران', kind: 'ready_meal' },
+  { id: 5, slug: 'iranian', name: 'غذای ایرانی', kind: 'ready_meal' },
+  { id: 6, slug: 'fastfood', name: 'فست‌فود', kind: 'ready_meal' },
+  { id: 7, slug: 'pizza', name: 'پیتزا', kind: 'ready_meal' },
+  { id: 8, slug: 'sandwich', name: 'ساندویچ', kind: 'ready_meal' },
+  { id: 9, slug: 'homemade', name: 'غذای خانگی', kind: 'ready_meal' },
+  { id: 10, slug: 'vegetarian', name: 'غذاهای گیاهی', kind: 'ready_meal' },
+  { id: 11, slug: 'burger', name: 'برگر', kind: 'ready_meal' },
+  { id: 12, slug: 'salad-healthy', name: 'سالاد و غذای سالم', kind: 'ready_meal' },
+  { id: 13, slug: 'breakfast', name: 'صبحانه', kind: 'ready_meal' },
+  { id: 14, slug: 'drinks', name: 'نوشیدنی', kind: 'ready_meal' },
+  { id: 15, slug: 'juice-smoothie', name: 'آبمیوه و اسموتی', kind: 'ready_meal' },
+  { id: 16, slug: 'supermarket', name: 'سوپرمارکت', kind: 'grocery' },
+  { id: 17, slug: 'fruit-veg', name: 'میوه و سبزیجات', kind: 'grocery' },
+  { id: 18, slug: 'dairy', name: 'لبنیات', kind: 'grocery' },
+  { id: 19, slug: 'protein', name: 'پروتئینی', kind: 'grocery' },
+  { id: 20, slug: 'nuts-snacks', name: 'خشکبار و تنقلات', kind: 'grocery' },
+  { id: 21, slug: 'international', name: 'غذاهای بین‌المللی', kind: 'ready_meal' },
+]
+
 const DAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه']
 const DEFAULT_LOCATION = { latitude: 35.6892, longitude: 51.389 }
-const CATEGORY_IDS: Record<string, number> = {
-  رستوران: 1,
-  'فست\u200cفود': 2,
-  نانوایی: 3,
-  قنادی: 4,
-  'شیرینی\u200cفروشی': 4,
-  کافه: 5,
-  سوپرمارکت: 6,
-  'میوه و تره\u200cبار': 7,
-}
+const CATEGORY_IDS: Record<string, number> = Object.fromEntries(
+  DEFAULT_STORE_CATEGORIES.map((category) => [category.name, category.id]),
+)
+CATEGORY_IDS['قنادی'] = 2
+CATEGORY_IDS['شیرینی‌فروشی'] = 2
+CATEGORY_IDS['میوه و تره‌بار'] = 17
 
 function categoryName(id?: number, name?: string) {
   if (name) return name
@@ -190,6 +218,55 @@ function mapFormToUpdate(form: VendorStoreForm): UpdateStoreRequestDto {
   return payload
 }
 
+function isUnavailableStatus(error: unknown): error is ApiError {
+  return error instanceof ApiError && [404, 405, 501].includes(error.status)
+}
+
+type HomeCategoriesDto = {
+  items?: StoreCategoryOption[]
+}
+
+type DashboardFallbackDto = {
+  stores?: Array<{
+    id: string
+    name: string
+    address: string
+    status: string
+    created_at: string
+  }>
+  pending_store_requests?: Array<{
+    id: string
+    store_name: string
+    address: string
+    status: string
+    created_at: string
+  }>
+  kpis?: { active_offers?: number }
+}
+
+type ActiveStoreFallbackDto = {
+  id: string
+  name: string
+  address: string
+  phone?: string
+  is_active: boolean
+}
+
+async function listCategories(signal?: AbortSignal): Promise<StoreCategoryOption[]> {
+  try {
+    const response = await apiRequest<HomeCategoriesDto>('/home/categories', { signal })
+    if (Array.isArray(response?.items) && response.items.length > 0) {
+      return response.items.filter(
+        (item) =>
+          Number.isSafeInteger(item.id) && typeof item.name === 'string' && item.name.trim(),
+      )
+    }
+  } catch (error) {
+    if (!isUnavailableStatus(error)) throw error
+  }
+  return DEFAULT_STORE_CATEGORIES
+}
+
 async function listStores(signal?: AbortSignal): Promise<VendorStore[]> {
   const response = await apiRequest<StoreListResponseDto>('/vendor/stores', { signal })
   if (!Array.isArray(response?.stores)) throw new Error('پاسخ فهرست فروشگاه‌ها معتبر نیست.')
@@ -204,13 +281,129 @@ async function listRequests(signal?: AbortSignal): Promise<VendorStore[]> {
   return response.requests.map(mapRequest)
 }
 
+async function listFromDashboardFallback(signal?: AbortSignal): Promise<VendorStore[] | null> {
+  try {
+    const dto = await apiRequest<DashboardFallbackDto>('/vendor/dashboard?recent_limit=1', {
+      signal,
+    })
+    if (!Array.isArray(dto?.stores) || !Array.isArray(dto?.pending_store_requests)) {
+      return null
+    }
+    const stores = dto.stores.map((store, _, list) => ({
+      id: store.id,
+      name: store.name,
+      branch: '',
+      status: mapStatus(store.status),
+      statusLabel: statusLabel(store.status),
+      source: 'store' as const,
+      owner: '',
+      category: '',
+      categoryId: null,
+      phone: '',
+      address: store.address,
+      description: '',
+      pickupInstructions: '',
+      registeredAt: store.created_at,
+      productsCount: list.length === 1 ? (dto.kpis?.active_offers ?? 0) : 0,
+      images: [],
+      openingHours: mapHours([]),
+      workingHoursConfigured: false,
+      location: DEFAULT_LOCATION,
+    }))
+    const requests = dto.pending_store_requests.map((req) => ({
+      id: req.id,
+      name: req.store_name,
+      branch: '',
+      status: mapStatus(req.status),
+      statusLabel: statusLabel(req.status),
+      source: 'request' as const,
+      owner: '',
+      category: '',
+      categoryId: null,
+      phone: '',
+      address: req.address,
+      description: '',
+      pickupInstructions: '',
+      registeredAt: req.created_at,
+      productsCount: 0,
+      images: [],
+      openingHours: mapHours([]),
+      workingHoursConfigured: false,
+      location: DEFAULT_LOCATION,
+    }))
+    return [...requests, ...stores]
+  } catch (error) {
+    if (isUnavailableStatus(error)) return null
+    throw error
+  }
+}
+
+async function listFromActiveStoreFallback(signal?: AbortSignal): Promise<VendorStore[] | null> {
+  try {
+    const store = await apiRequest<ActiveStoreFallbackDto>('/vendor/store', { signal })
+    if (!store?.id || typeof store.is_active !== 'boolean') return null
+    if (!store.is_active) return []
+    return [
+      {
+        id: store.id,
+        name: store.name,
+        branch: '',
+        status: 'approved',
+        statusLabel: 'تأییدشده',
+        source: 'store',
+        owner: '',
+        category: '',
+        categoryId: null,
+        phone: store.phone ?? '',
+        address: store.address,
+        description: '',
+        pickupInstructions: '',
+        registeredAt: '',
+        productsCount: 0,
+        images: [],
+        openingHours: mapHours([]),
+        workingHoursConfigured: false,
+        location: DEFAULT_LOCATION,
+      },
+    ]
+  } catch (error) {
+    if (isUnavailableStatus(error)) return null
+    throw error
+  }
+}
+
 export const storeService = {
+  listCategories,
   listStores,
   listRequests,
 
-  async list(): Promise<VendorStore[]> {
-    const [stores, requests] = await Promise.all([listStores(), listRequests()])
-    return [...requests, ...stores]
+  async list(signal?: AbortSignal): Promise<VendorStore[]> {
+    const [storesResult, requestsResult] = await Promise.allSettled([
+      listStores(signal),
+      listRequests(signal),
+    ])
+
+    const stores = storesResult.status === 'fulfilled' ? storesResult.value : null
+    const requests = requestsResult.status === 'fulfilled' ? requestsResult.value : null
+
+    if (storesResult.status === 'rejected' && !isUnavailableStatus(storesResult.reason)) {
+      throw storesResult.reason
+    }
+    if (requestsResult.status === 'rejected' && !isUnavailableStatus(requestsResult.reason)) {
+      throw requestsResult.reason
+    }
+
+    if (stores !== null || requests !== null) {
+      return [...(requests ?? []), ...(stores ?? [])]
+    }
+
+    const fromDashboard = await listFromDashboardFallback(signal)
+    if (fromDashboard !== null) return fromDashboard
+
+    const fromActiveStore = await listFromActiveStoreFallback(signal)
+    if (fromActiveStore !== null) return fromActiveStore
+
+    throw new ApiError('سرویس فروشگاه‌های فروشنده در نسخهٔ فعلی سرور فعال نیست.', 404)
   },
 
   async get(id: string): Promise<{ store: VendorStore; source: StoreProfileSource }> {

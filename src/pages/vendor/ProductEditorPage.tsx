@@ -1,17 +1,23 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, FormEvent, ReactNode } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowRight, ChevronDown, MoreHorizontal, Plus, X } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { VendorDatePicker, VendorTimePicker } from '@/components/vendor/VendorDateTimePicker'
+import { ApiError } from '@/lib/api/client'
 import { toEnglishDigits, toPersianDigits } from '@/lib/digits'
 import { formatPrice } from '@/lib/format'
+import { DEFAULT_STORE_CATEGORIES } from '@/services/storeService'
 import { vendorProductsService } from '@/services/vendor/productsService'
-import type { ProductInput, StoredProduct } from '@/services/vendor/productsService'
+import type {
+  ProductInput,
+  StoredProduct,
+  VendorProductStoreSummary,
+} from '@/services/vendor/productsService'
 
 type FormValues = {
   name: string
@@ -148,13 +154,21 @@ function attrs(id: string, error?: string) {
 export default function ProductEditorPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const isPreviewMode = import.meta.env.DEV && searchParams.get('preview') === '1'
+  const previewSuffix = isPreviewMode ? '?preview=1' : ''
+
   const [values, setValues] = useState<FormValues>(blank)
   const [original, setOriginal] = useState<StoredProduct | null>(null)
-  const [loading, setLoading] = useState(!!id)
+  const [stores, setStores] = useState<VendorProductStoreSummary[]>([])
+  const [categories, setCategories] = useState(DEFAULT_STORE_CATEGORIES)
+  const [loading, setLoading] = useState(true)
+  const [loadStatus, setLoadStatus] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<Errors>({})
   const [alert, setAlert] = useState('')
-  const [preview, setPreview] = useState(false)
+  const [previewModalOpen, setPreviewModalOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleteError, setDeleteError] = useState('')
   const [saveFailed, setSaveFailed] = useState(false)
@@ -162,27 +176,49 @@ export default function ProductEditorPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    let alive = true
+    const controller = new AbortController()
     setAlert('')
     setErrors({})
-
-    if (!id) {
-      setOriginal(null)
-      setValues(blank)
-      setLoading(false)
-      return () => {
-        alive = false
-      }
-    }
-
-    // Clear the previous route's product immediately so changing edit IDs can never save stale data.
+    setLoadStatus(null)
     setLoading(true)
     setOriginal(null)
     setValues(blank)
-    vendorProductsService
-      .get(id)
-      .then((product) => {
-        if (!alive) return
+
+    async function loadInitial() {
+      const [categoriesResult, contextResult, productResult] = await Promise.allSettled([
+        vendorProductsService.listCategories(controller.signal),
+        vendorProductsService.loadContext({ preview: isPreviewMode, signal: controller.signal }),
+        id
+          ? vendorProductsService.get(id, { preview: isPreviewMode, signal: controller.signal })
+          : Promise.resolve(undefined),
+      ])
+
+      if (controller.signal.aborted) return
+
+      if (categoriesResult.status === 'fulfilled' && categoriesResult.value.length > 0) {
+        setCategories(categoriesResult.value)
+      }
+
+      if (contextResult.status === 'fulfilled') {
+        setStores(contextResult.value.stores)
+      } else if (
+        contextResult.reason instanceof ApiError &&
+        (contextResult.reason.status === 401 || contextResult.reason.status === 403)
+      ) {
+        setLoadStatus(contextResult.reason.status)
+        setLoading(false)
+        return
+      }
+
+      if (id) {
+        if (productResult.status === 'rejected') {
+          const reason = productResult.reason
+          setLoadStatus(reason instanceof ApiError ? reason.status : null)
+          setAlert(reason instanceof Error ? reason.message : 'دریافت محصول ممکن نیست.')
+          setLoading(false)
+          return
+        }
+        const product = productResult.value
         if (!product) {
           setAlert('محصول پیدا نشد.')
           setLoading(false)
@@ -204,18 +240,37 @@ export default function ProductEditorPage() {
           allergens: product.allergens,
           images: product.images,
         })
-        setLoading(false)
-      })
-      .catch((error: unknown) => {
-        if (alive) {
-          setAlert(error instanceof Error ? error.message : 'دریافت محصول ممکن نیست.')
-          setLoading(false)
-        }
-      })
-    return () => {
-      alive = false
+      }
+
+      setLoading(false)
     }
-  }, [id])
+
+    void loadInitial()
+    return () => {
+      controller.abort()
+    }
+  }, [id, isPreviewMode])
+
+  const storeOptions = useMemo(() => {
+    const names = Array.from(
+      new Set([
+        ...stores.filter((store) => store.status === 'approved').map((store) => store.name),
+        ...stores.map((store) => store.name),
+        ...(values.store ? [values.store] : []),
+      ]),
+    ).filter(Boolean)
+    return names.map((name) => ({ value: name, label: name }))
+  }, [stores, values.store])
+
+  const categoryOptions = useMemo(() => {
+    const names = Array.from(
+      new Set([
+        ...categories.map((cat) => cat.name),
+        ...(values.category ? [values.category] : []),
+      ]),
+    ).filter(Boolean)
+    return names.map((name) => ({ value: name, label: name }))
+  }, [categories, values.category])
 
   const minimumQuantity =
     original?.status === 'ended'
@@ -254,9 +309,9 @@ export default function ProductEditorPage() {
     }
     setSaving(true)
     try {
-      if (id) await vendorProductsService.update(id, input)
-      else await vendorProductsService.create(input)
-      navigate('/vendor/products', {
+      if (id) await vendorProductsService.update(id, input, { preview: isPreviewMode })
+      else await vendorProductsService.create(input, { preview: isPreviewMode })
+      navigate(`/vendor/products${previewSuffix}`, {
         replace: true,
         state: {
           message:
@@ -281,8 +336,11 @@ export default function ProductEditorPage() {
     setSaving(true)
     setDeleteError('')
     try {
-      await vendorProductsService.remove(id)
-      navigate('/vendor/products', { replace: true, state: { message: 'محصول حذف شد.' } })
+      await vendorProductsService.remove(id, { preview: isPreviewMode })
+      navigate(`/vendor/products${previewSuffix}`, {
+        replace: true,
+        state: { message: 'محصول حذف شد.' },
+      })
       window.scrollTo({ top: 0 })
     } catch (error) {
       setDeleteError(
@@ -334,11 +392,28 @@ export default function ProductEditorPage() {
         در حال دریافت محصول...
       </p>
     )
+  if (loadStatus === 401 || loadStatus === 403)
+    return (
+      <div className="flex flex-col items-start gap-4 p-6">
+        <InlineAlert tone="warning">
+          {loadStatus === 403
+            ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+            : 'برای مدیریت محصولات وارد حساب فروشنده شوید.'}
+        </InlineAlert>
+        <ButtonLink
+          to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+          variant="secondary"
+          size="md"
+        >
+          ورود با حساب فروشنده
+        </ButtonLink>
+      </div>
+    )
   if (id && !original)
     return (
       <div className="p-6">
         <InlineAlert tone="error">{alert || 'محصول پیدا نشد.'}</InlineAlert>
-        <Link className="mt-4 inline-block underline" to="/vendor/products">
+        <Link className="mt-4 inline-block underline" to={`/vendor/products${previewSuffix}`}>
           بازگشت به محصولات
         </Link>
       </div>
@@ -376,7 +451,7 @@ export default function ProductEditorPage() {
     <div className="flex flex-col gap-6 p-4 lg:p-12">
       <div className="flex items-center gap-3">
         <Link
-          to="/vendor/products"
+          to={`/vendor/products${previewSuffix}`}
           aria-label="بازگشت به محصولات"
           className="grid size-11 shrink-0 place-items-center rounded-[12px] border border-border-default bg-surface"
         >
@@ -386,6 +461,27 @@ export default function ProductEditorPage() {
           {id ? 'ویرایش محصول' : Object.keys(errors).length ? 'اصلاح اطلاعات محصول' : 'ساخت محصول'}
         </h1>
       </div>
+      {isPreviewMode ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-primary-subtle px-4 py-3 text-body-md text-text-primary">
+          <span>حالت پیش‌نمایش آزمایشی · تغییرات فقط در مرورگر ذخیره می‌شوند.</span>
+          <ButtonLink to="/vendor/products" variant="secondary" size="sm">
+            بازگشت به حالت سرور
+          </ButtonLink>
+        </div>
+      ) : (
+        <InlineAlert tone="info">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              API ثبت، ویرایش، حذف و تغییر وضعیت انتشار محصول هنوز در بک‌اند پیاده‌سازی نشده است.
+            </span>
+            {import.meta.env.DEV && (
+              <ButtonLink to="/vendor/products?preview=1" variant="secondary" size="sm">
+                پیش‌نمایش مدیریت محصولات
+              </ButtonLink>
+            )}
+          </div>
+        </InlineAlert>
+      )}
       {alert && (
         <div className="flex items-center gap-2 rounded-md border border-error bg-surface shadow-2">
           <InlineAlert tone="error" className="flex-1 bg-surface">
@@ -430,10 +526,10 @@ export default function ProductEditorPage() {
                 {text('name')}
               </Field>
               <Field id="store" label="فروشگاه" error={errors.store}>
-                {select('store', [{ value: 'نان صبحگاهی', label: 'نان صبحگاهی' }])}
+                {select('store', storeOptions)}
               </Field>
               <Field id="category" label="دسته‌بندی" error={errors.category}>
-                {select('category', [{ value: 'نانوایی', label: 'نانوایی' }])}
+                {select('category', categoryOptions)}
               </Field>
               <Field id="description" label="توضیحات" error={errors.description}>
                 <textarea
@@ -650,7 +746,7 @@ export default function ProductEditorPage() {
               variant="secondary"
               size="md"
               className="w-full lg:w-55 lg:self-start"
-              onClick={() => setPreview(true)}
+              onClick={() => setPreviewModalOpen(true)}
             >
               پیش‌نمایش
             </Button>
@@ -686,7 +782,7 @@ export default function ProductEditorPage() {
             variant="secondary"
             size="md"
             disabled={saving}
-            onClick={() => navigate('/vendor/products')}
+            onClick={() => navigate(`/vendor/products${previewSuffix}`)}
             className="!border-error !bg-error-subtle !text-error hover:!bg-error-subtle lg:w-55"
           >
             انصراف
@@ -720,7 +816,11 @@ export default function ProductEditorPage() {
         isLoading={saving}
         error={deleteError}
       />
-      <Modal open={preview} onClose={() => setPreview(false)} title="پیش‌نمایش محصول">
+      <Modal
+        open={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        title="پیش‌نمایش محصول"
+      >
         {values.images[0] && (
           <img src={values.images[0]} alt="" className="h-40 w-full rounded-md object-cover" />
         )}
