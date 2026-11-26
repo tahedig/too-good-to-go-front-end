@@ -1,7 +1,14 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { ChevronDown, Clock3 } from 'lucide-react'
-import { jalaaliMonthLength, toGregorian, toJalaali } from 'jalaali-js'
+import { ChevronDown, ChevronLeft, ChevronRight, Clock3 } from 'lucide-react'
+import {
+  jalaaliMonthLength,
+  MAX_JALAALI_YEAR,
+  MIN_JALAALI_YEAR,
+  toGregorian,
+  toJalaali,
+} from 'jalaali-js'
 import { toPersianDigits } from '@/lib/digits'
+import { formatJalaliDate, isValidDate } from '@/lib/vendorDates'
 
 const MONTHS = [
   'فروردین',
@@ -32,11 +39,29 @@ function todayIso() {
   return isoDate(now.getFullYear(), now.getMonth() + 1, now.getDate())
 }
 
-function formatDate(value: string) {
-  if (!value) return 'انتخاب تاریخ'
-  const [gy, gm, gd] = value.split('-').map(Number)
-  const { jy, jm, jd } = toJalaali(gy, gm, gd)
-  return `${toPersianDigits(jd)} ${MONTHS[jm - 1]} ${toPersianDigits(jy)}`
+function parseJalaaliDate(iso: string) {
+  if (!isValidDate(iso)) return null
+  const [gy, gm, gd] = iso.split('-').map(Number)
+  try {
+    return toJalaali(gy, gm, gd)
+  } catch {
+    // The ISO format accepts years outside the range supported by jalaali-js.
+    return null
+  }
+}
+
+type CalendarMonth = { jy: number; jm: number }
+
+function shiftMonth({ jy, jm }: CalendarMonth, offset: -1 | 1): CalendarMonth {
+  const month = jm + offset
+  if (month === 0) return { jy: jy - 1, jm: 12 }
+  if (month === 13) return { jy: jy + 1, jm: 1 }
+  return { jy, jm: month }
+}
+
+function calendarDay({ jy, jm }: CalendarMonth, day: number) {
+  const { gy, gm, gd } = toGregorian(jy, jm, day)
+  return isoDate(gy, gm, gd)
 }
 
 function useDismiss(open: boolean, onClose: () => void) {
@@ -65,49 +90,123 @@ interface PickerProps {
   label: string
 }
 
-export function VendorDatePicker({ id, value, onChange, error, label }: PickerProps) {
+interface DatePickerProps extends PickerProps {
+  allowPast?: boolean
+  referenceDate?: string
+  inline?: boolean
+}
+
+export function VendorDatePicker({
+  id,
+  value,
+  onChange,
+  error,
+  label,
+  allowPast = false,
+  referenceDate = todayIso(),
+  inline = false,
+}: DatePickerProps) {
   const [open, setOpen] = useState(false)
-  const close = () => setOpen(false)
-  const ref = useDismiss(open, close)
+  const [calendarMonth, setCalendarMonth] = useState<CalendarMonth | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const ref = useDismiss(open, () => setOpen(false))
   const popupId = useId()
-  const base = value || todayIso()
-  const [gy, gm, gd] = base.split('-').map(Number)
-  const selected = toJalaali(gy, gm, gd)
-  const firstGregorian = toGregorian(selected.jy, selected.jm, 1)
+  const min = allowPast ? undefined : referenceDate
+  const selected = parseJalaaliDate(value)
+  const base =
+    (!min || value >= min ? selected : null) ??
+    parseJalaaliDate(referenceDate) ??
+    toJalaali(new Date())
+  const month = calendarMonth ?? base
+  const { jy, jm } = month
+  const monthLabel = `${MONTHS[jm - 1]} ${toPersianDigits(jy)}`
+  const firstGregorian = toGregorian(jy, jm, 1)
   const firstWeekday =
-    (new Date(firstGregorian.gy, firstGregorian.gm - 1, firstGregorian.gd).getDay() + 1) % 7
-  const days = jalaaliMonthLength(selected.jy, selected.jm)
-  const min = todayIso()
+    (new Date(Date.UTC(firstGregorian.gy, firstGregorian.gm - 1, firstGregorian.gd)).getUTCDay() +
+      1) %
+    7
+  const days = jalaaliMonthLength(jy, jm)
+  const previous = shiftMonth(month, -1)
+  const next = shiftMonth(month, 1)
+  const previousDisabled =
+    previous.jy < MIN_JALAALI_YEAR ||
+    (!!min && calendarDay(previous, jalaaliMonthLength(previous.jy, previous.jm)) < min)
+  const caption = `انتخاب ${label}`
+  const monthControl =
+    'grid size-9 shrink-0 place-items-center rounded-sm hover:bg-surface-secondary disabled:text-text-disabled disabled:hover:bg-transparent'
+
+  function closeAndFocus() {
+    setOpen(false)
+    trigger.current?.focus()
+  }
 
   return (
-    <div ref={ref} className="relative">
+    <div
+      ref={ref}
+      className="relative"
+      onKeyDown={(event) => {
+        if (!open || event.key !== 'Escape') return
+        // Close the calendar before the surrounding dialog (if there is one).
+        event.preventDefault()
+        event.stopPropagation()
+        closeAndFocus()
+      }}
+    >
       <button
+        ref={trigger}
         id={id}
         type="button"
         aria-label={label}
         aria-expanded={open}
-        aria-controls={popupId}
+        aria-haspopup="dialog"
+        aria-controls={open ? popupId : undefined}
         aria-invalid={!!error}
-        aria-describedby={error ? `${id}-error` : undefined}
-        onClick={() => setOpen((current) => !current)}
+        aria-describedby={error ? `${id}-value ${id}-error` : `${id}-value`}
+        onClick={() => {
+          if (!open) setCalendarMonth(null)
+          setOpen(!open)
+        }}
         className={`flex h-[46px] w-full items-center gap-3 rounded-md border bg-surface px-3 text-label-md font-semibold transition-colors hover:bg-surface-secondary ${error ? 'border-error' : 'border-[#D1D6CC]'}`}
       >
-        <span className="flex-1 text-start">{formatDate(value)}</span>
+        <span id={`${id}-value`} className="min-w-0 flex-1 text-start">
+          {isValidDate(value) ? formatJalaliDate(value) : 'انتخاب تاریخ'}
+        </span>
         <ChevronDown
-          className={`size-5 transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`size-5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
           strokeWidth={1.75}
+          aria-hidden="true"
         />
       </button>
       {open && (
         <div
           id={popupId}
           role="dialog"
-          aria-label="انتخاب تاریخ تحویل"
-          className="absolute start-0 top-[54px] z-40 w-full min-w-[294px] rounded-md border border-[#D1D6CC] bg-surface p-3 shadow-3 sm:w-[318px]"
+          aria-label={caption}
+          className={`mt-2 w-full rounded-md border border-[#D1D6CC] bg-surface p-3 ${inline ? '' : 'absolute start-0 top-full z-40 shadow-3 sm:w-80 sm:max-w-full'}`}
         >
-          <p className="mb-3 text-body-lg font-semibold">
-            {MONTHS[selected.jm - 1]} {toPersianDigits(selected.jy)}
-          </p>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              aria-label="ماه قبل"
+              disabled={previousDisabled}
+              onClick={() => setCalendarMonth(previous)}
+              className={monthControl}
+            >
+              <ChevronRight size={20} strokeWidth={1.75} aria-hidden="true" />
+            </button>
+            <p aria-live="polite" className="text-center text-body-lg font-semibold">
+              {monthLabel}
+            </p>
+            <button
+              type="button"
+              aria-label="ماه بعد"
+              disabled={next.jy > MAX_JALAALI_YEAR}
+              onClick={() => setCalendarMonth(next)}
+              className={monthControl}
+            >
+              <ChevronLeft size={20} strokeWidth={1.75} aria-hidden="true" />
+            </button>
+          </div>
           <div className="grid grid-cols-7" aria-hidden="true">
             {WEEKDAYS.map((day) => (
               <span
@@ -120,23 +219,23 @@ export function VendorDatePicker({ id, value, onChange, error, label }: PickerPr
           </div>
           <div className="grid grid-cols-7">
             {Array.from({ length: firstWeekday }, (_, index) => (
-              <span key={`empty-${index}`} />
+              <span key={`empty-${index}`} aria-hidden="true" />
             ))}
             {Array.from({ length: days }, (_, index) => {
               const day = index + 1
-              const gregorian = toGregorian(selected.jy, selected.jm, day)
-              const date = isoDate(gregorian.gy, gregorian.gm, gregorian.gd)
+              const date = calendarDay(month, day)
               const active = date === value
-              const disabled = date < min
               return (
                 <button
                   key={day}
                   type="button"
-                  disabled={disabled}
+                  disabled={!!min && date < min}
+                  aria-label={`${toPersianDigits(day)} ${monthLabel}`}
                   aria-pressed={active}
+                  aria-current={date === referenceDate ? 'date' : undefined}
                   onClick={() => {
                     onChange(date)
-                    setOpen(false)
+                    closeAndFocus()
                   }}
                   className={`grid h-[38px] place-items-center rounded-[8px] text-label-md font-semibold transition-colors ${active ? 'bg-surface-sage' : 'hover:bg-surface-secondary'} disabled:text-text-disabled disabled:hover:bg-transparent`}
                 >
@@ -145,7 +244,7 @@ export function VendorDatePicker({ id, value, onChange, error, label }: PickerPr
               )
             })}
           </div>
-          <p className="mt-3 text-caption font-semibold">انتخاب تاریخ تحویل</p>
+          <p className="mt-3 text-caption font-semibold">{caption}</p>
         </div>
       )}
     </div>

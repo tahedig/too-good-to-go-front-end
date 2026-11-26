@@ -1,31 +1,33 @@
-import { forwardRef } from 'react';
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
-import { LoaderCircle } from 'lucide-react';
+import { forwardRef } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { LoaderCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import type { LinkProps } from 'react-router-dom'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type ButtonVariant = 'primary' | 'secondary' | 'tertiary' | 'destructive'
+export type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** نوع دکمه. پیش‌فرض: primary */
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  isLoading?: boolean;
-  icon?: ReactNode;
-  fullWidth?: boolean;
+  variant?: ButtonVariant
+  size?: ButtonSize
+  isLoading?: boolean
+  icon?: ReactNode
+  fullWidth?: boolean
 }
 
 const baseStyles =
   'inline-flex items-center justify-center gap-2 shrink-0 rounded-md whitespace-nowrap select-none ' +
   'transition-colors duration-150 disabled:cursor-not-allowed ' +
-  'focus-visible:outline-3 focus-visible:outline-focus focus-visible:-outline-offset-3';
+  'focus-visible:outline-3 focus-visible:outline-focus focus-visible:-outline-offset-3'
 
 const sizeStyles: Record<ButtonSize, string> = {
   sm: 'h-9 px-4 text-label-md',
   md: 'h-12 px-5 text-label-md',
   lg: 'h-13 px-6 text-label-lg',
-};
+}
 
-type ButtonState = 'idle' | 'loading' | 'disabled';
+type ButtonState = 'idle' | 'loading' | 'disabled'
 
 const variantStyles: Record<ButtonVariant, Record<ButtonState, string>> = {
   primary: {
@@ -48,9 +50,32 @@ const variantStyles: Record<ButtonVariant, Record<ButtonState, string>> = {
     loading: 'bg-error text-on-primary',
     disabled: 'bg-surface-secondary text-text-disabled',
   },
-};
+}
 
-<LoaderCircle className="size-6 shrink-0 animate-spin" strokeWidth={1.75} />
+type ButtonLinkProps = LinkProps & Pick<ButtonProps, 'variant' | 'size' | 'fullWidth'>
+
+export function ButtonLink({
+  variant = 'primary',
+  size = 'lg',
+  fullWidth = false,
+  className,
+  ...props
+}: ButtonLinkProps) {
+  return (
+    <Link
+      className={[
+        baseStyles,
+        sizeStyles[size],
+        variantStyles[variant].idle,
+        fullWidth && 'w-full',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      {...props}
+    />
+  )
+}
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
@@ -67,8 +92,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   },
   ref,
 ) {
-  const isBlocked = disabled || isLoading;
-  const state: ButtonState = disabled ? 'disabled' : isLoading ? 'loading' : 'idle';
+  const isBlocked = disabled || isLoading
+  const state: ButtonState = disabled ? 'disabled' : isLoading ? 'loading' : 'idle'
 
   const classes = [
     baseStyles,
@@ -78,7 +103,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     className,
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(' ')
 
   return (
     <button
@@ -100,5 +125,5 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       )}
       {children}
     </button>
-  );
-});
+  )
+})

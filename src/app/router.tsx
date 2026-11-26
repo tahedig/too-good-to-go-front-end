@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, replace } from 'react-router-dom'
 import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
@@ -13,6 +13,8 @@ import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
+import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
+import VendorFinancePage from '@/pages/vendor/FinancePage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
 import AdminLoginPage from '@/pages/admin/LoginPage'
@@ -88,18 +90,20 @@ export const router = createBrowserRouter([
       },
       {
         path: 'finance',
-        element: <VendorComingSoonPage title="مالی" />,
-      },
-      {
-        path: 'finance/:section',
-        element: <VendorComingSoonPage title="مالی" />,
+        children: [
+          {
+            index: true,
+            loader: ({ request }) =>
+              replace(`/vendor/finance/overview${new URL(request.url).search}`),
+          },
+          ...FINANCE_ITEMS.map(([section]) => ({
+            path: section,
+            element: <VendorFinancePage section={section} />,
+          })),
+        ],
       },
       {
         element: <VendorComingSoonPage title="فروشگاه‌ها" />,
-      },
-      {
-        path: 'finance',
-        element: <VendorComingSoonPage title="مالی" />,
       },
       {
         path: 'account',

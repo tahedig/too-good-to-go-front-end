@@ -1,94 +1,94 @@
-import { apiRequest } from '@/lib/api/client'
+import { ApiError, apiRequest } from '@/lib/api/client'
+import { STATUS_LABELS, toStorePickupWindow } from '@/lib/vendorReservations'
 import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
-
-type VendorOrderItemDto = {
-  title: string
-  quantity: number
-  unit_price: number
-  offer_type: 'surprise_bag' | 'specific_item'
-}
 
 type VendorOrderDto = {
   id: string
-  store_name: string
-  store_address: string
+  order_number: string
+  customer: { name: string }
+  package: { id: string; title: string; image_url: string }
+  quantity: number
+  total_price: number
   status: ReservationStatus
-  payment_status: 'unpaid' | 'initiated' | 'succeeded' | 'failed' | null
-  total_amount: number
-  currency: string
-  pickup_start: string
-  pickup_end: string
-  items: VendorOrderItemDto[]
-  created_at: string
+  pickup_date: string
+  pickup_time_slot: { start_time: string; end_time: string }
 }
 
 type VendorOrderListDto = {
   orders: VendorOrderDto[]
-  next_cursor: string | null
-  has_more: boolean
+  pagination: { page: number; total_pages: number }
 }
 
-function toLocalPickupParts(value: string) {
-  const date = new Date(value)
-  if (!Number.isFinite(date.getTime())) {
-    throw new Error('زمان تحویل یکی از سفارش‌ها در پاسخ API معتبر نیست.')
-  }
-
-  const pad = (part: number) => String(part).padStart(2, '0')
-  return {
-    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
-  }
+type VerifyPickupDto = {
+  success: boolean
+  order_id: string
+  status: 'delivered'
 }
 
 function mapOrder(order: VendorOrderDto): Reservation {
-  const pickupStart = toLocalPickupParts(order.pickup_start)
-  const pickupEnd = toLocalPickupParts(order.pickup_end)
-  const titles = order.items.map((item) => item.title.trim()).filter(Boolean)
+  if (
+    !order.id ||
+    !Object.hasOwn(STATUS_LABELS, order.status) ||
+    !Number.isSafeInteger(order.quantity) ||
+    order.quantity < 1 ||
+    !Number.isSafeInteger(order.total_price) ||
+    order.total_price < 0
+  ) {
+    throw new Error('اطلاعات یکی از رزروها در پاسخ سرور معتبر نیست.')
+  }
 
   return {
     id: order.id,
-    customer: null,
-    storeName: order.store_name,
-    storeAddress: order.store_address,
-    product: titles.join('، ') || 'سفارش',
-    image: '',
-    quantity: order.items.reduce((total, item) => total + item.quantity, 0),
-    amount: order.total_amount,
-    pickupDate: pickupStart.date,
-    startTime: pickupStart.time,
-    endTime: pickupEnd.time,
+    orderNumber: order.order_number,
+    customer: order.customer?.name?.trim() || null,
+    offerId: order.package?.id ?? '',
+    product: order.package?.title?.trim() || 'بستهٔ رزروشده',
+    image: order.package?.image_url ?? '',
+    quantity: order.quantity,
+    amount: order.total_price,
     status: order.status,
+    ...toStorePickupWindow(
+      order.pickup_date,
+      order.pickup_time_slot?.start_time,
+      order.pickup_time_slot?.end_time,
+    ),
   }
 }
 
-/**
- * The Go API exposes vendor orders through GET /orders. Fetch all cursor pages because the
- * current vendor screens do their date/status filtering client-side and have no pagination UI.
- */
-export async function listVendorOrders(): Promise<Reservation[]> {
-  const orders: VendorOrderDto[] = []
-  const seenCursors = new Set<string>()
-  let cursor: string | undefined
+/** TEAM-48 lists orders received by the vendor. GET /orders is the caller's purchases. */
+export async function listVendorOrders(signal?: AbortSignal): Promise<Reservation[]> {
+  const orders = new Map<string, Reservation>()
 
-  while (true) {
-    const params = new URLSearchParams({ group: 'all', limit: '50' })
-    if (cursor) params.set('cursor', cursor)
-
-    const page = await apiRequest<VendorOrderListDto>(`/orders?${params.toString()}`)
-    if (!page || !Array.isArray(page.orders)) {
-      throw new Error('ساختار پاسخ سفارش‌ها از API معتبر نیست.')
+  for (let page = 1; ; page += 1) {
+    const params = new URLSearchParams({ status: 'all', page: String(page), limit: '50' })
+    const result = await apiRequest<VendorOrderListDto>(`/vendor/orders?${params}`, { signal })
+    const totalPages = result?.pagination?.total_pages
+    if (
+      !Array.isArray(result?.orders) ||
+      result.pagination?.page !== page ||
+      !Number.isSafeInteger(totalPages) ||
+      totalPages < 0
+    ) {
+      throw new Error('ساختار پاسخ رزروها از سرور معتبر نیست.')
     }
-
-    orders.push(...page.orders)
-    if (!page.has_more) break
-    if (!page.next_cursor || seenCursors.has(page.next_cursor)) {
-      throw new Error('صفحه‌بندی سفارش‌ها از API معتبر نیست.')
-    }
-
-    seenCursors.add(page.next_cursor)
-    cursor = page.next_cursor
+    for (const item of result.orders) orders.set(item.id, mapOrder(item))
+    if (page >= totalPages) break
   }
 
-  return orders.map(mapOrder)
+  return [...orders.values()]
+}
+
+export async function verifyVendorPickup(id: string, code: string): Promise<void> {
+  if (!/^\d{4}$/.test(code)) throw new ApiError('کد تحویل باید ۴ رقم باشد.', 400)
+
+  const result = await apiRequest<VerifyPickupDto>(
+    `/vendor/orders/${encodeURIComponent(id)}/verify-pickup`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ pickup_code: code }),
+    },
+  )
+  if (!result?.success || result.order_id !== id || result.status !== 'delivered') {
+    throw new Error('ثبت تحویل از طرف سرور تأیید نشد.')
+  }
 }

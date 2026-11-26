@@ -3,28 +3,20 @@ import { ArrowRight } from 'lucide-react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
-import { Input } from '@/components/ui/Input'
 import { PhoneInput } from '@/components/ui/PhoneInput'
 import { ApiError } from '@/lib/api/client'
 import { toEnglishDigits } from '@/lib/digits'
-import { customerOtpApi} from '@/features/auth/api/customerOtpApi'
+import { customerOtpApi } from '@/features/auth/api/customerOtpApi'
 import OtpCodeInput from '@/features/auth/components/OtpCodeInput'
-import { verifyOtpService } from "../services/authService";
+import { verifyOtpService } from '@/services/authService'
 
-type LoginStep = 'phone' | 'profile' | 'otp'
-type NameErrors = Partial<Record<'firstName' | 'lastName', string>>
+type LoginStep = 'phone' | 'otp'
 const iranianMobilePattern = /^09\d{9}$/
-const namePattern = /^[\p{L}\p{M}][\p{L}\p{M}\s\-'‌]{1,49}$/u
+// Default OTP_RESEND_COOLDOWN in the Go API. The server also enforces its configured limit.
+const RESEND_COOLDOWN = 60
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError ? error.message : fallback
-}
-
-function validateName(value: string, label: string) {
-  const trimmed = value.trim()
-  if (!trimmed) return `وارد کردن ${label} الزامی است.`
-  if (!namePattern.test(trimmed)) return `${label} باید حداقل ۲ حرف و فقط شامل حروف باشد.`
-  return undefined
 }
 
 export default function LoginPage() {
@@ -32,13 +24,10 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState<LoginStep>('phone')
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [requestId, setRequestId] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [debugCode, setDebugCode] = useState('')
   const [code, setCode] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [fieldError, setFieldError] = useState('')
-  const [nameErrors, setNameErrors] = useState<NameErrors>({})
   const [submitError, setSubmitError] = useState('')
   const [notice, setNotice] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -52,8 +41,10 @@ export default function LoginPage() {
   function goBack() {
     setSubmitError('')
     setNotice('')
-    if (step === 'otp' && firstName) setStep('profile')
-    else setStep('phone')
+    setFieldError('')
+    setCode('')
+    setDebugCode('')
+    setStep('phone')
   }
 
   async function handlePhoneSubmit(event: FormEvent<HTMLFormElement>) {
@@ -69,9 +60,9 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       const result = await customerOtpApi.requestOtp(phone)
-      setRequestId(result.requestId)
-      setSecondsLeft(result.retryAfter)
-      setStep(result.isNewCustomer ? 'profile' : 'otp')
+      setSecondsLeft(RESEND_COOLDOWN)
+      setDebugCode(import.meta.env.DEV ? (result.debug_code ?? '') : '')
+      setStep('otp')
     } catch (error) {
       setSubmitError(errorMessage(error, 'ارسال کد تایید انجام نشد.'))
     } finally {
@@ -79,62 +70,34 @@ export default function LoginPage() {
     }
   }
 
-  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const nextErrors = {
-      firstName: validateName(firstName, 'نام'),
-      lastName: validateName(lastName, 'نام خانوادگی'),
-    }
-    setNameErrors(nextErrors)
-    if (nextErrors.firstName || nextErrors.lastName) return
-
-    setSubmitError('')
-    setSubmitting(true)
-    try {
-      await customerOtpApi.completeProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-      })
-      setStep('otp')
-    } catch (error) {
-      setSubmitError(errorMessage(error, 'تکمیل حساب انجام نشد.'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+    event.preventDefault()
 
     if (code.length !== 6) {
-      setFieldError('کد تایید باید ۶ رقم باشد.');
-      return;
+      setFieldError('کد تایید باید ۶ رقم باشد.')
+      return
     }
 
-    setFieldError('');
-    setSubmitError('');
-    setSubmitting(true);
+    setFieldError('')
+    setSubmitError('')
+    setSubmitting(true)
 
     try {
       const response = await verifyOtpService({
         phone: toEnglishDigits(phoneNumber),
         code: toEnglishDigits(code),
-      });
+      })
 
-      console.log('Logged in user:', response.user);
+      const returnTo = searchParams.get('returnTo')
+      const role = response.user?.role
+      const home = role === 'vendor' ? '/vendor' : role === 'admin' ? '/admin' : '/profile'
+      const safeReturnTo = returnTo?.startsWith('/') && !/^\/[\\/]/.test(returnTo) ? returnTo : home
 
-      const returnTo = searchParams.get('returnTo');
-
-      const safeReturnTo =
-        returnTo?.startsWith('/') && !returnTo.startsWith('//')
-          ? returnTo
-          : '/profile';
-
-      await navigate(safeReturnTo, { replace: true });
+      await navigate(safeReturnTo, { replace: true })
     } catch (error) {
-      setFieldError(errorMessage(error, 'کد تایید نادرست است.'));
+      setFieldError(errorMessage(error, 'کد تایید نادرست است.'))
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
   }
 
@@ -143,9 +106,9 @@ export default function LoginPage() {
     setNotice('')
     setSubmitting(true)
     try {
-      const result = await customerOtpApi.resendOtp()
-      setRequestId(result.requestId)
-      setSecondsLeft(result.retryAfter)
+      const result = await customerOtpApi.requestOtp(toEnglishDigits(phoneNumber))
+      setSecondsLeft(RESEND_COOLDOWN)
+      setDebugCode(import.meta.env.DEV ? (result.debug_code ?? '') : '')
       setCode('')
       setFieldError('')
       setNotice('کد جدید ارسال شد.')
@@ -211,53 +174,6 @@ export default function LoginPage() {
         </form>
       )}
 
-      {step === 'profile' && (
-        <form onSubmit={handleProfileSubmit} noValidate>
-          <h1 className="text-title-xl text-primary">تکمیل حساب مشتری</h1>
-          <p className="mt-2 text-body-md text-text-secondary">
-            لطفاً اطلاعات زیر را برای ساخت حساب کامل کنید.
-          </p>
-          {submitError && (
-            <InlineAlert tone="error" className="mt-5">
-              {submitError}
-            </InlineAlert>
-          )}
-          <div className="mt-6 space-y-4">
-            <PhoneInput label="شماره تلفن" value={phoneNumber} readOnly />
-            <Input
-              label="نام"
-              value={firstName}
-              onChange={(event) => {
-                setFirstName(event.target.value)
-                setNameErrors((current) => ({ ...current, firstName: undefined }))
-              }}
-              error={nameErrors.firstName}
-              autoComplete="given-name"
-              required
-            />
-            <Input
-              label="نام خانوادگی"
-              value={lastName}
-              onChange={(event) => {
-                setLastName(event.target.value)
-                setNameErrors((current) => ({ ...current, lastName: undefined }))
-              }}
-              error={nameErrors.lastName}
-              autoComplete="family-name"
-              required
-            />
-          </div>
-          {(nameErrors.firstName || nameErrors.lastName) && (
-            <InlineAlert tone="error" className="mt-5">
-              لطفاً نام و نام خانوادگی را درست وارد کنید.
-            </InlineAlert>
-          )}
-          <Button type="submit" fullWidth isLoading={submitting} className="mt-5">
-            تکمیل حساب
-          </Button>
-        </form>
-      )}
-
       {step === 'otp' && (
         <form onSubmit={handleOtpSubmit} noValidate>
           <h1 className="text-title-xl text-primary">تایید شماره</h1>
@@ -268,9 +184,11 @@ export default function LoginPage() {
             </bdi>{' '}
             ارسال شد. کد را در کادرهای زیر وارد کنید.
           </p>
-          <p className="mt-3 text-caption text-text-secondary">
-            کد آزمایشی: <bdi dir="ltr"></bdi>
-          </p>
+          {import.meta.env.DEV && debugCode && (
+            <p className="mt-3 text-caption text-text-secondary">
+              کد آزمایشی: <bdi dir="ltr">{debugCode}</bdi>
+            </p>
+          )}
           {submitError && (
             <InlineAlert tone="error" className="mt-5">
               {submitError}
@@ -315,7 +233,7 @@ export default function LoginPage() {
           </Button>
           <button
             type="button"
-            onClick={() => setStep('phone')}
+            onClick={goBack}
             className="mt-4 min-h-11 w-full text-label-md text-primary hover:underline"
           >
             ویرایش شماره تلفن
