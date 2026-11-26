@@ -21,7 +21,7 @@ export const OrderDateSelector: React.FC<OrderDateSelectorProps> = ({
   const inputId = providedId ?? generatedId
 
   return (
-    <div className="w-full sm:w-64">
+    <div className="w-full max-w-[320px] sm:w-64">
       <div className="mb-1 flex items-center justify-between gap-2">
         {label && (
           <label htmlFor={inputId} className="text-xs font-medium text-text-secondary">

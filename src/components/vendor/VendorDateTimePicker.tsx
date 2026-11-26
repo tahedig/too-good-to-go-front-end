@@ -143,7 +143,7 @@ export function VendorDatePicker({
   return (
     <div
       ref={ref}
-      className="relative"
+      className="relative w-full max-w-[320px]"
       onKeyDown={(event) => {
         if (!open || event.key !== 'Escape') return
         // Close the calendar before the surrounding dialog (if there is one).
@@ -182,7 +182,7 @@ export function VendorDatePicker({
           id={popupId}
           role="dialog"
           aria-label={caption}
-          className={`mt-2 w-full rounded-md border border-[#D1D6CC] bg-surface p-3 ${inline ? '' : 'absolute start-0 top-full z-40 shadow-3 sm:w-80 sm:max-w-full'}`}
+          className={`mt-2 w-full min-w-[272px] max-w-[320px] rounded-md border border-[#D1D6CC] bg-surface p-3 ${inline ? '' : 'absolute start-0 top-full z-40 shadow-3'}`}
         >
           <div className="mb-2 flex items-center justify-between gap-2">
             <button

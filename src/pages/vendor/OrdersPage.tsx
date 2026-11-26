@@ -128,17 +128,16 @@ export default function VendorOrdersPage() {
   const authError = errorInfo?.status === 401 || errorInfo?.status === 403
 
   return (
-    <div className="min-h-screen bg-background pb-12">
-      {/* Top Bar */}
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 pb-12 lg:px-12 lg:py-8">
       <VendorTopBar
-        title="سفارشات"
+        title="سفارشات روزانه"
         storeName={store?.name ?? 'فروشگاه‌های شما'}
         storeAddress={store?.address ?? ''}
         showBackButton={true}
         backTo="/vendor"
       />
 
-      <main className="mx-auto max-w-4xl space-y-6 px-4 md:px-8">
+      <div className="space-y-6">
         {/* Filters and Date row */}
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <OrderDateSelector
@@ -208,7 +207,7 @@ export default function VendorOrdersPage() {
             همه رزروها
           </button>
         </div>
-      </main>
+      </div>
 
       {/* Verify Pickup Modal */}
       <VerifyPickupModal

@@ -57,8 +57,25 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
   )
 }
 
+const ORDERS_ITEMS: readonly { to: string; label: string; aliases: readonly string[] }[] = [
+  {
+    to: '/vendor/orders',
+    label: 'سفارشات روزانه',
+    aliases: ['/vendor/orders', '/vendor/orders/list', '/vendor/orders/daily'],
+  },
+  {
+    to: '/vendor/reservations',
+    label: 'همه رزروها',
+    aliases: ['/vendor/reservations', '/vendor/orders/reservations'],
+  },
+]
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname, search } = useLocation()
+  const onOrdersRoute = ORDERS_ITEMS.some(({ aliases }) => aliases.includes(pathname))
+  const [ordersExpandedState, setOrdersExpandedState] = useState<boolean>()
+  const ordersExpanded = ordersExpandedState ?? onOrdersRoute
+
   const onFinanceRoute = Boolean(matchPath('/vendor/finance/*', pathname))
   const [expanded, setExpanded] = useState<boolean>()
   const financeExpanded = expanded ?? onFinanceRoute
@@ -67,6 +84,46 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav aria-label="ناوبری فروشنده" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
       {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+        if (to === '/vendor/orders') {
+          return (
+            <div key={to}>
+              <Button
+                variant="tertiary"
+                size="md"
+                fullWidth
+                aria-expanded={ordersExpanded}
+                onClick={() => setOrdersExpandedState(!ordersExpanded)}
+                className={`gap-3! rounded-[12px]! px-3! text-text-primary! ${onOrdersRoute ? 'bg-surface-sage! hover:bg-surface-sage!' : 'hover:bg-surface-secondary!'}`}
+              >
+                <Icon className="size-6 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                <span className="flex-1 text-start">{label}</span>
+                <ChevronDown
+                  className={`size-5 transition-transform ${ordersExpanded ? 'rotate-180' : ''}`}
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              </Button>
+              {ordersExpanded && (
+                <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
+                  {ORDERS_ITEMS.map((item) => {
+                    const active = item.aliases.includes(pathname)
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={onNavigate}
+                        className={`flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${active ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
+                      >
+                        {item.label}
+                      </NavLink>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        }
+
         if (to === '/vendor/finance') {
           return (
             <div key={to}>

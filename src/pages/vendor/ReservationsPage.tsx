@@ -127,17 +127,16 @@ export default function VendorReservationsPage() {
   const authError = errorInfo?.status === 401 || errorInfo?.status === 403
 
   return (
-    <div className="min-h-screen bg-background pb-12">
-      {/* Top Bar */}
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 pb-12 lg:px-12 lg:py-8">
       <VendorTopBar
-        title="رزروها"
+        title="همه رزروها"
         storeName={store?.name ?? 'فروشگاه‌های شما'}
         storeAddress={store?.address ?? ''}
         showBackButton={true}
         backTo="/vendor/orders"
       />
 
-      <main className="mx-auto max-w-4xl space-y-6 px-4 md:px-8">
+      <div className="space-y-6">
         {/* Desktop View: Top summary stats bar */}
         {summary && (
           <OrderStatsSummary summary={summary} store={store ?? undefined} variant="reservations" />
@@ -202,7 +201,7 @@ export default function VendorReservationsPage() {
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* Verify Pickup Modal */}
       <VerifyPickupModal

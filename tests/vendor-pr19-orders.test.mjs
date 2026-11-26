@@ -11,6 +11,7 @@ let VendorOrdersPage
 let VendorReservationsPage
 let OrderDateSelector
 let VendorOrderCard
+let VendorLayout
 let formatJalaliDate
 
 before(async () => {
@@ -39,6 +40,7 @@ before(async () => {
   ;({ VendorOrderCard } = await vite.ssrLoadModule(
     '/src/features/vendor/components/VendorOrderCard.tsx',
   ))
+  ;({ default: VendorLayout } = await vite.ssrLoadModule('/src/layouts/VendorLayout.tsx'))
   ;({ formatJalaliDate } = await vite.ssrLoadModule('/src/features/vendor/utils/dateUtils.ts'))
 })
 
@@ -101,20 +103,36 @@ test('PR #19 vendorApi hits /vendor/store, /vendor/orders, /vendor/orders/summar
   ])
 })
 
-test('PR #19 VendorOrdersPage and VendorReservationsPage render cleanly on SSR', () => {
+test('PR #19 VendorOrdersPage and VendorReservationsPage render cleanly without duplicate navbar', () => {
   const ordersHtml = renderToStaticMarkup(
     React.createElement(MemoryRouter, null, React.createElement(VendorOrdersPage)),
   )
   const reservationsHtml = renderToStaticMarkup(
     React.createElement(MemoryRouter, null, React.createElement(VendorReservationsPage)),
   )
-  assert.match(ordersHtml, /سفارشات/)
+  assert.match(ordersHtml, /سفارشات روزانه/)
   assert.match(ordersHtml, /aria-haspopup="dialog"/)
-  assert.match(reservationsHtml, /رزروها/)
+  assert.doesNotMatch(ordersHtml, /ته‌دیگ/)
+  assert.match(reservationsHtml, /همه رزروها/)
   assert.match(reservationsHtml, /aria-haspopup="dialog"/)
+  assert.doesNotMatch(reservationsHtml, /ته‌دیگ/)
 })
 
-test('OrderDateSelector uses themed VendorDatePicker and formats ISO pickup dates in Jalali', () => {
+test('VendorLayout expands orders submenu with daily orders and all reservations links', () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      MemoryRouter,
+      { initialEntries: ['/vendor/reservations'] },
+      React.createElement(VendorLayout),
+    ),
+  )
+  assert.match(html, /سفارشات روزانه/)
+  assert.match(html, /همه رزروها/)
+  assert.match(html, /href="\/vendor\/orders"/)
+  assert.match(html, /href="\/vendor\/reservations"/)
+})
+
+test('OrderDateSelector uses bounded-width VendorDatePicker and formats ISO pickup dates in Jalali', () => {
   assert.equal(formatJalaliDate('2026-11-26'), '۵ آذر ۱۴۰۵')
 
   const selectorHtml = renderToStaticMarkup(
@@ -125,6 +143,7 @@ test('OrderDateSelector uses themed VendorDatePicker and formats ISO pickup date
     }),
   )
   assert.match(selectorHtml, /aria-haspopup="dialog"/)
+  assert.match(selectorHtml, /max-w-\[320px\]/)
   assert.match(selectorHtml, /۵ آذر ۱۴۰۵/)
   assert.match(selectorHtml, /همه تاریخ‌ها/)
   assert.doesNotMatch(selectorHtml, /<select/)
