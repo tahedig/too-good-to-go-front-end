@@ -310,7 +310,7 @@ export default function HomePage() {
               />
               <CategoryFilters
                 selected={selectedCategory}
-                categories={['همه', ...categories, 'تخفیف ویژه']}
+                categories={['همه', ...categories]}
                 onSelect={(category) => {
                   setSelectedCategory(category)
                   if (category !== 'همه') {

@@ -192,7 +192,10 @@ export default function MapPage() {
           selectedCategory === 'همه'
             ? undefined
             : filterData.categories.find((category) => category.name === selectedCategory)?.id
-        return catalogueService.getMapOffers({ location, categoryId }, filterData.categories)
+        return catalogueService.getMapOffers(
+          { location, categoryIds: categoryId === undefined ? undefined : [categoryId] },
+          filterData.categories,
+        )
       })
       .then((response) => {
         if (!active || !response) return

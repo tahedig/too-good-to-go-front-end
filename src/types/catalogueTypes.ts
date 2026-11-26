@@ -47,6 +47,8 @@ export type FilterOptionDto = {
   label: string
 }
 
+export type CatalogueSort = 'nearest' | 'price_asc' | 'price_desc' | 'newest'
+
 export type CatalogueFiltersResponseDto = {
   kinds: FilterOptionDto[]
   categories: HomeCategoryDto[]
@@ -55,7 +57,7 @@ export type CatalogueFiltersResponseDto = {
     min: number
     max: number
   }
-  sort_options: FilterOptionDto[]
+  sort_options: Array<FilterOptionDto & { value: CatalogueSort }>
   offer_count: number
 }
 

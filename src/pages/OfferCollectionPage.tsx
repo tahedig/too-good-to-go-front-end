@@ -245,11 +245,7 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
     const search = query.trim().toLocaleLowerCase()
     return collectionOffers
       .filter((offer) => {
-        const matchesCategory =
-          category === 'همه' ||
-          (category === 'تخفیف ویژه'
-            ? offer.referenceValue >= offer.price * 1.5
-            : offer.category === category)
+        const matchesCategory = category === 'همه' || offer.category === category
         const matchesSearch =
           !search ||
           `${offer.merchantName} ${offer.category} ${offer.description}`
@@ -330,7 +326,7 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
             <CollectionFilters
               category={category}
               onCategoryChange={setCategory}
-              categories={['همه', ...categories, 'تخفیف ویژه']}
+              categories={['همه', ...categories]}
               onCategorySelect={(value) => {
                 if (value !== 'همه') {
                   navigate(`/search?category=${encodeURIComponent(value)}`)

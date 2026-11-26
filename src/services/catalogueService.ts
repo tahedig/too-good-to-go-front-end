@@ -19,7 +19,7 @@ const LOCATION_STORAGE_KEY = 'discovery_location'
 
 export type CatalogueSearchParams = {
   q?: string
-  categoryId?: number
+  categoryIds?: number[]
   kind?: string
   priceMin?: number
   priceMax?: number
@@ -34,7 +34,7 @@ export type CatalogueSearchParams = {
 
 export type CatalogueMapParams = {
   location: DiscoveryLocation
-  categoryId?: number
+  categoryIds?: number[]
   kind?: string
   radiusKm?: number
 }
@@ -78,7 +78,7 @@ function createCategoryNameMap(categories: CatalogueFilters['categories']) {
 function makeSearchParams(params: CatalogueSearchParams) {
   const search = new URLSearchParams()
   if (params.q?.trim()) search.set('q', params.q.trim())
-  if (params.categoryId !== undefined) search.set('category', String(params.categoryId))
+  if (params.categoryIds?.length) search.set('category', params.categoryIds.join(','))
   if (params.kind) search.set('kind', params.kind)
   if (params.priceMin !== undefined) search.set('price_min', String(params.priceMin))
   if (params.priceMax !== undefined) search.set('price_max', String(params.priceMax))
@@ -97,6 +97,26 @@ function makeSearchParams(params: CatalogueSearchParams) {
   if (params.sort) search.set('sort', params.sort)
   search.set('limit', String(params.limit ?? 50))
   return search
+}
+
+async function getAllOfferPages(path: string, query: URLSearchParams) {
+  const items: CatalogueOfferCardDto[] = []
+  const seenCursors = new Set<string>()
+  let cursor: string | undefined
+
+  do {
+    const pageQuery = new URLSearchParams(query)
+    if (cursor) pageQuery.set('cursor', cursor)
+    const page = await apiRequest<CatalogueOfferListDto>(`${path}?${pageQuery}`)
+    items.push(...page.items)
+
+    const nextCursor = page.has_more ? page.next_cursor : undefined
+    if (!nextCursor || seenCursors.has(nextCursor)) break
+    seenCursors.add(nextCursor)
+    cursor = nextCursor
+  } while (cursor)
+
+  return items
 }
 
 function mapOfferList(
@@ -186,14 +206,14 @@ export const catalogueService = {
       query.set('lng', String(location.longitude))
     }
     if (location && radiusKm !== undefined) query.set('radius_km', String(radiusKm))
-    const response = await apiRequest<CatalogueOfferListDto>(`/home/${id}?${query}`)
-    return mapOfferList(response)
+    const items = await getAllOfferPages(`/home/${id}`, query)
+    return mapOfferList({ items, has_more: false })
   },
 
   async search(params: CatalogueSearchParams, categories: CatalogueFilters['categories'] = []) {
     const query = makeSearchParams(params)
-    const response = await apiRequest<CatalogueOfferListDto>(`/offers?${query}`)
-    return mapOfferList(response, categories)
+    const items = await getAllOfferPages('/offers', query)
+    return mapOfferList({ items, has_more: false }, categories)
   },
 
   async getFavorites(location?: DiscoveryLocation) {
@@ -202,8 +222,8 @@ export const catalogueService = {
       query.set('lat', String(location.latitude))
       query.set('lng', String(location.longitude))
     }
-    const response = await apiRequest<CatalogueOfferListDto>(`/favorites/offers?${query}`)
-    return mapOfferList(response)
+    const items = await getAllOfferPages('/favorites/offers', query)
+    return mapOfferList({ items, has_more: false })
   },
 
   async getStoreOffers(id: string, location?: DiscoveryLocation) {
@@ -215,10 +235,8 @@ export const catalogueService = {
       query.set('lat', String(location.latitude))
       query.set('lng', String(location.longitude))
     }
-    const response = await apiRequest<CatalogueOfferListDto>(
-      `/stores/${encodeURIComponent(id)}/offers?${query}`,
-    )
-    return mapOfferList(response)
+    const items = await getAllOfferPages(`/stores/${encodeURIComponent(id)}/offers`, query)
+    return mapOfferList({ items, has_more: false })
   },
 
   async getMapOffers(params: CatalogueMapParams, categories: CatalogueFilters['categories'] = []) {
@@ -227,7 +245,7 @@ export const catalogueService = {
       lng: String(params.location.longitude),
       limit: '300',
     })
-    if (params.categoryId !== undefined) query.set('category', String(params.categoryId))
+    if (params.categoryIds?.length) query.set('category', params.categoryIds.join(','))
     if (params.kind) query.set('kind', params.kind)
     if (params.radiusKm !== undefined) query.set('radius_km', String(params.radiusKm))
     const response = await apiRequest<CatalogueMapResponseDto>(`/offers/map?${query}`)

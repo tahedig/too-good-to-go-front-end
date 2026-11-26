@@ -9,19 +9,18 @@ import { SearchField } from '@/components/ui/SearchField'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { catalogueService, type CatalogueFilters } from '@/services/catalogueService'
 import type { DiscoveryOffer } from '@/types/discoveryTypes'
+import type { CatalogueSort } from '@/types/catalogueTypes'
 import { formatPrice } from '@/lib/format'
 
-const sortValues = ['distance', 'price', 'time'] as const
+const sortValues: CatalogueSort[] = ['nearest', 'price_asc', 'price_desc', 'newest']
 
-type SortOrder = (typeof sortValues)[number]
-
-function isSortOrder(value: string | null): value is SortOrder {
+function isSortOrder(value: string | null): value is CatalogueSort {
   return sortValues.some((option) => option === value)
 }
 
 interface DiscoveryFilters {
   category: string
-  sort: SortOrder
+  sort: CatalogueSort
   minPrice: number
   maxPrice: number
   maxDistance: number
@@ -32,7 +31,7 @@ interface DiscoveryFilters {
 
 const defaultFilters: DiscoveryFilters = {
   category: 'همه',
-  sort: 'distance',
+  sort: 'newest',
   minPrice: 0,
   maxPrice: 160000,
   maxDistance: 5,
@@ -237,8 +236,13 @@ export default function SearchResultsPage() {
   const [filterData, setFilterData] = useState<CatalogueFilters>()
   const [location] = useState(() => catalogueService.getLocation())
   const defaults = useMemo(
-    () => ({ ...defaultFilters, maxPrice: filterData?.price.max ?? defaultFilters.maxPrice }),
-    [filterData],
+    () => ({
+      ...defaultFilters,
+      minPrice: filterData?.price.min ?? defaultFilters.minPrice,
+      maxPrice: filterData?.price.max ?? defaultFilters.maxPrice,
+      sort: location ? ('nearest' as const) : ('newest' as const),
+    }),
+    [filterData, location],
   )
   const filters = useMemo(() => readFilters(searchParams, defaults), [defaults, searchParams])
   const [draftFilters, setDraftFilters] = useState(defaultFilters)
@@ -250,7 +254,7 @@ export default function SearchResultsPage() {
   const [favoriteError, setFavoriteError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
   const categories = useMemo(
-    () => ['همه', ...(filterData?.categories.map((category) => category.name) ?? []), 'تخفیف ویژه'],
+    () => ['همه', ...(filterData?.categories.map((category) => category.name) ?? [])],
     [filterData],
   )
   const allergenOptions = filterData?.allergens ?? []
@@ -259,22 +263,8 @@ export default function SearchResultsPage() {
     draftFilters.maxPrice,
     10000,
   )
-  const sortOptions: Array<{ value: SortOrder; label: string }> = [
-    {
-      value: 'distance',
-      label: location
-        ? (filterData?.sort_options.find((option) => option.value === 'nearest')?.label ??
-          'نزدیک‌ترین')
-        : 'نزدیک‌ترین (انتخاب محدوده)',
-    },
-    {
-      value: 'price',
-      label:
-        filterData?.sort_options.find((option) => option.value === 'price_asc')?.label ??
-        'ارزان‌ترین',
-    },
-    { value: 'time', label: 'زمان تحویل' },
-  ]
+  const sortOptions =
+    filterData?.sort_options.filter((option) => location || option.value !== 'nearest') ?? []
   const activeAllergens = allergenOptions.filter((option) =>
     filters.excludedAllergens.includes(option.value),
   )
@@ -306,17 +296,17 @@ export default function SearchResultsPage() {
         setLoading(true)
         setLoadError('')
         const categoryId =
-          filters.category === 'همه' || filters.category === 'تخفیف ویژه'
+          filters.category === 'همه'
             ? undefined
             : filterData.categories.find((category) => category.name === filters.category)?.id
-        const sort = filters.sort === 'price' ? 'price_asc' : location ? 'nearest' : 'newest'
+        const sort = filters.sort === 'nearest' && !location ? 'newest' : filters.sort
         const supportedAllergens = filters.excludedAllergens.filter((allergen) =>
           filterData.allergens.some((option) => option.value === allergen),
         )
         return catalogueService.search(
           {
             q: query,
-            categoryId,
+            categoryIds: categoryId === undefined ? undefined : [categoryId],
             priceMin: filters.minPrice,
             priceMax: filters.maxPrice,
             pickupFrom: tehranDateTime(filters.startHour),
@@ -347,20 +337,7 @@ export default function SearchResultsPage() {
     }
   }, [filterData, filters, location, query, reloadKey])
 
-  const results = useMemo(() => {
-    const filtered =
-      filters.category === 'تخفیف ویژه'
-        ? offers.filter((offer) => offer.referenceValue >= offer.price * 1.5)
-        : [...offers]
-    if (filters.sort === 'time') {
-      filtered.sort(
-        (first, second) =>
-          (Date.parse(first.pickupStart) || Infinity) -
-          (Date.parse(second.pickupStart) || Infinity),
-      )
-    }
-    return filtered
-  }, [filters.category, filters.sort, offers])
+  const results = offers
 
   function updateQuery(value: string) {
     const next = new URLSearchParams(searchParams)
@@ -559,7 +536,7 @@ export default function SearchResultsPage() {
             مرتب‌سازی:
             <select
               aria-label="مرتب‌سازی پیشنهادها"
-              value={filters.sort}
+              value={filters.sort === 'nearest' && !location ? 'newest' : filters.sort}
               onChange={(event) => {
                 if (isSortOrder(event.target.value)) {
                   updateFilters({ ...filters, sort: event.target.value })
@@ -568,11 +545,7 @@ export default function SearchResultsPage() {
               className="h-11 rounded-md border border-border-input bg-surface px-3 text-body-md text-primary"
             >
               {sortOptions.map((option) => (
-                <option
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.value === 'distance' && !location}
-                >
+                <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
               ))}
@@ -807,7 +780,8 @@ export default function SearchResultsPage() {
         <fieldset className="space-y-2">
           <legend className="mb-2 text-label-lg">حذف آلرژن‌ها</legend>
           <p className="mb-2 text-caption text-text-secondary">
-            اطلاعات آلرژن‌ها نمونه‌ای است؛ پیش از سفارش با فروشگاه بررسی کن.
+            این فیلتر بر اساس آلرژن‌های ثبت‌شده برای پیشنهادها اعمال می‌شود؛ پیش از سفارش با فروشگاه
+            بررسی کن.
           </p>
           {allergenOptions.map((allergen) => (
             <label key={allergen.value} className="flex min-h-11 items-center gap-3">
