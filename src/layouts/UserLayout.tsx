@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Compass, Heart, PackageCheck, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
@@ -14,7 +14,9 @@ const USER_NAV_ITEMS: UserNavItem[] = [
     to: '/',
     label: 'اکتشاف',
     icon: Compass,
-    matches: (pathname) => ['/', '/map', '/search', '/today', '/last-chance'].includes(pathname),
+    matches: (pathname) =>
+      ['/', '/map', '/search', '/today', '/last-chance'].includes(pathname) ||
+      pathname.startsWith('/stores'),
   },
   {
     to: '/favorites',
@@ -29,7 +31,7 @@ const USER_NAV_ITEMS: UserNavItem[] = [
     matches: (pathname) => pathname.startsWith('/orders'),
   },
   {
-    to: '/login',
+    to: '/profile',
     label: 'پروفایل',
     icon: UserRound,
     matches: (pathname) => pathname.startsWith('/profile'),
@@ -52,7 +54,7 @@ function DesktopSidebar() {
           {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
             const active = matches(pathname)
             return (
-              <NavLink
+              <Link
                 key={to}
                 to={to}
                 aria-current={active ? 'page' : undefined}
@@ -62,7 +64,7 @@ function DesktopSidebar() {
               >
                 <Icon className="size-6 shrink-0" strokeWidth={1.75} />
                 <span className="flex-1 text-start">{label}</span>
-              </NavLink>
+              </Link>
             )
           })}
         </nav>
@@ -83,7 +85,7 @@ function MobileNavigation() {
         {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
           const active = matches(pathname)
           return (
-            <NavLink
+            <Link
               key={to}
               to={to}
               aria-current={active ? 'page' : undefined}
@@ -95,7 +97,7 @@ function MobileNavigation() {
             >
               <Icon className="size-6 shrink-0" strokeWidth={1.75} />
               <span>{label}</span>
-            </NavLink>
+            </Link>
           )
         })}
       </nav>

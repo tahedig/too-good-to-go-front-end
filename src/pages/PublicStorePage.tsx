@@ -1,48 +1,10 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowRight, Clock3, Compass, Heart, Search, ShoppingBag, UserRound } from 'lucide-react'
+import { ArrowRight, Clock3, Search } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FoodListingCard } from '@/components/ui/FoodListingCard'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { publicStores, type PublicStore } from '@/features/store/mockData'
-
-function CustomerSidebar() {
-  const navItems = [
-    { to: '/', label: 'اکتشاف', Icon: Compass, active: true },
-    { to: '/favorites', label: 'ذخیره‌ها', Icon: Heart },
-    { to: '/orders', label: 'سفارشات', Icon: ShoppingBag },
-    { to: '/profile', label: 'پروفایل', Icon: UserRound },
-  ]
-
-  return (
-    <aside className="sticky top-0 hidden h-screen w-65 shrink-0 flex-col border-s border-border-default bg-surface px-6 py-7 lg:flex">
-      <Link
-        to="/"
-        className="mb-6 flex items-center justify-between border-b border-border-default px-4 pb-5 text-title-lg font-bold text-primary"
-      >
-        <span>ته‌دیگ</span>
-        <UserRound className="size-7" strokeWidth={1.75} />
-      </Link>
-      <nav aria-label="ناوبری مشتری" className="flex flex-col gap-2">
-        {navItems.map(({ to, label, Icon, active }) => (
-          <Link
-            key={to}
-            to={to}
-            className={[
-              'flex min-h-12 items-center gap-3 rounded-md px-4 text-body-md transition-colors',
-              active
-                ? 'bg-primary-subtle font-semibold text-primary'
-                : 'text-text-secondary hover:bg-surface-secondary hover:text-primary',
-            ].join(' ')}
-          >
-            <Icon className="size-6" strokeWidth={1.75} />
-            {label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
-  )
-}
 
 function StoreHeader() {
   return (
@@ -198,35 +160,30 @@ export default function PublicStorePage() {
   if (!store) return <Navigate to="/not-found" replace />
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-text-primary">
-      <div className="mx-auto flex min-h-screen max-w-[1440px]">
-        <CustomerSidebar />
-        <div className="min-w-0 flex-1">
-          <StoreHeader />
-          <main className="px-6 pb-10 pt-5 sm:px-8 lg:px-0 lg:pb-16 lg:pt-5">
-            <img
-              src={store.heroImageSrc}
-              alt={`ویترین ${store.name}`}
-              className="h-40 w-full rounded-lg object-cover sm:h-64 lg:rounded-e-none"
-            />
+    <div className="min-w-0 flex-1 bg-background text-text-primary">
+      <StoreHeader />
+      <main className="px-6 pb-8 pt-5 sm:px-8 lg:px-0 lg:pb-16 lg:pt-5">
+        <img
+          src={store.heroImageSrc}
+          alt={`ویترین ${store.name}`}
+          className="h-40 w-full rounded-lg object-cover sm:h-64 lg:rounded-e-none"
+        />
 
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] lg:[direction:ltr]">
-              <div className="[direction:rtl] lg:col-start-2 lg:row-start-1">
-                <StoreSummary store={store} />
-              </div>
-              <div className="[direction:rtl] lg:col-start-1 lg:row-span-3 lg:row-start-1 lg:pl-20">
-                <ProductSection store={store} />
-              </div>
-              <div className="[direction:rtl] lg:col-start-2 lg:row-start-2">
-                <LocationCard store={store} />
-              </div>
-              <div className="[direction:rtl] lg:col-start-2 lg:row-start-3">
-                <PickupCard store={store} />
-              </div>
-            </div>
-          </main>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1fr)] lg:[direction:ltr]">
+          <div className="[direction:rtl] lg:col-start-2 lg:row-start-1">
+            <StoreSummary store={store} />
+          </div>
+          <div className="[direction:rtl] lg:col-start-1 lg:row-span-3 lg:row-start-1 lg:pl-20">
+            <ProductSection store={store} />
+          </div>
+          <div className="[direction:rtl] lg:col-start-2 lg:row-start-2">
+            <LocationCard store={store} />
+          </div>
+          <div className="[direction:rtl] lg:col-start-2 lg:row-start-3">
+            <PickupCard store={store} />
+          </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

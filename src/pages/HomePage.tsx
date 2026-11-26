@@ -62,18 +62,6 @@ function DiscoveryHeader() {
           </button>
         </div>
 
-        <nav aria-label="ناوبری اصلی" className="hidden items-center gap-6 sm:flex lg:hidden">
-          <a href="#favorites" className="text-body-md text-text-secondary hover:text-primary">
-            ذخیره‌ها
-          </a>
-          <Link to="/orders" className="text-body-md text-text-secondary hover:text-primary">
-            سفارش‌ها
-          </Link>
-          <a href="#discover" className="text-body-md text-primary">
-            اکتشاف
-          </a>
-        </nav>
-
         <Link to="/" className="text-title-xl font-bold text-primary">
           ته‌دیگ
         </Link>
@@ -251,45 +239,39 @@ export default function HomePage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-text-primary">
-      <div className="mx-auto flex min-h-screen max-w-[1440px]">
-        <div className="min-w-0 flex-1">
-          <DiscoveryHeader />
-          <main
-            id="discover"
-            className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pb-28 pt-0 sm:gap-8 sm:px-6 sm:pb-10 sm:pt-4 lg:gap-8 lg:px-20 lg:pb-12 lg:pt-12"
-          >
-            <section className="space-y-4">
-              <SearchAndFilters
-                query={query}
-                onQueryChange={setQuery}
-                onOpenFilters={() => setFiltersOpen(true)}
-                onSubmitSearch={() =>
-                  navigate(
-                    query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search',
-                  )
-                }
-              />
-              <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
-            </section>
+    <div className="min-w-0 flex-1 bg-background text-text-primary">
+      <DiscoveryHeader />
+      <main
+        id="discover"
+        className="mx-auto flex w-full max-w-[1180px] flex-col gap-6 px-4 pb-8 pt-0 sm:gap-8 sm:px-6 sm:pb-10 sm:pt-4 lg:gap-8 lg:px-20 lg:pb-12 lg:pt-12"
+      >
+        <section className="space-y-4">
+          <SearchAndFilters
+            query={query}
+            onQueryChange={setQuery}
+            onOpenFilters={() => setFiltersOpen(true)}
+            onSubmitSearch={() =>
+              navigate(query.trim() ? `/search?q=${encodeURIComponent(query.trim())}` : '/search')
+            }
+          />
+          <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
+        </section>
 
-            <DiscoveryMapPreview />
+        <DiscoveryMapPreview />
 
-            <div className="space-y-8 sm:space-y-10">
-              {sections.map((section) => (
-                <OfferCarousel
-                  key={section.id}
-                  id={section.id}
-                  title={section.title}
-                  offers={section.offers}
-                  saved={saved}
-                  onSaveChange={updateSaved}
-                />
-              ))}
-            </div>
-          </main>
+        <div className="space-y-8 sm:space-y-10">
+          {sections.map((section) => (
+            <OfferCarousel
+              key={section.id}
+              id={section.id}
+              title={section.title}
+              offers={section.offers}
+              saved={saved}
+              onSaveChange={updateSaved}
+            />
+          ))}
         </div>
-      </div>
+      </main>
 
       <Modal
         open={filtersOpen}

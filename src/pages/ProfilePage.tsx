@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, Handbag, HelpCircle, LogOut, WalletCards } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { ApiError } from '@/lib/api/client'
 import { profileApi } from '@/features/profile/api/profileApi'
@@ -79,21 +79,27 @@ export default function ProfilePage() {
 
   return (
     <CustomerProfileShell>
-      <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
+      <main className="mx-auto w-full max-w-[1180px] px-4 pb-8 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
         {!profile && !error ? (
           <ProfileLoading />
         ) : error ? (
           <div className="mx-auto max-w-xl space-y-4 pt-8">
             <InlineAlert tone="error">{error}</InlineAlert>
-            <Button
-              fullWidth
-              onClick={() => {
-                setError('')
-                setRetryKey((value) => value + 1)
-              }}
-            >
-              تلاش دوباره
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <ButtonLink to="/login" fullWidth>
+                ورود به حساب کاربری
+              </ButtonLink>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => {
+                  setError('')
+                  setRetryKey((value) => value + 1)
+                }}
+              >
+                تلاش دوباره
+              </Button>
+            </div>
           </div>
         ) : profile ? (
           <>

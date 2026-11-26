@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ArrowRight, Check, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Input } from '@/components/ui/Input'
 import { ApiError } from '@/lib/api/client'
@@ -97,7 +97,7 @@ export default function PersonalInfoPage() {
 
   return (
     <CustomerProfileShell>
-      <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
+      <main className="mx-auto w-full max-w-[1180px] px-4 pb-8 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
         <div className="mb-6 flex items-center gap-3 sm:mb-8">
           <Link
             to="/profile"
@@ -116,42 +116,43 @@ export default function PersonalInfoPage() {
         ) : loadError ? (
           <div className="mx-auto max-w-[568px] space-y-4">
             <InlineAlert tone="error">{loadError}</InlineAlert>
-            <Button
-              fullWidth
-              onClick={() => {
-                setLoadError('')
-                setRetryKey((value) => value + 1)
-              }}
-            >
-              تلاش دوباره
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <ButtonLink to="/login" fullWidth>
+                ورود به حساب کاربری
+              </ButtonLink>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => {
+                  setLoadError('')
+                  setRetryKey((value) => value + 1)
+                }}
+              >
+                تلاش دوباره
+              </Button>
+            </div>
           </div>
         ) : profile ? (
-          <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,568px)] lg:justify-center">
-            <aside className="hidden self-start rounded-lg bg-surface p-4 lg:block">
-              <p className="flex items-center gap-2 px-3 py-2 text-title-sm text-primary">
-                <UserRound className="size-6" strokeWidth={1.75} />
-                {profile.displayName}
-              </p>
-              <nav className="mt-2 space-y-2" aria-label="بخش‌های پروفایل">
-                <Link
-                  to="/profile/personal"
-                  aria-current="page"
-                  className="block rounded-md bg-primary-subtle px-4 py-3 text-label-md text-primary"
-                >
-                  اطلاعات شخصی
-                </Link>
-                <span className="block px-4 py-3 text-body-md text-text-secondary">
-                  مکان ترجیحی
-                </span>
-                <Link
-                  to="/profile/support"
-                  className="block rounded-md px-4 py-3 text-body-md text-text-secondary hover:bg-surface-secondary hover:text-primary"
-                >
-                  راهنمایی و پشتیبانی
-                </Link>
-              </nav>
-            </aside>
+          <div className="mx-auto max-w-[568px] space-y-4">
+            <nav
+              className="flex flex-wrap items-center gap-2 rounded-lg bg-surface p-2"
+              aria-label="بخش‌های پروفایل"
+            >
+              <Link
+                to="/profile/personal"
+                aria-current="page"
+                className="rounded-md bg-primary-subtle px-4 py-2.5 text-label-md text-primary"
+              >
+                اطلاعات شخصی
+              </Link>
+              <span className="px-4 py-2.5 text-body-md text-text-secondary">مکان ترجیحی</span>
+              <Link
+                to="/profile/support"
+                className="rounded-md px-4 py-2.5 text-body-md text-text-secondary hover:bg-surface-secondary hover:text-primary"
+              >
+                راهنمایی و پشتیبانی
+              </Link>
+            </nav>
 
             <form onSubmit={handleSubmit} noValidate className="rounded-lg bg-surface p-5 sm:p-8">
               <p className="mb-6 flex items-center gap-2 text-title-md text-primary">

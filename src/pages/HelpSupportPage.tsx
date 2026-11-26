@@ -42,13 +42,6 @@ const FAQ_ITEMS: readonly FaqItem[] = [
   },
 ]
 
-const HEADER_LINKS = [
-  { to: '/', label: 'اکتشاف', active: false },
-  { to: '/favorites', label: 'ذخیره‌ها', active: false },
-  { to: '/orders', label: 'سفارشات', active: false },
-  { to: '/profile', label: 'پروفایل', active: true },
-] as const
-
 function SupportDesktopHeader() {
   return (
     <header className="hidden border-b border-border-default bg-background sm:block">
@@ -56,24 +49,6 @@ function SupportDesktopHeader() {
         <Link to="/" className="shrink-0 text-title-xl font-bold text-primary">
           ته‌دیگ
         </Link>
-
-        <nav
-          aria-label="ناوبری بخش‌های مشتری"
-          className="flex items-center gap-2 rounded-md bg-surface"
-        >
-          {HEADER_LINKS.map(({ to, label, active }) => (
-            <Link
-              key={to}
-              to={to}
-              aria-current={active ? 'page' : undefined}
-              className={`grid h-16 min-w-19 place-items-center rounded-md px-3 text-body-md text-primary transition-colors ${
-                active ? 'bg-primary-subtle font-semibold' : 'hover:bg-surface-secondary'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
 
         <span className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap text-body-md text-primary">
           <span>تهران، ولیعصر</span>

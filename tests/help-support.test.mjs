@@ -16,7 +16,10 @@ before(async () => {
     ssr: { external: ['react', 'react-dom', 'react-router-dom', 'lucide-react'] },
   })
   ;({ default: HelpSupportPage } = await vite.ssrLoadModule('/src/pages/HelpSupportPage.tsx'))
-  ProfilePageSource = await fs.readFile(new URL('../src/pages/ProfilePage.tsx', import.meta.url), 'utf8')
+  ProfilePageSource = await fs.readFile(
+    new URL('../src/pages/ProfilePage.tsx', import.meta.url),
+    'utf8',
+  )
 })
 
 after(async () => {
@@ -42,6 +45,7 @@ test('HelpSupportPage renders all collapsed FAQs, header, back link, and support
   assert.match(html, /سؤالتان را بنویسید/)
   assert.match(html, /ارسال پیام/)
   assert.match(html, /href="\/profile"/)
+  assert.doesNotMatch(html, /ناوبری بخش‌های مشتری/)
 
   // All FAQ triggers must start collapsed (`aria-expanded="false"`).
   const expandedCount = (html.match(/aria-expanded="true"/g) ?? []).length
