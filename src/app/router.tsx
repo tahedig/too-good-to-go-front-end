@@ -32,6 +32,7 @@ export const router = createBrowserRouter([
       { path: 'map', element: <MapPage /> },
       { path: 'search', element: <SearchResultsPage /> },
       { path: 'today', element: <OfferCollectionPage /> },
+      { path: 'popular-nearby', element: <OfferCollectionPage /> },
       { path: 'favorites', element: <OfferCollectionPage /> },
       { path: 'last-chance', element: <OfferCollectionPage /> },
       { path: 'orders', element: <OrdersPage /> },
