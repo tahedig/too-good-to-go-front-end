@@ -61,10 +61,13 @@ function offer(id, quantity) {
   return { id, quantity_available: quantity }
 }
 
-test('maps dashboard API responses and selects the nearest open pickup across pages', async (t) => {
+test('maps dashboard API responses and selects the nearest open pickup across pages (TEAM-48 fallback)', async (t) => {
   const signal = new AbortController().signal
   const fetch = mockApi(t, ({ pathname, searchParams }, init) => {
     assert.equal(init.signal, signal)
+    if (pathname === '/api/vendor/dashboard') {
+      return Response.json({}, { status: 404 })
+    }
     if (pathname === '/api/vendor/stores') {
       return Response.json({
         stores: [store('first'), store('second', 2), store('hidden', 5, 'suspended')],
@@ -108,7 +111,7 @@ test('maps dashboard API responses and selects the nearest open pickup across pa
   })
 
   const dashboard = await loadVendorDashboard(signal)
-  assert.equal(fetch.mock.callCount(), 7)
+  assert.equal(fetch.mock.callCount(), 8)
   assert.deepEqual(
     dashboard.stores.value.map(({ productsCount }) => productsCount),
     [1, 2],
@@ -121,6 +124,137 @@ test('maps dashboard API responses and selects the nearest open pickup across pa
   assert.equal(dashboard.reservations.value.reservedForNearestOffer, 4)
   assert.equal(dashboard.reservations.value.publishedForNearestOffer, null)
   assert.equal(dashboard.finance, null, 'order amounts are not vendor payouts')
+})
+
+test('maps GET /vendor/dashboard (PR #28) including financial KPIs, plan, and nearest reservation', async (t) => {
+  const signal = new AbortController().signal
+  const fetch = mockApi(t, ({ pathname, searchParams }, init) => {
+    assert.equal(init.signal, signal)
+    assert.equal(pathname, '/api/vendor/dashboard')
+    assert.equal(searchParams.get('recent_limit'), '10')
+    return Response.json({
+      active_store: {
+        id: 'store-1',
+        name: 'نان صبحگاهی',
+        address: 'تهران، ولیعصر',
+        status: 'approved',
+        accepts_orders: true,
+        created_at: '2026-10-01T08:00:00Z',
+      },
+      stores: [
+        {
+          id: 'store-1',
+          name: 'نان صبحگاهی',
+          address: 'تهران، ولیعصر',
+          status: 'approved',
+          accepts_orders: true,
+          created_at: '2026-10-01T08:00:00Z',
+        },
+        {
+          id: 'store-pending',
+          name: 'شعبه نیاوران',
+          address: 'تهران، نیاوران',
+          status: 'pending',
+          accepts_orders: false,
+          created_at: '2026-10-18T10:00:00Z',
+        },
+      ],
+      pending_store_requests: [
+        {
+          id: 'store-pending',
+          store_name: 'شعبه نیاوران',
+          address: 'تهران، نیاوران',
+          status: 'pending',
+          created_at: '2026-10-18T10:00:00Z',
+        },
+      ],
+      kpis: {
+        received_revenue: 1000000,
+        reserved_packages: 3,
+        available_packages: 5,
+        active_offers: 2,
+      },
+      reservation_counts: {
+        pending_payment: 0,
+        paid: 2,
+        ready: 1,
+        completed: 10,
+        cancelled: 1,
+        expired: 0,
+        no_show: 0,
+        active: 3,
+        total: 14,
+      },
+      today: { reservations_count: 2, packages_reserved: 3, completed_count: 1, revenue: 90000 },
+      financial: {
+        received_payout: 1000000,
+        net_period_revenue: 1500000,
+        pending_payout: 500000,
+        available_balance: 1000000,
+        plan: {
+          name: 'پایه · رایگان',
+          commission_rate: 15,
+          period_start: '2026-10-01T00:00:00Z',
+          period_end: '2026-11-01T00:00:00Z',
+          remaining_days: 12,
+        },
+      },
+      nearest_reservation: {
+        id: 'order-near',
+        status: 'ready',
+        pickup_code: '4821',
+        customer_name: 'لیلا علیزاده',
+        store_id: 'store-1',
+        store_name: 'نان صبحگاهی',
+        offer_title: 'بسته صبحانه',
+        offer_image_url: null,
+        quantity: 2,
+        total_amount: 80000,
+        pickup_start: '2026-10-19T14:30:00Z',
+        pickup_end: '2026-10-19T15:30:00Z',
+        offer_quantity_available: 5,
+        offer_quantity_reserved: 3,
+        offer_quantity_total: 8,
+        created_at: '2026-10-19T10:00:00Z',
+      },
+      recent_reservations: [],
+    })
+  })
+
+  const dashboard = await loadVendorDashboard(signal)
+  assert.equal(fetch.mock.callCount(), 1)
+  assert.equal(dashboard.stores.ok, true)
+  assert.equal(dashboard.stores.value.length, 1)
+  assert.equal(dashboard.stores.value[0].productsCount, 2)
+  assert.equal(dashboard.activeOffersCount, 2)
+  assert.equal(dashboard.pendingStore.value.id, 'store-pending')
+  assert.equal(dashboard.inventory.value.available, 5)
+  assert.equal(dashboard.reservations.value.reserved, 3)
+  assert.equal(dashboard.reservations.value.nearest.status, 'ready_for_pickup')
+  assert.equal(dashboard.reservations.value.nearest.startTime, '18:00')
+  assert.equal(dashboard.reservations.value.nearest.endTime, '19:00')
+  assert.equal(dashboard.reservations.value.reservedForNearestOffer, 3)
+  assert.equal(dashboard.reservations.value.publishedForNearestOffer, 8)
+  assert.deepEqual(dashboard.finance, {
+    received: 1000000,
+    net: 1500000,
+    pending: 500000,
+    available: 1000000,
+    plan: {
+      name: 'پایه · رایگان',
+      commission: 15,
+      renewal: '۱۰ آبان ۱۴۰۵',
+    },
+  })
+})
+
+test('does not fall back to legacy endpoints when GET /vendor/dashboard returns 401', async (t) => {
+  const fetch = mockApi(t, () => Response.json({ error: { message: 'unauthorized' } }, { status: 401 }))
+  const dashboard = await loadVendorDashboard()
+  assert.equal(fetch.mock.callCount(), 1)
+  assert.deepEqual(dashboard.stores, { ok: false, status: 401 })
+  assert.deepEqual(dashboard.reservations, { ok: false, status: 401 })
+  assert.equal(dashboard.finance, null)
 })
 
 test('a backend without TEAM-48 does not use a vendor’s purchases as reservations', async (t) => {
@@ -138,6 +272,7 @@ test('a backend without TEAM-48 does not use a vendor’s purchases as reservati
   assert.deepEqual(dashboard.reservations, { ok: false, status: 404 })
   assert.deepEqual(dashboard.pendingStore, { ok: true, value: null })
   assert.deepEqual(seen.sort(), [
+    '/api/vendor/dashboard',
     '/api/vendor/orders',
     '/api/vendor/store-requests',
     '/api/vendor/stores',
@@ -167,6 +302,7 @@ test('loads the active store using TEAM-48 when store management is not mounted'
 
 test('a failed inventory source does not erase the store or fabricate stock', async (t) => {
   mockApi(t, ({ pathname }) => {
+    if (pathname === '/api/vendor/dashboard') return Response.json({}, { status: 404 })
     if (pathname === '/api/vendor/stores') return Response.json({ stores: [store('first')] })
     if (pathname === '/api/vendor/store-requests') return Response.json({ requests: [] })
     if (pathname === '/api/vendor/orders') {

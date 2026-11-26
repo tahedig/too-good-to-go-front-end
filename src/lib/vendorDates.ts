@@ -10,6 +10,14 @@ const persianDate = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
   month: 'long',
   year: 'numeric',
 })
+const persianMonth = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  timeZone: 'UTC',
+  month: 'long',
+})
+const persianYear = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+  timeZone: 'UTC',
+  year: 'numeric',
+})
 
 export function localDate(date = new Date()): string {
   const parts = tehranDate.formatToParts(date)
@@ -33,4 +41,11 @@ export function formatJalaliDate(iso: string): string {
 
 export function formatJalaliDateRange(start: string, end: string): string {
   return persianDate.formatRange(new Date(`${start}T00:00:00Z`), new Date(`${end}T00:00:00Z`))
+}
+
+export function formatJalaliMonthYear(iso: string): { month: string; label: string } {
+  const date = new Date(`${iso}T00:00:00Z`)
+  const month = persianMonth.format(date)
+  const year = persianYear.format(date)
+  return { month, label: `${month} ${year}` }
 }

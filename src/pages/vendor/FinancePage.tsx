@@ -127,6 +127,11 @@ function FinanceScreen({
             .join(' · ')
   const requestUpgrade = source?.requestUpgrade
   const requestPayout = source?.requestPayout
+  const authError =
+    !preview && state.kind === 'error' && (state.status === 401 || state.status === 403)
+  const hardError =
+    !preview && !overview && state.kind === 'error' && state.status !== 404 && state.status !== 501
+  const returnTo = encodeURIComponent(`/vendor/finance/${section}`)
 
   return (
     <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 p-4 pb-10 sm:p-8 lg:p-6 xl:p-12">
@@ -174,6 +179,28 @@ function FinanceScreen({
             تلاش دوباره
           </Button>
         </div>
+      ) : hardError ? (
+        <div className="flex flex-col items-start gap-4">
+          {authError ? (
+            <>
+              <InlineAlert tone="warning">
+                {state.status === 403
+                  ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+                  : 'برای مشاهدهٔ اطلاعات مالی وارد حساب فروشنده شوید.'}
+              </InlineAlert>
+              <ButtonLink to={`/login?returnTo=${returnTo}`} variant="secondary" size="md">
+                ورود با حساب فروشنده
+              </ButtonLink>
+            </>
+          ) : (
+            <>
+              <InlineAlert tone="error">دریافت اطلاعات مالی انجام نشد.</InlineAlert>
+              <Button variant="secondary" size="md" onClick={retry}>
+                تلاش دوباره
+              </Button>
+            </>
+          )}
+        </div>
       ) : transactions ? (
         <TransactionsPanel
           data={loading ? undefined : (data?.transactions ?? null)}
@@ -187,11 +214,16 @@ function FinanceScreen({
         <>
           {overview ? (
             <>
-              {!loading && !data?.totals && (
-                <FinanceNotice>
-                  اطلاعات درآمد و موجودی هنوز از سرویس مالی ارائه نمی‌شود.
-                </FinanceNotice>
-              )}
+              {!loading &&
+                !data?.totals &&
+                (state.kind === 'ready' ||
+                  state.status === 404 ||
+                  state.status === 405 ||
+                  state.status === 501) && (
+                  <FinanceNotice>
+                    اطلاعات درآمد و موجودی هنوز از سرویس مالی ارائه نمی‌شود.
+                  </FinanceNotice>
+                )}
               <OverviewPanel
                 data={data}
                 reservations={reservationState(state, retry)}

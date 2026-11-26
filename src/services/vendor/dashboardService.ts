@@ -1,9 +1,12 @@
 import { ApiError, apiRequest } from '@/lib/api/client'
-import { isActiveReservation } from '@/lib/vendorReservations'
-import type { Reservation } from '@/lib/vendorReservations'
+import { formatJalaliDate } from '@/lib/vendorDates'
+import { isActiveReservation, toPickupWindowFromTimestamps } from '@/lib/vendorReservations'
+import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
 import { storeService } from '@/services/storeService'
 import type { VendorStore } from '@/types/storeTypes'
 import { listVendorReservations } from './reservationsService'
+import { fetchVendorDashboard } from './vendorDashboardApi'
+import type { VendorDashboardResponseDto, VendorNearestReservationDto } from './vendorDashboardApi'
 
 type DashboardStore = Pick<VendorStore, 'id' | 'name' | 'branch' | 'address'> & {
   productsCount: number | null
@@ -39,6 +42,7 @@ export type DashboardData = {
     publishedForNearestOffer: number | null
   }>
   finance: DashboardFinance | null
+  activeOffersCount?: number
 }
 
 async function settle<T>(load: () => Promise<T>): Promise<DashboardResult<T>> {
@@ -46,6 +50,97 @@ async function settle<T>(load: () => Promise<T>): Promise<DashboardResult<T>> {
     return { ok: true, value: await load() }
   } catch (error) {
     return { ok: false, status: error instanceof ApiError ? error.status : null }
+  }
+}
+
+function mapDashboardOrderStatus(status: string): ReservationStatus {
+  switch (status) {
+    case 'ready':
+    case 'ready_for_pickup':
+      return 'ready_for_pickup'
+    case 'completed':
+    case 'delivered':
+      return 'delivered'
+    case 'cancelled':
+    case 'expired':
+    case 'no_show':
+      return 'cancelled'
+    default:
+      return 'active'
+  }
+}
+
+function mapNearestReservation(nearest: VendorNearestReservationDto): Reservation {
+  return {
+    id: nearest.id,
+    orderNumber: nearest.pickup_code || nearest.id.slice(0, 8),
+    customer: nearest.customer_name?.trim() || null,
+    offerId: nearest.id,
+    product: nearest.offer_title?.trim() || 'بستهٔ رزروشده',
+    image: nearest.offer_image_url ?? '',
+    quantity: Math.max(1, nearest.quantity),
+    amount: nearest.total_amount,
+    status: mapDashboardOrderStatus(nearest.status),
+    ...toPickupWindowFromTimestamps(nearest.pickup_start, nearest.pickup_end, nearest.created_at),
+  }
+}
+
+function mapDashboardResponse(dto: VendorDashboardResponseDto): DashboardData {
+  const approvedStores: DashboardStore[] = dto.stores
+    .filter((store) => store.status === 'approved')
+    .map((store, _, list) => ({
+      id: store.id,
+      name: store.name,
+      branch: '',
+      address: store.address,
+      productsCount: list.length === 1 ? dto.kpis.active_offers : null,
+    }))
+
+  const pendingRequest = dto.pending_store_requests[0]
+  const pendingStore: PendingStore | null = pendingRequest
+    ? { id: pendingRequest.id, name: pendingRequest.store_name, branch: '' }
+    : null
+
+  const nearest = dto.nearest_reservation ? mapNearestReservation(dto.nearest_reservation) : null
+
+  return {
+    stores: { ok: true, value: approvedStores },
+    pendingStore: { ok: true, value: pendingStore },
+    inventory: {
+      ok: true,
+      value: {
+        available: dto.kpis.available_packages,
+        offers: dto.nearest_reservation
+          ? [
+              {
+                id: dto.nearest_reservation.id,
+                quantity_available: dto.nearest_reservation.offer_quantity_available,
+              },
+            ]
+          : [],
+      },
+    },
+    reservations: {
+      ok: true,
+      value: {
+        nearest,
+        reserved: dto.kpis.reserved_packages,
+        reservedForNearestOffer: dto.nearest_reservation?.offer_quantity_reserved ?? null,
+        publishedForNearestOffer: dto.nearest_reservation?.offer_quantity_total ?? null,
+      },
+    },
+    finance: {
+      received: dto.financial.received_payout,
+      net: dto.financial.net_period_revenue,
+      pending: dto.financial.pending_payout,
+      available: dto.financial.available_balance,
+      plan: {
+        name: dto.financial.plan.name,
+        commission: dto.financial.plan.commission_rate,
+        renewal: formatJalaliDate(dto.financial.plan.period_end.slice(0, 10)),
+      },
+    },
+    activeOffersCount: dto.kpis.active_offers,
   }
 }
 
@@ -72,7 +167,9 @@ async function listDashboardStores(signal?: AbortSignal): Promise<DashboardStore
     throw new Error('پاسخ فروشگاه فعال معتبر نیست.')
   }
   if (!store.is_active) return []
-  return [{ id: store.id, name: store.name, address: store.address, branch: '', productsCount: null }]
+  return [
+    { id: store.id, name: store.name, address: store.address, branch: '', productsCount: null },
+  ]
 }
 
 /** The public catalogue only exposes packages that are currently available to reserve. */
@@ -139,6 +236,21 @@ function summarizeReservations(orders: Reservation[], now = Date.now()) {
 }
 
 export async function loadVendorDashboard(signal?: AbortSignal): Promise<DashboardData> {
+  try {
+    const dashboard = await fetchVendorDashboard({ recentLimit: 10, signal })
+    if (dashboard) return mapDashboardResponse(dashboard)
+  } catch (error) {
+    const status = error instanceof ApiError ? error.status : null
+    const failed = { ok: false as const, status }
+    return {
+      stores: failed,
+      pendingStore: failed,
+      inventory: failed,
+      reservations: failed,
+      finance: null,
+    }
+  }
+
   const loadStores = settle(() => listDashboardStores(signal))
   const loadPending = settle(
     async () =>
@@ -169,7 +281,5 @@ export async function loadVendorDashboard(signal?: AbortSignal): Promise<Dashboa
     loadReservations,
   ])
 
-  // The Go API exposes order prices, not vendor payouts, net revenue, fee rates, or plans.
-  // Do not derive any of these fields from reservations or the daily gross order total.
   return { stores, pendingStore, inventory, reservations, finance: null }
 }

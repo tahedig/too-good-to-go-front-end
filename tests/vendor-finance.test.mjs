@@ -151,7 +151,181 @@ test('preview payout cannot overdraw and does not retain the supplied bank detai
   await assert.rejects(previewFinanceSource.requestPayout({ ...payout, amount: 1 }))
 })
 
-test('live finance uses vendor reservations across pages and does not fabricate ledger or actions', async (t) => {
+const dashboardPayload = {
+  active_store: {
+    id: 'store-1',
+    name: 'نانوایی بهار',
+    address: 'تهران، انقلاب',
+    status: 'approved',
+    accepts_orders: true,
+    created_at: '2026-10-01T08:00:00Z',
+  },
+  stores: [
+    {
+      id: 'store-1',
+      name: 'نانوایی بهار',
+      address: 'تهران، انقلاب',
+      status: 'approved',
+      accepts_orders: true,
+      created_at: '2026-10-01T08:00:00Z',
+    },
+  ],
+  pending_store_requests: [],
+  kpis: { received_revenue: 1000000, reserved_packages: 3, available_packages: 4, active_offers: 2 },
+  reservation_counts: {
+    pending_payment: 0,
+    paid: 2,
+    ready: 1,
+    completed: 8,
+    cancelled: 1,
+    expired: 0,
+    no_show: 0,
+    active: 3,
+    total: 12,
+  },
+  today: { reservations_count: 1, packages_reserved: 2, completed_count: 1, revenue: 80000 },
+  financial: {
+    received_payout: 1000000,
+    net_period_revenue: 1500000,
+    pending_payout: 500000,
+    available_balance: 1000000,
+    plan: {
+      name: 'پایه · رایگان',
+      commission_rate: 15,
+      period_start: '2026-10-01T00:00:00Z',
+      period_end: '2026-11-01T00:00:00Z',
+      remaining_days: 12,
+    },
+  },
+  nearest_reservation: null,
+  recent_reservations: [
+    {
+      id: 'recent-1',
+      status: 'paid',
+      payment_status: 'succeeded',
+      pickup_code: '1234',
+      customer_name: 'سارا رضایی',
+      store_id: 'store-1',
+      store_name: 'نانوایی بهار',
+      items: [{ title: 'بسته نان', offer_type: 'surprise_bag', quantity: 2, unit_price: 45000 }],
+      items_total: 90000,
+      total_amount: 90000,
+      vendor_payout: 76500,
+      pickup_start: '2026-10-19T14:30:00Z',
+      pickup_end: '2026-10-19T15:30:00Z',
+      created_at: '2026-10-19T10:00:00Z',
+    },
+    {
+      id: 'recent-done',
+      status: 'completed',
+      payment_status: 'succeeded',
+      pickup_code: '5678',
+      customer_name: 'علی محمدی',
+      store_id: 'store-1',
+      store_name: 'نانوایی بهار',
+      items: [{ title: 'بسته شیرینی', offer_type: 'surprise_bag', quantity: 1, unit_price: 60000 }],
+      items_total: 60000,
+      total_amount: 60000,
+      vendor_payout: 51000,
+      pickup_start: '2026-10-18T14:30:00Z',
+      pickup_end: '2026-10-18T15:30:00Z',
+      created_at: '2026-10-18T10:00:00Z',
+    },
+  ],
+}
+
+test('live finance combines GET /vendor/dashboard financials/plan with active reservations', async (t) => {
+  const { signal } = new AbortController()
+  const fetch = t.mock.method(globalThis, 'fetch', async (url, init) => {
+    const endpoint = new URL(url, 'http://test.invalid')
+    assert.equal(init.signal, signal)
+    assert.equal(init.headers.get('Authorization'), 'Bearer finance-token')
+    if (endpoint.pathname === '/api/vendor/dashboard') {
+      return Response.json(dashboardPayload)
+    }
+    if (endpoint.pathname === '/api/vendor/orders') {
+      return Response.json({
+        orders: [
+          {
+            id: 'ord-1',
+            order_number: 'TG-101',
+            customer: { name: 'سارا رضایی' },
+            package: { id: 'offer-1', title: 'بسته نان' },
+            quantity: 2,
+            total_price: 90000,
+            status: 'active',
+            pickup_date: '2026-10-19',
+            pickup_time_slot: { start_time: '09:00', end_time: '11:00' },
+          },
+        ],
+        pagination: { page: 1, total_pages: 1 },
+      })
+    }
+    throw new Error(`unexpected endpoint: ${endpoint.pathname}`)
+  })
+
+  const overview = await vendorFinanceSource.load('overview', signal)
+  assert.equal(overview.storeName, 'نانوایی بهار')
+  assert.deepEqual(overview.totals, {
+    net: 1500000,
+    paid: 1000000,
+    pending: 500000,
+    available: 1000000,
+  })
+  assert.equal(overview.plans.current.offer.name, 'پایه · رایگان')
+  assert.equal(overview.plans.current.offer.commission, 15)
+  assert.equal(overview.plans.current.from, '2026-10-01')
+  assert.equal(overview.plans.current.to, '2026-11-01')
+  assert.equal(overview.plans.current.daysLeft, 12)
+  assert.deepEqual(overview.plans.options, [])
+  assert.deepEqual(overview.plans.history, [])
+  assert.deepEqual(overview.reservations, [
+    { id: 'ord-1', customer: 'سارا رضایی', quantity: 2, amount: 90000 },
+  ])
+
+  const plans = await vendorFinanceSource.load('plans', signal)
+  assert.deepEqual(plans.plans, overview.plans)
+  assert.equal(plans.totals, undefined)
+
+  const settlements = await vendorFinanceSource.load('settlements', signal)
+  assert.deepEqual(settlements.totals, overview.totals)
+  assert.equal(settlements.settlements, undefined)
+
+  assert.deepEqual(await vendorFinanceSource.load('transactions', signal), {})
+  assert.equal(vendorFinanceSource.requestUpgrade, undefined)
+  assert.equal(vendorFinanceSource.requestPayout, undefined)
+  assert.equal(fetch.mock.callCount(), 4)
+})
+
+test('live finance overview falls back to dashboard recent_reservations when /vendor/orders is 404', async (t) => {
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const endpoint = new URL(url, 'http://test.invalid')
+    if (endpoint.pathname === '/api/vendor/dashboard') {
+      return Response.json(dashboardPayload)
+    }
+    return Response.json({}, { status: 404 })
+  })
+
+  const overview = await vendorFinanceSource.load('overview')
+  assert.deepEqual(overview.reservations, [
+    { id: 'recent-1', customer: 'سارا رضایی', quantity: 2, amount: 90000 },
+  ])
+  assert.deepEqual(overview.totals, {
+    net: 1500000,
+    paid: 1000000,
+    pending: 500000,
+    available: 1000000,
+  })
+})
+
+test('live finance propagates 401 errors from GET /vendor/dashboard on plans and settlements', async (t) => {
+  t.mock.method(globalThis, 'fetch', async () => Response.json({}, { status: 401 }))
+  await assert.rejects(vendorFinanceSource.load('plans'), { status: 401 })
+  await assert.rejects(vendorFinanceSource.load('settlements'), { status: 401 })
+  await assert.rejects(vendorFinanceSource.load('overview'), { status: 401 })
+})
+
+test('live finance falls back to vendor reservations when GET /vendor/dashboard is 404', async (t) => {
   const { signal } = new AbortController()
   const order = (id, status, quantity, name = '') => ({
     id,
@@ -166,9 +340,12 @@ test('live finance uses vendor reservations across pages and does not fabricate 
   })
   const fetch = t.mock.method(globalThis, 'fetch', async (url, init) => {
     const endpoint = new URL(url, 'http://test.invalid')
-    assert.equal(endpoint.pathname, '/api/vendor/orders')
     assert.equal(init.signal, signal)
     assert.equal(init.headers.get('Authorization'), 'Bearer finance-token')
+    if (endpoint.pathname === '/api/vendor/dashboard') {
+      return Response.json({}, { status: 404 })
+    }
+    assert.equal(endpoint.pathname, '/api/vendor/orders')
     const page = Number(endpoint.searchParams.get('page'))
     const orders =
       page === 1
@@ -184,15 +361,15 @@ test('live finance uses vendor reservations across pages and does not fabricate 
     ],
   })
   for (const section of ['plans', 'transactions', 'settlements']) {
-    assert.deepEqual(await vendorFinanceSource.load(section), {})
+    assert.deepEqual(await vendorFinanceSource.load(section, signal), {})
   }
   assert.equal(vendorFinanceSource.requestUpgrade, undefined)
   assert.equal(vendorFinanceSource.requestPayout, undefined)
-  assert.equal(fetch.mock.callCount(), 2)
+  assert.equal(fetch.mock.callCount(), 5)
 })
 
-test('a missing vendor-order endpoint stays unavailable, with no demo fallback', async (t) => {
+test('a missing vendor-order and dashboard endpoint stays unavailable, with no demo fallback', async (t) => {
   const fetch = t.mock.method(globalThis, 'fetch', async () => Response.json({}, { status: 404 }))
   await assert.rejects(vendorFinanceSource.load('overview'), { status: 404 })
-  assert.equal(fetch.mock.callCount(), 1)
+  assert.equal(fetch.mock.callCount(), 2)
 })

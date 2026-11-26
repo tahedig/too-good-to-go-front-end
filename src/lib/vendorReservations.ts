@@ -47,6 +47,29 @@ export function toStorePickupWindow(date: string, start: string, end: string) {
   }
 }
 
+export function toPickupWindowFromTimestamps(
+  pickupStart: string | null | undefined,
+  pickupEnd: string | null | undefined,
+  fallbackCreatedAt: string,
+) {
+  const startRaw = pickupStart ?? fallbackCreatedAt
+  const endRaw = pickupEnd ?? startRaw
+  const pickupStartsAt = Date.parse(startRaw)
+  let pickupEndsAt = Date.parse(endRaw)
+  if (!Number.isFinite(pickupStartsAt) || !Number.isFinite(pickupEndsAt)) {
+    throw new Error('زمان تحویل یکی از رزروها در پاسخ سرور معتبر نیست.')
+  }
+  if (pickupEndsAt < pickupStartsAt) pickupEndsAt = pickupStartsAt
+
+  return {
+    pickupDate: localDate(new Date(pickupStartsAt)),
+    startTime: tehranTime.format(pickupStartsAt),
+    endTime: tehranTime.format(pickupEndsAt),
+    pickupStartsAt,
+    pickupEndsAt,
+  }
+}
+
 export const STATUS_LABELS: Record<ReservationStatus, string> = {
   active: 'فعال',
   ready_for_pickup: 'آماده تحویل',

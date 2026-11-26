@@ -2,8 +2,8 @@ import type { FinanceSection } from './navigation'
 import type { TransactionData } from './transactions'
 
 export type FinanceTotals = {
-  gross: number
-  commission: number
+  gross?: number
+  commission?: number
   net: number
   paid: number
   pending: number

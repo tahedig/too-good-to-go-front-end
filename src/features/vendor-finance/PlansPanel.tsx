@@ -71,59 +71,62 @@ export function PlansPanel({
         </div>
       </div>
       {message && <InlineAlert tone="success">{message}</InlineAlert>}
-      {data && (
-        <section
-          aria-label="مقایسهٔ طرح‌ها"
-          className="grid auto-rows-fr gap-4 lg:grid-cols-3 lg:gap-6"
-        >
-          {data.options.map((plan) => {
-            const isCurrent = plan.id === data.current.offer.id
-            const isPending = plan.id === pending?.id
-            const badge = isCurrent
-              ? ({ status: 'info', label: 'طرح فعلی' } as const)
-              : isPending
-                ? ({ status: 'pending', label: 'درخواست در انتظار بررسی' } as const)
-                : requestUpgrade
-                  ? ({ status: 'active', label: 'قابل درخواست' } as const)
-                  : ({ status: 'inactive', label: 'غیرقابل درخواست' } as const)
-            return (
-              <article
-                key={plan.id}
-                className={`${financeCard} ${isCurrent ? 'bg-primary-subtle! ring-2 ring-inset ring-primary' : ''}`}
-              >
-                <h2 className={financeHeading}>{plan.name}</h2>
-                <FinanceBadge {...badge} />
-                <p className="text-price-lg">{planPrice(plan.monthlyPrice)}</p>
-                <p className="text-caption font-normal text-text-secondary">
-                  ماهانه · {formatNumber(plan.days)} روز
-                </p>
-                <dl className="flex items-baseline justify-between gap-3 text-body-md">
-                  <dt className="text-text-secondary">کارمزد هر فروش</dt>
-                  <dd className="font-bold">{formatNumber(plan.commission)}٪</dd>
-                </dl>
-                <ul className="flex flex-1 flex-col gap-4 text-body-md">
-                  <li>{formatNumber(plan.stores)} فروشگاه</li>
-                  <li>{formatNumber(plan.products)} محصول فعال</li>
-                  <li className="text-text-secondary">{plan.features}</li>
-                </ul>
-                <Button
-                  variant="secondary"
-                  fullWidth
-                  className="font-normal"
-                  disabled={isCurrent || isPending || !requestUpgrade}
-                  onClick={() => {
-                    setMessage('')
-                    setError(undefined)
-                    setSelection(plan)
-                  }}
+      {data &&
+        (data.options.length > 0 ? (
+          <section
+            aria-label="مقایسهٔ طرح‌ها"
+            className="grid auto-rows-fr gap-4 lg:grid-cols-3 lg:gap-6"
+          >
+            {data.options.map((plan) => {
+              const isCurrent = plan.id === data.current.offer.id
+              const isPending = plan.id === pending?.id
+              const badge = isCurrent
+                ? ({ status: 'info', label: 'طرح فعلی' } as const)
+                : isPending
+                  ? ({ status: 'pending', label: 'درخواست در انتظار بررسی' } as const)
+                  : requestUpgrade
+                    ? ({ status: 'active', label: 'قابل درخواست' } as const)
+                    : ({ status: 'inactive', label: 'غیرقابل درخواست' } as const)
+              return (
+                <article
+                  key={plan.id}
+                  className={`${financeCard} ${isCurrent ? 'bg-primary-subtle! ring-2 ring-inset ring-primary' : ''}`}
                 >
-                  {isCurrent ? 'طرح فعال' : isPending ? 'درخواست ثبت شده' : 'درخواست ارتقا'}
-                </Button>
-              </article>
-            )
-          })}
-        </section>
-      )}
+                  <h2 className={financeHeading}>{plan.name}</h2>
+                  <FinanceBadge {...badge} />
+                  <p className="text-price-lg">{planPrice(plan.monthlyPrice)}</p>
+                  <p className="text-caption font-normal text-text-secondary">
+                    ماهانه · {formatNumber(plan.days)} روز
+                  </p>
+                  <dl className="flex items-baseline justify-between gap-3 text-body-md">
+                    <dt className="text-text-secondary">کارمزد هر فروش</dt>
+                    <dd className="font-bold">{formatNumber(plan.commission)}٪</dd>
+                  </dl>
+                  <ul className="flex flex-1 flex-col gap-4 text-body-md">
+                    <li>{formatNumber(plan.stores)} فروشگاه</li>
+                    <li>{formatNumber(plan.products)} محصول فعال</li>
+                    <li className="text-text-secondary">{plan.features}</li>
+                  </ul>
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    className="font-normal"
+                    disabled={isCurrent || isPending || !requestUpgrade}
+                    onClick={() => {
+                      setMessage('')
+                      setError(undefined)
+                      setSelection(plan)
+                    }}
+                  >
+                    {isCurrent ? 'طرح فعال' : isPending ? 'درخواست ثبت شده' : 'درخواست ارتقا'}
+                  </Button>
+                </article>
+              )
+            })}
+          </section>
+        ) : (
+          <FinanceNotice>فهرست طرح‌های قابل ارتقا هنوز از سرویس مالی ارائه نمی‌شود.</FinanceNotice>
+        ))}
       <section className={financeCard} aria-labelledby="finance-plan-history">
         <h2 className={financeHeading} id="finance-plan-history">
           تاریخچه طرح‌ها
@@ -147,7 +150,7 @@ export function PlansPanel({
           </ul>
         ) : (
           <p className="text-body-md text-text-secondary">
-            {data
+            {data?.options.length
               ? 'هنوز سابقه‌ای برای طرح‌ها ثبت نشده است.'
               : 'تاریخچهٔ طرح‌ها هنوز از سرور ارائه نمی‌شود.'}
           </p>

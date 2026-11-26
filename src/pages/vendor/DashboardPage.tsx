@@ -24,9 +24,11 @@ function countWithUnit(count: number | undefined, unit: string) {
 
 function DashboardStats({ data }: { data: DashboardData | null }) {
   const stores = data?.stores.ok ? data.stores.value : null
-  const activeProducts = stores?.every((store) => Number.isSafeInteger(store.productsCount))
-    ? stores.reduce((count, store) => count + (store.productsCount ?? 0), 0)
-    : undefined
+  const activeProducts =
+    data?.activeOffersCount ??
+    (stores?.every((store) => Number.isSafeInteger(store.productsCount))
+      ? stores.reduce((count, store) => count + (store.productsCount ?? 0), 0)
+      : undefined)
   const available = data?.inventory.ok ? data.inventory.value.available : undefined
   const reserved = data?.reservations.ok ? data.reservations.value.reserved : undefined
   const received = data?.finance?.received
