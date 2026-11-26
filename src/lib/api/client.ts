@@ -111,7 +111,17 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     throw new ApiError('ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت را بررسی کنید.', 0)
   }
 
-  const body = (await response.json().catch(() => null)) as ApiErrorBody | T | null
+  const rawText = response.status === 204 ? '' : await response.text().catch(() => '')
+  let body: ApiErrorBody | T | null = null
+  let parseFailed = false
+
+  if (rawText.trim() !== '') {
+    try {
+      body = JSON.parse(rawText) as ApiErrorBody | T
+    } catch {
+      parseFailed = true
+    }
+  }
 
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody
@@ -128,6 +138,13 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
         code: errorBody.error?.code,
         retryAfter: parseRetryAfter(response, errorBody.error?.details),
       },
+    )
+  }
+
+  if (parseFailed) {
+    throw new ApiError(
+      'پاسخ دریافتی از سرور معتبر نیست. بررسی کنید بک‌اند در حال اجرا باشد و پورت ۸۰۸۰ توسط سرویس دیگری اشغال نشده باشد.',
+      502,
     )
   }
 

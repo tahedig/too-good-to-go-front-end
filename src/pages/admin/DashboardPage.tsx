@@ -102,106 +102,86 @@ export default function AdminDashboardPage() {
     )
   }
 
-  if (error || !data) {
-    const needsAuth = error?.status === 401 || error?.status === 403
-    return (
-      <div className="flex flex-col gap-4">
-        <h1 className="sr-only">داشبورد مدیریت</h1>
-        <InlineAlert tone="error">{error?.message || 'اطلاعات داشبورد در دسترس نیست.'}</InlineAlert>
-        <div className="flex flex-wrap items-center gap-3">
-          {needsAuth && (
-            <Button size="md" onClick={() => void navigate('/admin/login?returnTo=/admin')}>
-              ورود به پنل مدیریت
-            </Button>
-          )}
-          <Button
-            size="md"
-            variant={needsAuth ? 'secondary' : 'primary'}
-            onClick={() => {
-              setError(null)
-              setData(null)
-              setReloadKey((key) => key + 1)
-            }}
-          >
-            تلاش دوباره
-          </Button>
-        </div>
-      </div>
-    )
-  }
+  const needsAuth = error?.status === 401 || error?.status === 403
+  const metrics = data?.metrics
+  const requestStatus = data?.requestStatus
+  const recentActivity = data?.recentActivity ?? []
 
-  const { metrics, requestStatus, recentActivity } = data
+  const formatMetric = (value: number | undefined) =>
+    value === undefined ? '—' : formatNumber(value)
 
   const metricCards = [
     {
       key: 'registeredStores',
       label: 'فروشگاه‌های ثبت‌شده',
-      value: formatNumber(metrics.registeredStores),
+      value: formatMetric(metrics?.registeredStores),
       orderClass: 'lg:order-3',
     },
     {
       key: 'knownCustomers',
       label: 'مشتریان شناخته‌شده',
-      value: formatNumber(metrics.knownCustomers),
+      value: formatMetric(metrics?.knownCustomers),
       orderClass: 'lg:order-4',
     },
     {
       key: 'activeProducts',
       label: 'محصولات فعال',
-      value: formatNumber(metrics.activeProducts),
+      value: formatMetric(metrics?.activeProducts),
       orderClass: 'lg:order-1',
     },
     {
       key: 'activeStores',
       label: 'فروشگاه‌های فعال',
-      value: formatNumber(metrics.activeStores),
+      value: formatMetric(metrics?.activeStores),
       orderClass: 'lg:order-2',
     },
     {
       key: 'completedReservations',
       label: 'رزروهای تکمیل‌شده',
-      value: formatNumber(metrics.completedReservations),
+      value: formatMetric(metrics?.completedReservations),
       orderClass: 'lg:order-7',
     },
     {
       key: 'activeReservations',
       label: 'رزروهای فعال',
-      value: formatNumber(metrics.activeReservations),
+      value: formatMetric(metrics?.activeReservations),
       orderClass: 'lg:order-8',
     },
     {
       key: 'pendingRequests',
       label: 'درخواست‌های در انتظار',
-      value: formatNumber(metrics.pendingRequests),
+      value: formatMetric(metrics?.pendingRequests),
       orderClass: 'lg:order-5',
     },
     {
       key: 'platformCommission',
       label: 'کمیسیون پلتفرم',
-      value: formatNumber(metrics.platformCommission),
+      value: formatMetric(metrics?.platformCommission),
       orderClass: 'lg:order-6',
     },
   ]
 
-  const totalRequests = requestStatus.pending + requestStatus.approved + requestStatus.rejected
+  const totalRequests = requestStatus
+    ? requestStatus.pending + requestStatus.approved + requestStatus.rejected
+    : 0
 
   const statusRows = [
     {
       key: 'pending',
       label: 'در انتظار بررسی',
-      count: requestStatus.pending,
+      count: requestStatus?.pending,
       barClassName: 'bg-warning',
     },
     {
       key: 'approved',
       label: 'تأییدشده',
-      count: requestStatus.approved,
+      count: requestStatus?.approved,
       barClassName: 'bg-success',
     },
     {
       key: 'rejected',
       label: 'ردشده',
-      count: requestStatus.rejected,
+      count: requestStatus?.rejected,
       barClassName: 'bg-error',
     },
   ]
@@ -209,6 +189,30 @@ export default function AdminDashboardPage() {
   return (
     <div className="flex flex-col gap-2.5 lg:gap-4">
       <h1 className="sr-only">داشبورد مدیریت</h1>
+
+      {error && (
+        <div className="flex flex-col gap-3">
+          <InlineAlert tone={needsAuth ? 'warning' : 'error'}>{error.message}</InlineAlert>
+          <div className="flex flex-wrap items-center gap-3">
+            {needsAuth && (
+              <Button size="md" onClick={() => void navigate('/admin/login?returnTo=/admin')}>
+                ورود به پنل مدیریت
+              </Button>
+            )}
+            <Button
+              size="md"
+              variant={needsAuth ? 'secondary' : 'primary'}
+              onClick={() => {
+                setError(null)
+                setData(null)
+                setReloadKey((key) => key + 1)
+              }}
+            >
+              تلاش دوباره
+            </Button>
+          </div>
+        </div>
+      )}
 
       <section aria-label="نماگرهای مدیریت" className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {metricCards.map((card) => (
@@ -230,26 +234,27 @@ export default function AdminDashboardPage() {
         </h2>
 
         {statusRows.map((row) => {
-          const percent = totalRequests > 0 ? Math.round((row.count / totalRequests) * 100) : 0
+          const count = row.count ?? 0
+          const percent = totalRequests > 0 ? Math.round((count / totalRequests) * 100) : 0
           return (
             <div key={row.key} className="flex flex-col gap-2.5 lg:gap-4">
               <div className="grid grid-cols-2 items-center gap-4">
                 <span className="text-body-md text-text-secondary">{row.label}</span>
                 <span className="text-label-md text-primary">
-                  {formatNumber(row.count)} درخواست
+                  {row.count === undefined ? '—' : formatNumber(row.count)} درخواست
                 </span>
               </div>
               <div
                 role="progressbar"
                 aria-label={row.label}
-                aria-valuenow={row.count}
+                aria-valuenow={count}
                 aria-valuemin={0}
                 aria-valuemax={Math.max(totalRequests, 1)}
                 className="flex h-2.5 w-full overflow-hidden rounded-sm bg-background"
               >
                 <div
                   className={`h-full rounded-sm transition-all duration-300 ${row.barClassName}`}
-                  style={{ width: row.count > 0 ? `${Math.max(percent, 4)}%` : '0%' }}
+                  style={{ width: count > 0 ? `${Math.max(percent, 4)}%` : '0%' }}
                 />
               </div>
             </div>
@@ -266,7 +271,9 @@ export default function AdminDashboardPage() {
         </h2>
 
         {recentActivity.length === 0 ? (
-          <p className="text-body-md text-text-secondary">فعالیتی برای نمایش وجود ندارد.</p>
+          <p className="text-body-md text-text-secondary">
+            {error ? 'اطلاعات فعالیت‌ها در دسترس نیست.' : 'فعالیتی برای نمایش وجود ندارد.'}
+          </p>
         ) : (
           <ul className="flex flex-col gap-2.5 lg:gap-4">
             {recentActivity.map((item) => (

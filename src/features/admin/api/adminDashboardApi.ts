@@ -198,6 +198,10 @@ function buildDashboardQueryString(query: AdminDashboardQuery = {}): string {
 }
 
 function normalizeDashboardResponse(dto: AdminDashboardResponseDto): AdminDashboardData {
+  if (!dto || !dto.totals || !dto.applications) {
+    throw new ApiError('ساختار پاسخ داشبورد مدیریت از سرور معتبر نیست.', 502)
+  }
+
   const totals = dto.totals
   const applications = dto.applications
   const recentActivity = dto.recent_activity ?? []
@@ -236,6 +240,10 @@ function normalizeDashboardResponse(dto: AdminDashboardResponseDto): AdminDashbo
 }
 
 function buildFromVendorsSummary(vendors: AdminVendorListDto): AdminDashboardData {
+  if (!vendors || !vendors.counts || !Array.isArray(vendors.items)) {
+    throw new ApiError('ساختار پاسخ فهرست فروشگاه‌ها از سرور معتبر نیست.', 502)
+  }
+
   const { pending, approved, rejected, suspended } = vendors.counts
   return {
     metrics: {
@@ -283,27 +291,8 @@ export const adminDashboardApi = {
       return normalizeDashboardResponse(dto)
     } catch (error) {
       if (error instanceof ApiError && [404, 405, 501].includes(error.status)) {
-        try {
-          const vendors = await adminVendorsApi.listVendors({ page: 1, pageSize: 5 })
-          return buildFromVendorsSummary(vendors)
-        } catch (vendorError) {
-          if (
-            import.meta.env.DEV &&
-            vendorError instanceof ApiError &&
-            [0, 502, 503, 504].includes(vendorError.status)
-          ) {
-            return DEMO_DASHBOARD_DATA
-          }
-          throw vendorError
-        }
-      }
-
-      if (
-        import.meta.env.DEV &&
-        error instanceof ApiError &&
-        [0, 502, 503, 504].includes(error.status)
-      ) {
-        return DEMO_DASHBOARD_DATA
+        const vendors = await adminVendorsApi.listVendors({ page: 1, pageSize: 5 })
+        return buildFromVendorsSummary(vendors)
       }
 
       throw error
