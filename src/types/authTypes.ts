@@ -21,7 +21,7 @@ export interface VerifyOtpPayload {
 export interface AuthUser {
   id: string;
   phone: string;
-  role: string;
+  role: 'customer' | 'vendor' | 'admin';
 }
 
 export interface LoginResponse {
