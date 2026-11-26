@@ -50,6 +50,10 @@ The supplied Go API list is now used by `ordersService.ts` and `reservationsServ
 
 The `/products/:productId` page currently uses the bakery sample in `src/features/store/mockData.ts`. It carries the selected product and quantity into the checkout flow, which is tracked separately in TEAM-48. Both screens remain backed by demo data until the customer product-details and reservation API contracts are available.
 
+## Customer checkout
+
+The `/checkout` page reviews the selected bakery sample, quantity, pickup details, and estimated total. It validates the quantity and pickup-terms checkbox, but does not submit a reservation until the customer reservation API is available.
+
 ## Design system
 
 Tokens are defined in `src/index.css` (`@theme`) following the approved Figma
