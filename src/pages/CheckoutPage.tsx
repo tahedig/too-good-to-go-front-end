@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, Clock3, Info, MapPin } from 'lucide-react'
+import { ArrowRight, CircleAlert, Clock3, Info, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { publicStores } from '@/features/store/mockData'
@@ -98,6 +98,7 @@ export default function CheckoutPage() {
   const [acceptPickupTerms, setAcceptPickupTerms] = useState(false)
   const [feedback, setFeedback] = useState('')
   const [requiresLogin, setRequiresLogin] = useState(false)
+  const [reservationFailed, setReservationFailed] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [remoteOfferState, setRemoteOfferState] = useState<
     | { status: 'loading' }
@@ -144,6 +145,7 @@ export default function CheckoutPage() {
     setIsSubmitting(true)
     setFeedback('')
     setRequiresLogin(false)
+    setReservationFailed(false)
 
     try {
       idempotencyKey.current ??= crypto.randomUUID()
@@ -162,14 +164,8 @@ export default function CheckoutPage() {
       if (error instanceof ApiError && error.status === 401) {
         setRequiresLogin(true)
         setFeedback('برای ثبت رزرو وارد حساب کاربری شوید.')
-      } else if (error instanceof ApiError && error.status === 404) {
-        setFeedback('این پیشنهاد دیگر در دسترس نیست.')
-      } else if (error instanceof ApiError && error.status === 409) {
-        setFeedback('موجودی یا وضعیت این پیشنهاد تغییر کرده است. جزئیات را دوباره بررسی کنید.')
       } else {
-        setFeedback(
-          error instanceof Error ? error.message : 'ثبت رزرو ناموفق بود. لطفاً دوباره تلاش کنید.',
-        )
+        setReservationFailed(true)
       }
     } finally {
       setIsSubmitting(false)
@@ -251,6 +247,16 @@ export default function CheckoutPage() {
         </header>
 
         <form onSubmit={submitReservation} className="space-y-6">
+          {reservationFailed && (
+            <p
+              role="alert"
+              className="flex items-start gap-3 rounded-lg bg-error-subtle p-4 text-body-md text-error"
+            >
+              <CircleAlert className="mt-0.5 size-6 shrink-0" strokeWidth={1.75} />
+              رزرو انجام نشد. دوباره تلاش کنید.
+            </p>
+          )}
+
           <section aria-label="محصول انتخاب‌شده" className="rounded-2xl bg-surface p-5">
             <div className="flex items-start gap-3">
               {offer.imageSrc ? (
@@ -286,6 +292,7 @@ export default function CheckoutPage() {
                 onChange={(value) => {
                   setQuantity(value)
                   setFeedback('')
+                  setReservationFailed(false)
                   idempotencyKey.current = null
                 }}
                 label="تعداد بسته‌ها"
@@ -359,6 +366,7 @@ export default function CheckoutPage() {
                 onChange={(event) => {
                   setAcceptPickupTerms(event.target.checked)
                   setFeedback('')
+                  setReservationFailed(false)
                 }}
                 className="size-6 accent-primary"
               />
@@ -407,8 +415,21 @@ export default function CheckoutPage() {
             }
             className="h-[52px]"
           >
-            ثبت رزرو
+            {reservationFailed
+              ? `تلاش دوباره برای رزرو ${formatPrice(subtotal)}`
+              : 'ثبت رزرو'}
           </Button>
+          {reservationFailed && (
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              className="h-[52px]"
+              onClick={() => navigate('/orders')}
+            >
+              بررسی سفارشات
+            </Button>
+          )}
         </form>
       </main>
     </div>
