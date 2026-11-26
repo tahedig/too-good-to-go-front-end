@@ -401,7 +401,7 @@ export default function ProductEditorPage() {
             : 'برای مدیریت محصولات وارد حساب فروشنده شوید.'}
         </InlineAlert>
         <ButtonLink
-          to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+          to={`/vendor/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
           variant="secondary"
           size="md"
         >

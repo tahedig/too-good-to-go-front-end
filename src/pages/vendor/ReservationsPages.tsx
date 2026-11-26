@@ -392,7 +392,7 @@ export default function ReservationsPages({
                 </p>
                 {error === 401 || error === 403 ? (
                   <ButtonLink
-                    to={`/login?returnTo=${encodeURIComponent(pathname + search)}`}
+                    to={`/vendor/login?returnTo=${encodeURIComponent(pathname + search)}`}
                     variant="secondary"
                     size="md"
                   >

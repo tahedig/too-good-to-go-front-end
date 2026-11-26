@@ -14,6 +14,8 @@ import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorOrdersPage from '@/pages/vendor/OrdersPage'
 import VendorReservationsPage from '@/pages/vendor/ReservationsPage'
+import VendorAccountPage from '@/pages/vendor/AccountPage'
+import VendorLoginPage from '@/pages/vendor/LoginPage'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import VendorFinancePage from '@/pages/vendor/FinancePage'
@@ -51,6 +53,7 @@ export const router = createBrowserRouter([
     element: <AuthLayout />,
     children: [
       { path: '/login', element: <LoginPage /> },
+      { path: '/vendor/login', element: <VendorLoginPage /> },
       { path: '/admin/login', element: <AdminLoginPage /> },
     ],
   },
@@ -110,7 +113,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'account',
-        element: <VendorComingSoonPage title="حساب فروشنده" />,
+        element: <VendorAccountPage />,
       },
     ],
   },

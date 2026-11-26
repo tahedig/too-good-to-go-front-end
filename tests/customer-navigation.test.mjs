@@ -87,14 +87,27 @@ function hasActiveNavLink(html, href) {
   )
 }
 
-test('UserLayout prioritizes primary sidebar and links Profile directly to /profile', () => {
-  const html = renderCustomerRoute('/profile')
+test('UserLayout prioritizes primary sidebar and switches Profile link based on auth session', () => {
+  const unauthenticatedHtml = renderCustomerRoute('/profile')
+  assert.equal(countMatches(unauthenticatedHtml, /<aside\b/g), 1)
+  assert.equal(countMatches(unauthenticatedHtml, /aria-label="ناوبری مشتری"/g), 2)
+  assert.equal(countMatches(unauthenticatedHtml, /aria-label="ناوبری پایین"/g), 0)
+  assert.equal(hasActiveNavLink(unauthenticatedHtml, '/login'), true)
 
-  assert.equal(countMatches(html, /<aside\b/g), 1)
-  assert.equal(countMatches(html, /aria-label="ناوبری مشتری"/g), 2)
-  assert.equal(countMatches(html, /aria-label="ناوبری پایین"/g), 0)
-  assert.equal(hasActiveNavLink(html, '/profile'), true)
-  assert.doesNotMatch(html, /href="\/login"[^>]*>.*پروفایل/)
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key) => (key === 'access_token' ? 'customer-token' : null),
+      setItem: () => {},
+      removeItem: () => {},
+    },
+  })
+  try {
+    const authenticatedHtml = renderCustomerRoute('/profile')
+    assert.equal(hasActiveNavLink(authenticatedHtml, '/profile'), true)
+  } finally {
+    delete globalThis.localStorage
+  }
 })
 
 test('Customer routes render only UserLayout sidebar without duplicate sidebars or top navbars', () => {
@@ -126,10 +139,22 @@ test('Customer routes render only UserLayout sidebar without duplicate sidebars 
 })
 
 test('HelpSupportPage inside UserLayout omits redundant desktop header nav tabs', () => {
-  const html = renderCustomerRoute('/profile/support')
+  Object.defineProperty(globalThis, 'localStorage', {
+    configurable: true,
+    value: {
+      getItem: (key) => (key === 'access_token' ? 'customer-token' : null),
+      setItem: () => {},
+      removeItem: () => {},
+    },
+  })
+  try {
+    const html = renderCustomerRoute('/profile/support')
 
-  assert.equal(countMatches(html, /aria-label="ناوبری مشتری"/g), 2)
-  assert.doesNotMatch(html, /aria-label="ناوبری بخش‌های مشتری"/)
-  assert.equal(hasActiveNavLink(html, '/profile'), true)
-  assert.match(html, /راهنمایی و پشتیبانی/)
+    assert.equal(countMatches(html, /aria-label="ناوبری مشتری"/g), 2)
+    assert.doesNotMatch(html, /aria-label="ناوبری بخش‌های مشتری"/)
+    assert.equal(hasActiveNavLink(html, '/profile'), true)
+    assert.match(html, /راهنمایی و پشتیبانی/)
+  } finally {
+    delete globalThis.localStorage
+  }
 })

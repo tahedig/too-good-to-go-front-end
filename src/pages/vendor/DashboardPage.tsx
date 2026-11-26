@@ -187,7 +187,12 @@ function DashboardOverview({ preview }: { preview: boolean }) {
               ? 'این داشبورد فقط برای حساب فروشنده در دسترس است.'
               : 'برای مشاهدهٔ داده‌های فروشگاه، وارد حساب فروشنده شوید.'}
           </p>
-          <ButtonLink to="/login?returnTo=%2Fvendor" size="sm" variant="secondary" className="mt-2">
+          <ButtonLink
+            to="/vendor/login?returnTo=%2Fvendor"
+            size="sm"
+            variant="secondary"
+            className="mt-2"
+          >
             ورود با حساب فروشنده
           </ButtonLink>
         </InlineAlert>

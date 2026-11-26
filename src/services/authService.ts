@@ -12,9 +12,29 @@ export async function verifyOtpService(payload: VerifyOtpPayload): Promise<Login
   }
 
   tokenStorage.setToken(response.access_token)
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.setItem(
+        'auth_session',
+        JSON.stringify({
+          accessToken: response.access_token,
+          user: response.user,
+        }),
+      )
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
+  }
   return response
 }
 
 export function logoutService(): void {
   tokenStorage.clearToken()
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.removeItem('auth_session')
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
+  }
 }

@@ -188,7 +188,7 @@ function FinanceScreen({
                   ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
                   : 'برای مشاهدهٔ اطلاعات مالی وارد حساب فروشنده شوید.'}
               </InlineAlert>
-              <ButtonLink to={`/login?returnTo=${returnTo}`} variant="secondary" size="md">
+              <ButtonLink to={`/vendor/login?returnTo=${returnTo}`} variant="secondary" size="md">
                 ورود با حساب فروشنده
               </ButtonLink>
             </>

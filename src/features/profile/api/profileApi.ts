@@ -1,5 +1,6 @@
 import { apiRequest, ApiError } from '@/lib/api/client'
 import { env } from '@/config/env'
+import { tokenStorage } from '@/services/tokenStorage'
 import type { CustomerProfile, UpdateCustomerProfilePayload } from '../types'
 
 const MOCK_PROFILE_STORAGE_KEY = 'tahedig_customer_profile'
@@ -16,6 +17,7 @@ const defaultMockProfile: CustomerProfile = {
 
 type ProfileApiResponse = {
   id?: string | number
+  user_id?: string
   firstName?: string
   first_name?: string
   lastName?: string
@@ -31,11 +33,14 @@ type ProfileApiResponse = {
 }
 
 function getAccessToken(): string | null {
+  const token = tokenStorage.getToken()
+  if (token) return token
+  if (typeof sessionStorage === 'undefined') return null
   try {
     const rawSession = sessionStorage.getItem('auth_session')
     if (!rawSession) return null
-    const session = JSON.parse(rawSession) as { accessToken?: string }
-    return session.accessToken ?? null
+    const session = JSON.parse(rawSession) as { accessToken?: string; access_token?: string }
+    return session.accessToken ?? session.access_token ?? null
   } catch {
     return null
   }
@@ -92,7 +97,7 @@ function normaliseProfile(profile: ProfileApiResponse): CustomerProfile {
   const phoneNumber = profile.phoneNumber ?? profile.phone_number ?? profile.phone ?? ''
 
   return {
-    id: String(profile.id ?? 'current'),
+    id: String(profile.id ?? profile.user_id ?? 'current'),
     firstName,
     lastName,
     displayName: displayName || [firstName, lastName].filter(Boolean).join(' '),
@@ -105,7 +110,7 @@ export const profileApi = {
   async getCurrent(): Promise<CustomerProfile> {
     if (env.profileApiMode === 'mock') return getMockProfile()
 
-    const profile = await apiRequest<ProfileApiResponse>('/profile', {
+    const profile = await apiRequest<ProfileApiResponse>('/customer/profile', {
       headers: authHeaders(),
     })
     return normaliseProfile(profile)
@@ -114,13 +119,11 @@ export const profileApi = {
   async updateCurrent(payload: UpdateCustomerProfilePayload): Promise<CustomerProfile> {
     if (env.profileApiMode === 'mock') return updateMockProfile(payload)
 
-    await apiRequest<ProfileApiResponse | null>('/profile', {
+    await apiRequest<ProfileApiResponse | null>('/customer/profile', {
       method: 'PATCH',
       headers: authHeaders(),
       body: JSON.stringify({
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        displayName: `${payload.firstName} ${payload.lastName}`.trim(),
+        display_name: `${payload.firstName} ${payload.lastName}`.trim(),
       }),
     })
     // Re-read the server source of truth so the UI exactly matches a subsequent refresh,

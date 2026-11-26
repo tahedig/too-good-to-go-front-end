@@ -164,7 +164,7 @@ export default function VendorOrdersPage() {
             <InlineAlert tone={authError ? 'warning' : 'error'}>{errorInfo.message}</InlineAlert>
             {authError ? (
               <ButtonLink
-                to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+                to={`/vendor/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
                 variant="secondary"
                 size="md"
               >

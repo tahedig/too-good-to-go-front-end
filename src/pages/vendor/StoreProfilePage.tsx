@@ -301,7 +301,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
         </InlineAlert>
         {authError ? (
           <ButtonLink
-            to={`/login?returnTo=${encodeURIComponent(pathname + search)}`}
+            to={`/vendor/login?returnTo=${encodeURIComponent(pathname + search)}`}
             variant="secondary"
             size="md"
           >

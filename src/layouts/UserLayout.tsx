@@ -1,6 +1,8 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Compass, Heart, PackageCheck, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { env } from '@/config/env'
+import { tokenStorage } from '@/services/tokenStorage'
 
 type UserNavItem = {
   to: string
@@ -38,8 +40,20 @@ const USER_NAV_ITEMS: UserNavItem[] = [
   },
 ]
 
+function canOpenProfileDirect(): boolean {
+  if (env.profileApiMode === 'mock') return true
+  if (tokenStorage.getToken()) return true
+  if (typeof sessionStorage === 'undefined') return false
+  try {
+    return Boolean(sessionStorage.getItem('auth_session'))
+  } catch {
+    return false
+  }
+}
+
 function DesktopSidebar() {
   const { pathname } = useLocation()
+  const profileDirect = canOpenProfileDirect()
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-65 shrink-0 border-e border-border-default bg-surface lg:block">
@@ -53,10 +67,11 @@ function DesktopSidebar() {
         <nav aria-label="ناوبری مشتری" className="flex flex-col gap-1">
           {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
             const active = matches(pathname)
+            const destination = to === '/profile' && !profileDirect ? '/login' : to
             return (
               <Link
                 key={to}
-                to={to}
+                to={destination}
                 aria-current={active ? 'page' : undefined}
                 className={`flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-text-primary transition-colors ${
                   active ? 'bg-surface-sage' : 'hover:bg-surface-secondary'
@@ -75,6 +90,7 @@ function DesktopSidebar() {
 
 function MobileNavigation() {
   const { pathname } = useLocation()
+  const profileDirect = canOpenProfileDirect()
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
@@ -84,10 +100,11 @@ function MobileNavigation() {
       >
         {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
           const active = matches(pathname)
+          const destination = to === '/profile' && !profileDirect ? '/login' : to
           return (
             <Link
               key={to}
-              to={to}
+              to={destination}
               aria-current={active ? 'page' : undefined}
               className={`flex h-16 min-w-19 flex-1 flex-col items-center justify-center gap-1 rounded-md px-2 text-text-primary transition-colors ${
                 active

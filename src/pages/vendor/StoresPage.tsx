@@ -126,7 +126,7 @@ export default function StoresPage() {
               : error.message}
         </InlineAlert>
         {authError ? (
-          <ButtonLink to="/login?returnTo=%2Fvendor%2Fstores" variant="secondary" size="md">
+          <ButtonLink to="/vendor/login?returnTo=%2Fvendor%2Fstores" variant="secondary" size="md">
             ورود با حساب فروشنده
           </ButtonLink>
         ) : (

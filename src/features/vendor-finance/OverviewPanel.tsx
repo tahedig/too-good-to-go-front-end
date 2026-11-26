@@ -53,7 +53,7 @@ function ActiveReservations({ state }: { state: ReservationsState }) {
             {state.kind === 'error' && 'دریافت رزروهای فعال انجام نشد. دوباره تلاش کنید.'}
           </p>
           {state.kind === 'auth' && (
-            <ButtonLink to="/login" variant="secondary" size="md" className="self-start">
+            <ButtonLink to="/vendor/login" variant="secondary" size="md" className="self-start">
               ورود
             </ButtonLink>
           )}

@@ -7,7 +7,7 @@ import { ApiError } from '@/lib/api/client'
 import { profileApi } from '@/features/profile/api/profileApi'
 import { CustomerProfileShell } from '@/features/profile/components/CustomerProfileShell'
 import { ProfileLoading } from '@/features/profile/components/ProfileLoading'
-import { tokenStorage } from '@/services/tokenStorage'
+import { logoutService } from '@/services/authService'
 import type { CustomerProfile } from '@/features/profile/types'
 
 function SettingRow({ to, label, detail }: { to?: string; label: string; detail?: string }) {
@@ -151,8 +151,7 @@ export default function ProfilePage() {
                 icon={<LogOut strokeWidth={1.75} />}
                 className="lg:col-start-1 lg:row-start-4"
                 onClick={() => {
-                  sessionStorage.removeItem('auth_session')
-                  tokenStorage.clearToken()
+                  logoutService()
                   window.location.assign('/')
                 }}
               >

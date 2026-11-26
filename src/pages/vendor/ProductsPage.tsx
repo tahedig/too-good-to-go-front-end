@@ -250,7 +250,7 @@ function ProductsContent({ preview }: { preview: boolean }) {
         </InlineAlert>
         {authError ? (
           <ButtonLink
-            to={`/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
+            to={`/vendor/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
             variant="secondary"
             size="md"
           >
