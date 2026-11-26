@@ -12,10 +12,22 @@ function createIllustration(background: string, food: string, garnish: string): 
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
+export interface ProductAvailabilityPreview {
+  id: string
+  title: string
+  imageSrc: string
+  category: string
+  price: number
+  referenceValue: number
+  pickup: string
+  storeName: string
+}
+
 export interface DiscoveryOffer {
   id: string
   storeId?: string
   productId?: string
+  availabilityPreview?: ProductAvailabilityPreview
   merchantName: string
   category: string
   distanceKm?: number

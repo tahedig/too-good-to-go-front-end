@@ -47,6 +47,16 @@ function mapCatalogueOffer(offer: CatalogueOfferCard): DiscoveryOffer {
     pickup: offer.pickup_window,
     imageSrc: offer.image_url ?? '',
     allergens: [],
+    availabilityPreview: {
+      id: offer.id,
+      title: offer.title,
+      imageSrc: offer.image_url ?? '',
+      category: offer.category_name ?? 'غافلگیری',
+      price: offer.price,
+      referenceValue: offer.original_price,
+      pickup: offer.pickup_window,
+      storeName: offer.store.name,
+    },
   }
 }
 
@@ -223,7 +233,17 @@ function OfferCarousel({
               {...offer}
               renderLink={
                 offer.productId
-                  ? (props) => <Link to={`/products/${offer.productId}`} {...props} />
+                  ? (props) => (
+                      <Link
+                        to={`/products/${offer.productId}`}
+                        state={
+                          offer.availabilityPreview
+                            ? { availabilityPreview: offer.availabilityPreview }
+                            : undefined
+                        }
+                        {...props}
+                      />
+                    )
                   : undefined
               }
               saved={Boolean(saved[offer.id])}

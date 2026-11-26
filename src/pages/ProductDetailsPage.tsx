@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Check, Clock3, Heart, Info, MapPin, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { publicStores, type PublicStore, type StoreProduct } from '@/features/store/mockData'
+import type { ProductAvailabilityPreview } from '@/features/discovery/mockData'
 import { discoveryApi, type OfferDetail } from '@/features/discovery/api/discoveryApi'
+import { ApiError } from '@/lib/api/client'
 import { formatDateTime, formatDistanceKm, formatPrice } from '@/lib/format'
 
 type ProductListing = {
@@ -85,6 +87,65 @@ function mapOffer(offer: OfferDetail): ProductDetailsData {
     allergens: offer.allergens.map((allergen) => allergen.label),
     allergensDeclared: offer.allergens_declared,
     cancellationDeadline: offer.cancellation_deadline,
+    isLive: true,
+  }
+}
+
+function isAvailabilityPreview(
+  value: unknown,
+): value is ProductAvailabilityPreview {
+  if (typeof value !== 'object' || value === null) return false
+  return (
+    'id' in value &&
+    typeof value.id === 'string' &&
+    'title' in value &&
+    typeof value.title === 'string' &&
+    'imageSrc' in value &&
+    typeof value.imageSrc === 'string' &&
+    'category' in value &&
+    typeof value.category === 'string' &&
+    'price' in value &&
+    typeof value.price === 'number' &&
+    'referenceValue' in value &&
+    typeof value.referenceValue === 'number' &&
+    'pickup' in value &&
+    typeof value.pickup === 'string' &&
+    'storeName' in value &&
+    typeof value.storeName === 'string'
+  )
+}
+
+function getAvailabilityPreview(
+  state: unknown,
+  productId: string,
+): ProductAvailabilityPreview | undefined {
+  if (typeof state !== 'object' || state === null || !('availabilityPreview' in state)) {
+    return undefined
+  }
+  const preview = state.availabilityPreview
+  return isAvailabilityPreview(preview) && preview.id === productId ? preview : undefined
+}
+
+function mapUnavailablePreview(
+  preview: ProductAvailabilityPreview,
+): ProductDetailsData {
+  return {
+    id: preview.id,
+    storeId: '',
+    storeName: preview.storeName,
+    category: preview.category,
+    name: preview.title,
+    description: 'این بسته دیگر در دسترس نیست و امکان رزرو آن وجود ندارد.',
+    price: preview.price,
+    referenceValue: preview.referenceValue,
+    pickup: preview.pickup,
+    imageSrc: preview.imageSrc,
+    remaining: 0,
+    availabilityBadge: 'ناموجود · ۰ بسته موجود',
+    address: '',
+    pickupInstructions: '',
+    allergens: [],
+    allergensDeclared: false,
     isLive: true,
   }
 }
@@ -171,7 +232,9 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
                   available ? 'bg-success-subtle text-primary' : 'bg-error-subtle text-error',
                 ].join(' ')}
               >
-                {available ? 'موجود' : 'ناموجود'}
+                {available
+                  ? 'موجود'
+                  : product.availabilityBadge ?? 'ناموجود · ۰ بسته موجود'}
                 {available && <Check className="size-4" strokeWidth={1.75} />}
               </span>
             </div>
@@ -189,10 +252,12 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
               {product.category}
               {product.distanceText && ` · ${product.distanceText}`}
             </p>
-            <p className="mt-2 text-body-md text-primary">
-              {product.availabilityBadge ??
-                `${product.remaining.toLocaleString('fa-IR')} بسته موجود`}
-            </p>
+            {available && (
+              <p className="mt-2 text-body-md text-primary">
+                {product.availabilityBadge ??
+                  `${product.remaining.toLocaleString('fa-IR')} بسته موجود`}
+              </p>
+            )}
 
             <p className="mt-7 flex flex-wrap items-baseline gap-2">
               <span className="text-price-lg text-primary">{formatPrice(product.price)}</span>
@@ -219,10 +284,12 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
                 <Clock3 className="size-6 shrink-0" strokeWidth={1.75} />
                 {product.pickup}
               </p>
-              <p className="flex items-start gap-2">
-                <MapPin className="size-6 shrink-0" strokeWidth={1.75} />
-                {product.address}
-              </p>
+              {product.address && (
+                <p className="flex items-start gap-2">
+                  <MapPin className="size-6 shrink-0" strokeWidth={1.75} />
+                  {product.address}
+                </p>
+              )}
               {product.pickupInstructions && (
                 <p className="text-body-md text-text-secondary">{product.pickupInstructions}</p>
               )}
@@ -237,34 +304,54 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
             </div>
           </section>
 
-          <section aria-label="رزرو محصول" className="rounded-2xl bg-surface p-5">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-label-md text-primary">بسته‌ها</span>
-              <QuantityStepper
-                value={quantity}
-                min={1}
-                max={Math.max(1, product.remaining)}
-                disabled={!available}
-                onChange={setQuantity}
-                label="تعداد بسته‌ها"
-              />
-            </div>
-            <p className="mt-4 text-body-md text-text-secondary">
-              مجموع {formatPrice(product.price * quantity)}
-            </p>
-            <Button
-              fullWidth
-              disabled={!available}
-              onClick={() =>
-                navigate(
-                  `/checkout?productId=${encodeURIComponent(product.id)}&quantity=${quantity}`,
-                )
-              }
-              className="mt-4"
-            >
-              رزرو
-            </Button>
-          </section>
+          {available ? (
+            <section aria-label="رزرو محصول" className="rounded-2xl bg-surface p-5">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-label-md text-primary">بسته‌ها</span>
+                <QuantityStepper
+                  value={quantity}
+                  min={1}
+                  max={Math.max(1, product.remaining)}
+                  disabled={!available}
+                  onChange={setQuantity}
+                  label="تعداد بسته‌ها"
+                />
+              </div>
+              <p className="mt-4 text-body-md text-text-secondary">
+                مجموع {formatPrice(product.price * quantity)}
+              </p>
+              <Button
+                fullWidth
+                onClick={() =>
+                  navigate(
+                    `/checkout?productId=${encodeURIComponent(product.id)}&quantity=${quantity}`,
+                  )
+                }
+                className="mt-4"
+              >
+                رزرو
+              </Button>
+            </section>
+          ) : (
+            <section aria-labelledby="unavailable-heading" className="rounded-2xl bg-surface p-5">
+              <h2 id="unavailable-heading" className="text-title-md text-primary">
+                این بسته دیگر موجود نیست
+              </h2>
+              <p
+                role="status"
+                className="mt-4 flex items-start gap-3 rounded-lg bg-accent-subtle p-4 text-body-md text-primary"
+              >
+                <Info className="mt-0.5 size-6 shrink-0" strokeWidth={1.75} />
+                همهٔ بسته‌های باقی‌مانده رزرو شده‌اند یا پرداخت آن‌ها نهایی شده است.
+              </p>
+              <Button fullWidth disabled className="mt-4">
+                رزرو بسته · ناموجود
+              </Button>
+              <Button fullWidth className="mt-3" onClick={() => navigate('/today')}>
+                دیدن گزینه‌های دیگر
+              </Button>
+            </section>
+          )}
 
           <section aria-labelledby="allergens-heading">
             <h2 id="allergens-heading" className="text-title-md text-primary">
@@ -295,11 +382,14 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
 
 export default function ProductDetailsPage() {
   const { productId = '' } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
   const mockListing = findProduct(productId)
   const [state, setState] = useState<
     | { status: 'loading' }
     | { productId: string; status: 'loading' }
     | { productId: string; status: 'error'; message: string }
+    | { productId: string; status: 'unavailable'; product?: ProductDetailsData }
     | { productId: string; status: 'ready'; product: ProductDetailsData }
   >({ status: 'loading' })
 
@@ -307,12 +397,21 @@ export default function ProductDetailsPage() {
     const mockListing = findProduct(productId)
     if (mockListing || !productId) return
 
+    const preview = getAvailabilityPreview(location.state, productId)
     const controller = new AbortController()
     discoveryApi
       .getOffer(productId, controller.signal)
       .then((offer) => setState({ productId, status: 'ready', product: mapOffer(offer) }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) {
+          if (error instanceof ApiError && error.status === 404) {
+            setState({
+              productId,
+              status: 'unavailable',
+              product: preview ? mapUnavailablePreview(preview) : undefined,
+            })
+            return
+          }
           setState({
             productId,
             status: 'error',
@@ -322,7 +421,7 @@ export default function ProductDetailsPage() {
       })
 
     return () => controller.abort()
-  }, [productId])
+  }, [location.state, productId])
 
   if (mockListing) {
     return (
@@ -350,6 +449,37 @@ export default function ProductDetailsPage() {
 
   if (state.status === 'ready' && state.productId === productId) {
     return <ProductDetailsContent key={state.product.id} product={state.product} />
+  }
+
+  if (state.status === 'unavailable' && state.productId === productId) {
+    if (state.product) {
+      return <ProductDetailsContent key={state.product.id} product={state.product} />
+    }
+
+    return (
+      <div dir="rtl" className="min-h-dvh bg-background px-4 text-text-primary">
+        <main className="mx-auto max-w-[430px] py-10">
+          <Link to="/" className="text-label-md text-primary underline">
+            بازگشت به پیشنهادها
+          </Link>
+          <section className="mt-6 rounded-2xl bg-surface p-5">
+            <h1 className="text-title-md text-primary">این بسته دیگر موجود نیست</h1>
+            <p
+              role="status"
+              className="mt-4 rounded-lg bg-accent-subtle p-4 text-body-md text-primary"
+            >
+              همهٔ بسته‌های باقی‌مانده رزرو شده‌اند یا پرداخت آن‌ها نهایی شده است.
+            </p>
+            <Button fullWidth disabled className="mt-4">
+              رزرو بسته · ناموجود
+            </Button>
+            <Button fullWidth className="mt-3" onClick={() => navigate('/today')}>
+              دیدن گزینه‌های دیگر
+            </Button>
+          </section>
+        </main>
+      </div>
+    )
   }
 
   const stateMatchesProduct = 'productId' in state && state.productId === productId
