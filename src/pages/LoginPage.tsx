@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/Input'
 import { PhoneInput } from '@/components/ui/PhoneInput'
 import { ApiError } from '@/lib/api/client'
 import { toEnglishDigits } from '@/lib/digits'
-import { customerOtpApi} from '@/features/auth/api/customerOtpApi'
+import { customerOtpApi } from '@/features/auth/api/customerOtpApi'
 import OtpCodeInput from '@/features/auth/components/OtpCodeInput'
-import { verifyOtpService } from "../services/authService";
+import { profileApi } from '@/features/profile/api/profileApi'
+import { verifyOtpService } from '../services/authService'
 
 type LoginStep = 'phone' | 'profile' | 'otp'
 type NameErrors = Partial<Record<'firstName' | 'lastName', string>>
@@ -32,7 +33,6 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams()
   const [step, setStep] = useState<LoginStep>('phone')
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [requestId, setRequestId] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [code, setCode] = useState('')
@@ -52,7 +52,7 @@ export default function LoginPage() {
   function goBack() {
     setSubmitError('')
     setNotice('')
-    if (step === 'otp' && firstName) setStep('profile')
+    if (step === 'otp') setStep('profile')
     else setStep('phone')
   }
 
@@ -69,9 +69,8 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       const result = await customerOtpApi.requestOtp(phone)
-      setRequestId(result.requestId)
-      setSecondsLeft(result.retryAfter)
-      setStep(result.isNewCustomer ? 'profile' : 'otp')
+      setSecondsLeft(result.expires_in_seconds)
+      setStep('profile')
     } catch (error) {
       setSubmitError(errorMessage(error, 'ارسال کد تایید انجام نشد.'))
     } finally {
@@ -79,7 +78,7 @@ export default function LoginPage() {
     }
   }
 
-  async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const nextErrors = {
       firstName: validateName(firstName, 'نام'),
@@ -89,52 +88,53 @@ export default function LoginPage() {
     if (nextErrors.firstName || nextErrors.lastName) return
 
     setSubmitError('')
-    setSubmitting(true)
-    try {
-      await customerOtpApi.completeProfile({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-      })
-      setStep('otp')
-    } catch (error) {
-      setSubmitError(errorMessage(error, 'تکمیل حساب انجام نشد.'))
-    } finally {
-      setSubmitting(false)
-    }
+    setStep('otp')
   }
 
   async function handleOtpSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+    event.preventDefault()
 
     if (code.length !== 6) {
-      setFieldError('کد تایید باید ۶ رقم باشد.');
-      return;
+      setFieldError('کد تایید باید ۶ رقم باشد.')
+      return
     }
 
-    setFieldError('');
-    setSubmitError('');
-    setSubmitting(true);
+    setFieldError('')
+    setSubmitError('')
+    setSubmitting(true)
 
     try {
       const response = await verifyOtpService({
         phone: toEnglishDigits(phoneNumber),
         code: toEnglishDigits(code),
-      });
+      })
 
-      console.log('Logged in user:', response.user);
+      if (response.user.role === 'customer') {
+        await profileApi.updateCurrent({
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+        })
+      }
 
-      const returnTo = searchParams.get('returnTo');
+      console.log('Logged in user:', response.user)
+
+      const returnTo = searchParams.get('returnTo')
+      const roleDestination = {
+        customer: '/profile',
+        vendor: '/vendor',
+        admin: '/admin',
+      }[response.user.role]
 
       const safeReturnTo =
         returnTo?.startsWith('/') && !returnTo.startsWith('//')
           ? returnTo
-          : '/profile';
+          : (roleDestination ?? '/profile')
 
-      await navigate(safeReturnTo, { replace: true });
+      await navigate(safeReturnTo, { replace: true })
     } catch (error) {
-      setFieldError(errorMessage(error, 'کد تایید نادرست است.'));
+      setFieldError(errorMessage(error, 'کد تایید نادرست است.'))
     } finally {
-      setSubmitting(false);
+      setSubmitting(false)
     }
   }
 
@@ -143,9 +143,8 @@ export default function LoginPage() {
     setNotice('')
     setSubmitting(true)
     try {
-      const result = await customerOtpApi.resendOtp()
-      setRequestId(result.requestId)
-      setSecondsLeft(result.retryAfter)
+      const result = await customerOtpApi.requestOtp(toEnglishDigits(phoneNumber))
+      setSecondsLeft(result.expires_in_seconds)
       setCode('')
       setFieldError('')
       setNotice('کد جدید ارسال شد.')
@@ -213,9 +212,9 @@ export default function LoginPage() {
 
       {step === 'profile' && (
         <form onSubmit={handleProfileSubmit} noValidate>
-          <h1 className="text-title-xl text-primary">تکمیل حساب مشتری</h1>
+          <h1 className="text-title-xl text-primary">نام و نام خانوادگی</h1>
           <p className="mt-2 text-body-md text-text-secondary">
-            لطفاً اطلاعات زیر را برای ساخت حساب کامل کنید.
+            برای ادامه ورود، نام و نام خانوادگی خود را وارد کنید.
           </p>
           {submitError && (
             <InlineAlert tone="error" className="mt-5">
@@ -252,8 +251,8 @@ export default function LoginPage() {
               لطفاً نام و نام خانوادگی را درست وارد کنید.
             </InlineAlert>
           )}
-          <Button type="submit" fullWidth isLoading={submitting} className="mt-5">
-            تکمیل حساب
+          <Button type="submit" fullWidth className="mt-5">
+            ادامه
           </Button>
         </form>
       )}
@@ -267,9 +266,6 @@ export default function LoginPage() {
               {phoneNumber}
             </bdi>{' '}
             ارسال شد. کد را در کادرهای زیر وارد کنید.
-          </p>
-          <p className="mt-3 text-caption text-text-secondary">
-            کد آزمایشی: <bdi dir="ltr"></bdi>
           </p>
           {submitError && (
             <InlineAlert tone="error" className="mt-5">

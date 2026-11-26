@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { ApiError } from '@/lib/api/client'
 import { profileApi } from '@/features/profile/api/profileApi'
-import { CustomerProfileShell } from '@/features/profile/components/CustomerProfileShell'
 import { ProfileLoading } from '@/features/profile/components/ProfileLoading'
 import { tokenStorage } from '@/services/tokenStorage'
 import type { CustomerProfile } from '@/features/profile/types'
@@ -78,8 +77,7 @@ export default function ProfilePage() {
   }, [retryKey])
 
   return (
-    <CustomerProfileShell>
-      <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
+    <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
         {!profile && !error ? (
           <ProfileLoading />
         ) : error ? (
@@ -166,7 +164,6 @@ export default function ProfilePage() {
             </footer>
           </>
         ) : null}
-      </main>
-    </CustomerProfileShell>
+    </main>
   )
 }
