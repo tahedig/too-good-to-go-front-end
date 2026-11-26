@@ -24,6 +24,7 @@ import ProfilePage from '@/pages/ProfilePage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
 import ProductDetailsPage from '@/pages/ProductDetailsPage'
 import CheckoutPage from '@/pages/CheckoutPage'
+import ReservationConfirmationPage from '@/pages/ReservationConfirmationPage'
 
 export const router = createBrowserRouter([
   {
@@ -33,6 +34,10 @@ export const router = createBrowserRouter([
   {
     path: '/checkout',
     element: <CheckoutPage />,
+  },
+  {
+    path: '/reservations/:reservationId/confirmation',
+    element: <ReservationConfirmationPage />,
   },
   {
     path: '/',

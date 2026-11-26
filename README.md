@@ -54,6 +54,10 @@ The `/products/:productId` page currently uses the bakery sample in `src/feature
 
 The `/checkout` page reviews the selected bakery sample, quantity, pickup details, and estimated total. It validates the quantity and pickup-terms checkbox, but does not submit a reservation until the customer reservation API is available.
 
+## Reservation confirmation
+
+The `/reservations/:reservationId/confirmation?productId=...&quantity=...` page presents the confirmed reservation and pickup instructions using the bakery sample. Route to it with the API's reservation reference after reservation submission is integrated.
+
 ## Design system
 
 Tokens are defined in `src/index.css` (`@theme`) following the approved Figma
