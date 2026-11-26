@@ -125,7 +125,7 @@ export default function ProfilePage() {
               >
                 <SettingRow to="/profile/personal" label="اطلاعات شخصی" />
                 <SettingRow label="مکان ترجیحی" detail="تهران، ولیعصر" />
-                <SettingRow label="راهنمایی و پشتیبانی" />
+                <SettingRow to="/profile/support" label="راهنمایی و پشتیبانی" />
               </section>
 
               <section
@@ -156,13 +156,13 @@ export default function ProfilePage() {
 
             <footer className="mt-12 hidden items-center justify-between border-t border-border-default pt-5 text-caption text-text-secondary sm:flex">
               <span>ته‌دیگ</span>
-              <a
-                href="mailto:support@example.com"
+              <Link
+                to="/profile/support"
                 className="inline-flex items-center gap-2 hover:text-primary"
               >
                 <HelpCircle className="size-5" />
                 راهنمایی و پشتیبانی
-              </a>
+              </Link>
             </footer>
           </>
         ) : null}

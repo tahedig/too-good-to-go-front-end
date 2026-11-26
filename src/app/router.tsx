@@ -25,6 +25,7 @@ import OrdersPage from '@/pages/OrdersPage'
 import PublicStorePage from '@/pages/PublicStorePage'
 import ProfilePage from '@/pages/ProfilePage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
+import HelpSupportPage from '@/pages/HelpSupportPage'
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,7 @@ export const router = createBrowserRouter([
       { path: 'stores/:storeId', element: <PublicStorePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'profile/personal', element: <PersonalInfoPage /> },
+      { path: 'profile/support', element: <HelpSupportPage /> },
     ],
   },
   {

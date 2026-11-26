@@ -134,15 +134,22 @@ export default function PersonalInfoPage() {
                 {profile.displayName}
               </p>
               <nav className="mt-2 space-y-2" aria-label="بخش‌های پروفایل">
-                <span className="block rounded-md bg-primary-subtle px-4 py-3 text-label-md text-primary">
+                <Link
+                  to="/profile/personal"
+                  aria-current="page"
+                  className="block rounded-md bg-primary-subtle px-4 py-3 text-label-md text-primary"
+                >
                   اطلاعات شخصی
-                </span>
+                </Link>
                 <span className="block px-4 py-3 text-body-md text-text-secondary">
                   مکان ترجیحی
                 </span>
-                <span className="block px-4 py-3 text-body-md text-text-secondary">
+                <Link
+                  to="/profile/support"
+                  className="block rounded-md px-4 py-3 text-body-md text-text-secondary hover:bg-surface-secondary hover:text-primary"
+                >
                   راهنمایی و پشتیبانی
-                </span>
+                </Link>
               </nav>
             </aside>
 
