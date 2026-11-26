@@ -141,7 +141,7 @@ function filterOffers(
       matchesSearch &&
       offer.price >= filters.minPrice &&
       offer.price <= filters.maxPrice &&
-      offer.distanceKm <= filters.maxDistance &&
+      (offer.distanceKm === undefined || offer.distanceKm <= filters.maxDistance) &&
       matchesTime &&
       matchesAllergens
     )
@@ -151,7 +151,7 @@ function filterOffers(
     if (filters.sort === 'price') return first.price - second.price
     if (filters.sort === 'time')
       return parsePickupHour(first.pickup) - parsePickupHour(second.pickup)
-    return first.distanceKm - second.distanceKm
+    return (first.distanceKm ?? Infinity) - (second.distanceKm ?? Infinity)
   })
 }
 

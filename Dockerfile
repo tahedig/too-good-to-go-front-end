@@ -7,7 +7,7 @@ RUN npm ci
 
 COPY . .
 
-ARG VITE_API_BASE_URL=/api/v1
+ARG VITE_API_BASE_URL=/api
 ARG VITE_APP_NAME=crumb
 ARG VITE_SUPPORT_EMAIL=support@example.com
 

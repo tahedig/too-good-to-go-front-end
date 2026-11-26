@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, SlidersHorizontal, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import { Radio } from '@/components/ui/Radio'
 import { SearchField } from '@/components/ui/SearchField'
 import { DiscoveryMapPreview } from '@/features/discovery/components/DiscoveryMapPreview'
+import { discoveryApi, type CatalogueOfferCard } from '@/features/discovery/api/discoveryApi'
 import { discoverySections, type DiscoveryOffer } from '@/features/discovery/mockData'
 import { toEnglishDigits } from '@/lib/digits'
 
@@ -19,6 +20,35 @@ const sortOptions = [
 ]
 
 type SortOrder = (typeof sortOptions)[number]['value']
+
+const homeSectionTitles = [
+  { id: 'today', title: 'فرصت‌های خوشمزه امروز' },
+  { id: 'favorites', title: 'محبوب‌های اطراف شما' },
+  { id: 'last-chance', title: 'آخرین فرصت‌های نجات غذا' },
+] as const
+
+type HomeSection = {
+  id: (typeof homeSectionTitles)[number]['id']
+  title: string
+  offers: DiscoveryOffer[]
+}
+
+function mapCatalogueOffer(offer: CatalogueOfferCard): DiscoveryOffer {
+  return {
+    id: offer.id,
+    storeId: offer.store.id,
+    productId: offer.id,
+    merchantName: offer.title,
+    category: offer.category_name ?? 'غافلگیری',
+    distanceKm: offer.distance_m === undefined ? undefined : offer.distance_m / 1000,
+    description: offer.store.name,
+    price: offer.price,
+    referenceValue: offer.original_price,
+    pickup: offer.pickup_window,
+    imageSrc: offer.image_url ?? '',
+    allergens: [],
+  }
+}
 
 function pickupTime(pickup: string): number {
   const time = pickup.match(/[0-9۰-۹]{1,2}:[0-9۰-۹]{2}/)?.[0]
@@ -218,10 +248,53 @@ export default function HomePage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('distance')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  const [apiSections, setApiSections] = useState<HomeSection[]>([])
+  const [offersLoading, setOffersLoading] = useState(true)
+  const [offersError, setOffersError] = useState('')
+  const [reloadOffers, setReloadOffers] = useState(0)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadHomeOffers() {
+      setOffersLoading(true)
+      setOffersError('')
+
+      try {
+        const [today, popular, lastChance] = await Promise.all([
+          discoveryApi.getHomeToday(controller.signal),
+          discoveryApi.getHomePopularNearby(controller.signal),
+          discoveryApi.getHomeLastChance(controller.signal),
+        ])
+        const lists = [today, popular, lastChance]
+        setApiSections(
+          homeSectionTitles
+            .map((section, index) => ({
+              ...section,
+              offers: lists[index].items.map(mapCatalogueOffer),
+            }))
+            .filter((section) => section.id !== 'favorites' || section.offers.length > 0),
+        )
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setOffersError(
+            error instanceof Error
+              ? `دریافت پیشنهادها ناموفق بود: ${error.message}`
+              : 'دریافت پیشنهادها ناموفق بود. لطفاً دوباره تلاش کنید.',
+          )
+        }
+      } finally {
+        if (!controller.signal.aborted) setOffersLoading(false)
+      }
+    }
+
+    void loadHomeOffers()
+    return () => controller.abort()
+  }, [reloadOffers])
 
   const sections = useMemo(
     () =>
-      discoverySections.map((section) => {
+      (offersError ? discoverySections : apiSections).map((section) => {
         const offers = section.offers
           .filter((offer) => {
             if (selectedCategory === 'همه') return true
@@ -243,7 +316,7 @@ export default function HomePage() {
         if (sortOrder === 'time') offers.sort((a, b) => pickupTime(a.pickup) - pickupTime(b.pickup))
         return { ...section, offers }
       }),
-    [query, selectedCategory, sortOrder],
+    [apiSections, offersError, query, selectedCategory, sortOrder],
   )
 
   function updateSaved(id: string, value: boolean) {
@@ -276,16 +349,41 @@ export default function HomePage() {
             <DiscoveryMapPreview />
 
             <div className="space-y-8 sm:space-y-10">
-              {sections.map((section) => (
-                <OfferCarousel
-                  key={section.id}
-                  id={section.id}
-                  title={section.title}
-                  offers={section.offers}
-                  saved={saved}
-                  onSaveChange={updateSaved}
-                />
-              ))}
+              {offersLoading ? (
+                <p
+                  role="status"
+                  className="rounded-lg bg-surface p-5 text-body-md text-text-secondary"
+                >
+                  در حال دریافت پیشنهادهای نزدیک شما…
+                </p>
+              ) : (
+                <>
+                  {offersError && (
+                    <section role="alert" className="space-y-3 rounded-lg bg-accent-subtle p-5">
+                      <p className="text-body-md text-primary">
+                        دریافت پیشنهادهای واقعی ناموفق بود. موارد زیر فقط نمونه هستند و امکان ثبت
+                        رزرو ندارند. {offersError}
+                      </p>
+                      <Button
+                        variant="secondary"
+                        onClick={() => setReloadOffers((value) => value + 1)}
+                      >
+                        تلاش دوباره
+                      </Button>
+                    </section>
+                  )}
+                  {sections.map((section) => (
+                    <OfferCarousel
+                      key={section.id}
+                      id={section.id}
+                      title={section.title}
+                      offers={section.offers}
+                      saved={saved}
+                      onSaveChange={updateSaved}
+                    />
+                  ))}
+                </>
+              )}
             </div>
           </main>
         </div>

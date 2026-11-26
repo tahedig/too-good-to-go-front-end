@@ -26,15 +26,17 @@ React + TypeScript + Vite + Tailwind CSS v4.
 - `src/lib` — API client, helpers
 - `src/hooks`, `src/types`
 
-## Authentication API placeholders
+## Backend API
 
-The login and account-recovery screens are implemented under `src/features/auth`.
-Set `VITE_API_BASE_URL` in `.env`, then adapt the endpoint paths and response types
-in `src/features/auth/api/authApi.ts` when the backend is ready:
+Set `VITE_API_BASE_URL=/api` in `.env`. Vite proxies `/api/*` to
+`http://localhost:8080/*` during development. The production Nginx config proxies
+the same prefix to the backend service at `api:8080`; frontend and backend
+containers must share a Docker network.
 
-- `POST /auth/login`
-- `POST /auth/recovery/otp`
-- `POST /auth/recovery/otp/verify`
+Customer OTP login calls `POST /auth/otp/request` and `POST /auth/otp/verify`.
+The verified bearer token is stored and attached by the shared API client.
+Account-recovery screens still use the separate placeholder routes in
+`src/features/auth/api/authApi.ts`.
 
 ## Vendor dashboard API integration
 
@@ -48,15 +50,27 @@ The supplied Go API list is now used by `ordersService.ts` and `reservationsServ
 
 ## Customer product details
 
-The `/products/:productId` page currently uses the bakery sample in `src/features/store/mockData.ts`. It carries the selected product and quantity into the checkout flow, which is tracked separately in TEAM-48. Both screens remain backed by demo data until the customer product-details and reservation API contracts are available.
+The home feed loads `/home/today`, `/home/popular-nearby`, and
+`/home/last-chance`. Selecting a live offer opens `/products/:productId`, which
+loads its details from `GET /offers/:id`. Known bakery sample IDs remain
+available when the API is offline; the home page explicitly labels sample data
+when it falls back.
 
 ## Customer checkout
 
-The `/checkout` page reviews the selected bakery sample, quantity, pickup details, and estimated total. It validates the quantity and pickup-terms checkbox, but does not submit a reservation until the customer reservation API is available.
+The `/checkout` page reloads the offer to check its current stock and pickup
+details, then creates the reservation with `POST /reservations`, the accepted
+pickup terms, and an `Idempotency-Key`. The endpoint requires customer login.
+The backend calculates the service fee and final amount, so the exact total is
+shown after the reservation response.
 
 ## Reservation confirmation
 
-The `/reservations/:reservationId/confirmation?productId=...&quantity=...` page presents the confirmed reservation and pickup instructions using the bakery sample. Route to it with the API's reservation reference after reservation submission is integrated.
+The `/reservations/:reservationId/confirmation` page displays the reservation
+response passed through router state, including its reference, pickup code,
+status, and final amount. The current backend exposes no
+`GET /reservations/:id`; opening the confirmation URL without that state cannot
+reload the reservation.
 
 ## Design system
 

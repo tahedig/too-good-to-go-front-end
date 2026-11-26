@@ -121,7 +121,9 @@ function SelectedOffer({ offer }: { offer: DiscoveryOffer }) {
         <div>
           <p className="text-price-md text-primary">{formatPrice(offer.price)}</p>
           <p className="mt-1 text-caption text-text-secondary">
-            {formatDistanceKm(offer.distanceKm)}
+            {offer.distanceKm === undefined
+              ? 'فاصله نامشخص'
+              : formatDistanceKm(offer.distanceKm)}
           </p>
         </div>
         <Link
@@ -158,7 +160,9 @@ export default function MapPage() {
     })
 
     return filtered.sort((a, b) =>
-      sortOrder === 'price' ? a.price - b.price : a.distanceKm - b.distanceKm,
+      sortOrder === 'price'
+        ? a.price - b.price
+        : (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity),
     )
   }, [query, selectedCategory, sortOrder])
 
@@ -281,7 +285,9 @@ export default function MapPage() {
                             {offer.merchantName}
                           </span>
                           <span className="mt-1 block text-caption text-text-secondary">
-                            {formatDistanceKm(offer.distanceKm)} · {offer.category}
+                            {offer.distanceKm === undefined
+                              ? `فاصله نامشخص · ${offer.category}`
+                              : `${formatDistanceKm(offer.distanceKm)} · ${offer.category}`}
                           </span>
                         </span>
                         <span className="shrink-0 text-caption font-semibold text-primary">

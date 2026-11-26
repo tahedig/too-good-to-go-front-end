@@ -187,11 +187,14 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
         return (
           matchesCategory &&
           matchesSearch &&
-          offer.distanceKm <= maxDistance &&
+          (offer.distanceKm === undefined || offer.distanceKm <= maxDistance) &&
           (pickupDay === 'all' || (pickupDay === 'today' ? isToday : !isToday))
         )
       })
-      .sort((first, second) => first.distanceKm - second.distanceKm)
+      .sort(
+        (first, second) =>
+          (first.distanceKm ?? Infinity) - (second.distanceKm ?? Infinity),
+      )
   }, [category, collection.offers, maxDistance, pickupDay, query])
 
   function clearFilters() {

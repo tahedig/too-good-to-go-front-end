@@ -18,7 +18,7 @@ export interface DiscoveryOffer {
   productId?: string
   merchantName: string
   category: string
-  distanceKm: number
+  distanceKm?: number
   description: string
   price: number
   referenceValue: number
