@@ -41,33 +41,34 @@ its service URL, for example `http://api:8080`.
 
 ### Automated staging deployment
 
-Every successful push to `develop` publishes an immutable
-`develop-<commit-sha>` image and then deploys that exact image to staging. The
-deployment connects to the private staging network through OpenVPN, uses a
-verified SSH host key, and performs both container-local and external smoke
-checks. A failed deployment restores the previous Compose and environment
-state automatically.
+Every successful push to `develop` publishes both `develop` and the immutable
+`develop-<commit-sha>` tag to GHCR. Staging uses a pull-based deployment: a
+systemd timer on the server checks `develop` every two minutes and deploys the
+matching immutable tag only when its embedded commit SHA changes.
 
-Create a GitHub Environment named `staging` with these variables:
+The server-side poller verifies that the mutable and immutable tags identify
+the same image, runs container-local and host-level smoke checks, confirms the
+deployed `version.json`, and restores the previous healthy Compose state when
+verification fails. A failed registry check leaves the running container
+untouched.
 
-- `STAGING_HOST` — VPN/private SSH address of the staging server
-- `STAGING_USER` — restricted SSH deployment user
-- `STAGING_DEPLOY_DIR` — absolute server directory containing the deployment
-- `STAGING_URL` — URL reachable from the VPN-connected Actions runner
+The staging server must have Docker and Compose, `curl`, a read-only GHCR login,
+the external `staging-app` Docker network, and an ignored `.env` file based on
+`deploy/staging.env.example`. Install these repository files in
+`/home/fpna/apps/frontend`:
 
-Add these Environment secrets:
+- `deploy/compose.staging.yaml` as `compose.template.yaml`
+- `deploy/deploy-staging.sh`
+- `deploy/poll-staging-image.sh`
 
-- `STAGING_OVPN_CONFIG_B64` — base64-encoded, self-contained OpenVPN profile
-- `STAGING_SSH_PRIVATE_KEY` — private key for the restricted deployment user
-- `STAGING_SSH_KNOWN_HOSTS` — verified SSH `known_hosts` entry for the server
-- `STAGING_VPN_USERNAME` and `STAGING_VPN_PASSWORD` — only when the OpenVPN
-  profile contains `auth-user-pass`
-- `STAGING_VPN_KEY_PASSPHRASE` — only when the VPN client key requires one
+Install `deploy/staging-frontend-update.service` and
+`deploy/staging-frontend-update.timer` in `/etc/systemd/system`, then enable the
+timer. Deployment logs are available with
+`journalctl -u staging-frontend-update.service`.
 
-The staging server must already have Docker and Compose, a read-only GHCR
-login, the external `staging-app` Docker network, and an ignored `.env` file
-based on `deploy/staging.env.example`. Do not store VPN profiles, SSH private
-keys, package tokens, or the server `.env` file in the repository.
+The GitHub `staging` Environment and its VPN/SSH secrets are not used by this
+pull-based design and should be removed after the server timer is verified.
+Never store registry tokens or the server `.env` file in the repository.
 
 ## Folder structure
 
