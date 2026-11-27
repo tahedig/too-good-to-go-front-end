@@ -16,6 +16,7 @@ const defaultMockProfile: CustomerProfile = {
 
 type ProfileApiResponse = {
   id?: string | number
+  user_id?: string
   firstName?: string
   first_name?: string
   lastName?: string
@@ -28,23 +29,6 @@ type ProfileApiResponse = {
   phone?: string
   phoneVerified?: boolean
   phone_verified?: boolean
-}
-
-function getAccessToken(): string | null {
-  try {
-    const rawSession = sessionStorage.getItem('auth_session')
-    if (!rawSession) return null
-    const session = JSON.parse(rawSession) as { accessToken?: string }
-    return session.accessToken ?? null
-  } catch {
-    return null
-  }
-}
-
-function authHeaders(): HeadersInit {
-  const token = getAccessToken()
-  if (!token) throw new ApiError('برای مشاهده پروفایل ابتدا وارد حساب شوید.', 401)
-  return { Authorization: `Bearer ${token}` }
 }
 
 function waitForMock(): Promise<void> {
@@ -92,7 +76,7 @@ function normaliseProfile(profile: ProfileApiResponse): CustomerProfile {
   const phoneNumber = profile.phoneNumber ?? profile.phone_number ?? profile.phone ?? ''
 
   return {
-    id: String(profile.id ?? 'current'),
+    id: String(profile.id ?? profile.user_id ?? 'current'),
     firstName,
     lastName,
     displayName: displayName || [firstName, lastName].filter(Boolean).join(' '),
@@ -105,22 +89,17 @@ export const profileApi = {
   async getCurrent(): Promise<CustomerProfile> {
     if (env.profileApiMode === 'mock') return getMockProfile()
 
-    const profile = await apiRequest<ProfileApiResponse>('/profile', {
-      headers: authHeaders(),
-    })
+    const profile = await apiRequest<ProfileApiResponse>('/customer/profile')
     return normaliseProfile(profile)
   },
 
   async updateCurrent(payload: UpdateCustomerProfilePayload): Promise<CustomerProfile> {
     if (env.profileApiMode === 'mock') return updateMockProfile(payload)
 
-    await apiRequest<ProfileApiResponse | null>('/profile', {
+    await apiRequest<ProfileApiResponse | null>('/customer/profile', {
       method: 'PATCH',
-      headers: authHeaders(),
       body: JSON.stringify({
-        firstName: payload.firstName,
-        lastName: payload.lastName,
-        displayName: `${payload.firstName} ${payload.lastName}`.trim(),
+        display_name: `${payload.firstName} ${payload.lastName}`.trim(),
       }),
     })
     // Re-read the server source of truth so the UI exactly matches a subsequent refresh,

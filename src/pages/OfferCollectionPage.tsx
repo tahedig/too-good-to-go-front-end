@@ -1,23 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { ArrowRight, MapPin, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FoodListingCard } from '@/components/ui/FoodListingCard'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { SearchField } from '@/components/ui/SearchField'
-import { discoverySections, type DiscoveryOffer } from '@/features/discovery/mockData'
+import { catalogueService } from '@/services/catalogueService'
+import type { DiscoveryOffer } from '@/types/discoveryTypes'
 import { formatDistanceKm } from '@/lib/format'
 
-const categories = ['همه', 'نانوایی', 'غذای آماده', 'کافه', 'خواربار', 'تخفیف ویژه']
 const distances = [1, 2, 5, 10]
 
 interface CollectionConfig {
-  id: string
+  id: 'today' | 'popular-nearby' | 'favorites' | 'last-chance'
   title: string
-  offers: DiscoveryOffer[]
 }
 
-const collectionPaths: Record<string, string> = {
+const collectionPaths: Record<CollectionConfig['id'], string> = {
   today: '/today',
+  'popular-nearby': '/popular-nearby',
   favorites: '/favorites',
   'last-chance': '/last-chance',
 }
@@ -26,18 +27,21 @@ function OptionChip({
   label,
   active,
   onClick,
+  disabled = false,
 }: {
   label: string
   active: boolean
   onClick: () => void
+  disabled?: boolean
 }) {
   return (
     <button
       type="button"
       aria-pressed={active}
+      disabled={disabled}
       onClick={onClick}
       className={[
-        'min-h-11 shrink-0 rounded-lg border px-4 text-label-md transition-colors',
+        'min-h-11 shrink-0 rounded-lg border px-4 text-label-md transition-colors disabled:cursor-not-allowed disabled:opacity-50',
         active
           ? 'border-primary bg-primary-subtle text-primary'
           : 'border-border-input bg-surface text-primary hover:bg-surface-secondary',
@@ -60,10 +64,13 @@ function CollectionHeader({ title }: { title: string }) {
           >
             <ArrowRight strokeWidth={1.75} />
           </Link>
-          <span className="hidden items-center gap-2 text-body-md text-text-secondary sm:inline-flex">
+          <Link
+            to="/map"
+            className="hidden items-center gap-2 text-body-md text-text-secondary sm:inline-flex"
+          >
             <MapPin className="size-5 text-primary" strokeWidth={1.75} />
-            تهران، ولیعصر
-          </span>
+            انتخاب محدوده
+          </Link>
           <h1 className="truncate text-title-sm text-primary sm:hidden">{title}</h1>
         </div>
 
@@ -99,6 +106,9 @@ function CollectionFilters({
   onPickupDayChange,
   maxDistance,
   onDistanceChange,
+  categories,
+  onCategorySelect,
+  hasLocation,
 }: {
   category: string
   onCategoryChange: (value: string) => void
@@ -106,6 +116,9 @@ function CollectionFilters({
   onPickupDayChange: (value: 'all' | 'today' | 'tomorrow') => void
   maxDistance: number
   onDistanceChange: (value: number) => void
+  categories: string[]
+  onCategorySelect: (value: string) => void
+  hasLocation: boolean
 }) {
   return (
     <aside className="rounded-2xl bg-surface-sage p-4 sm:p-5">
@@ -118,7 +131,10 @@ function CollectionFilters({
               key={option}
               label={option}
               active={category === option}
-              onClick={() => onCategoryChange(option)}
+              onClick={() => {
+                onCategoryChange(option)
+                onCategorySelect(option)
+              }}
             />
           ))}
         </div>
@@ -146,12 +162,22 @@ function CollectionFilters({
 
       <fieldset className="mt-4 space-y-2">
         <legend className="mb-2 text-label-md text-primary">فاصله از شما</legend>
+        {!hasLocation && (
+          <p className="text-caption text-text-secondary">
+            برای فیلتر فاصله ابتدا{' '}
+            <Link to="/map" className="text-primary underline">
+              محدوده را انتخاب کن
+            </Link>
+            .
+          </p>
+        )}
         <div className="flex flex-wrap gap-2">
           {distances.map((distance) => (
             <OptionChip
               key={distance}
               label={`تا ${formatDistanceKm(distance)}`}
               active={maxDistance === distance}
+              disabled={!hasLocation}
               onClick={() => onDistanceChange(distance)}
             />
           ))}
@@ -163,21 +189,63 @@ function CollectionFilters({
 
 function CollectionContent({ collection }: { collection: CollectionConfig }) {
   const navigate = useNavigate()
+  const [hasLocation] = useState(() => Boolean(catalogueService.getLocation()))
+  const [collectionOffers, setCollectionOffers] = useState<DiscoveryOffer[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [loadError, setLoadError] = useState('')
+  const [favoriteError, setFavoriteError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('همه')
   const [pickupDay, setPickupDay] = useState<'all' | 'today' | 'tomorrow'>('all')
   const [maxDistance, setMaxDistance] = useState(5)
   const [savedOffers, setSavedOffers] = useState<Record<string, boolean>>({})
 
+  useEffect(() => {
+    let active = true
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return undefined
+        setLoading(true)
+        setLoadError('')
+        const location = catalogueService.getLocation()
+        return Promise.all([
+          catalogueService.getFilters(),
+          collection.id === 'favorites'
+            ? catalogueService.getFavorites(location)
+            : catalogueService.getHomeCollection(
+                collection.id,
+                location,
+                location ? maxDistance : undefined,
+              ),
+        ])
+      })
+      .then((response) => {
+        if (!active || !response) return
+        const [filterData, offers] = response
+        if (!active) return
+        setCategories(filterData.categories.map((item) => item.name))
+        setCollectionOffers(offers)
+        setSavedOffers(Object.fromEntries(offers.map((offer) => [offer.id, offer.isFavorite])))
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setLoadError(error instanceof Error ? error.message : 'دریافت پیشنهادها ناموفق بود.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [collection.id, maxDistance, reloadKey])
+
   const offers = useMemo(() => {
     const search = query.trim().toLocaleLowerCase()
-    return collection.offers
+    return collectionOffers
       .filter((offer) => {
-        const matchesCategory =
-          category === 'همه' ||
-          (category === 'تخفیف ویژه'
-            ? offer.referenceValue >= offer.price * 1.5
-            : offer.category === category)
+        const matchesCategory = category === 'همه' || offer.category === category
         const matchesSearch =
           !search ||
           `${offer.merchantName} ${offer.category} ${offer.description}`
@@ -187,18 +255,28 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
         return (
           matchesCategory &&
           matchesSearch &&
-          offer.distanceKm <= maxDistance &&
+          (offer.distanceKm === undefined || offer.distanceKm <= maxDistance) &&
           (pickupDay === 'all' || (pickupDay === 'today' ? isToday : !isToday))
         )
       })
-      .sort((first, second) => first.distanceKm - second.distanceKm)
-  }, [category, collection.offers, maxDistance, pickupDay, query])
+      .sort((first, second) => (first.distanceKm ?? Infinity) - (second.distanceKm ?? Infinity))
+  }, [category, collectionOffers, maxDistance, pickupDay, query])
 
   function clearFilters() {
     setCategory('همه')
     setPickupDay('all')
     setMaxDistance(5)
     setQuery('')
+  }
+
+  async function updateSaved(id: string, value: boolean) {
+    setFavoriteError('')
+    try {
+      await catalogueService.setFavorite(id, value)
+      setSavedOffers((current) => ({ ...current, [id]: value }))
+    } catch (error) {
+      setFavoriteError(error instanceof Error ? error.message : 'ذخیره پیشنهاد ناموفق بود.')
+    }
   }
 
   return (
@@ -248,6 +326,13 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
             <CollectionFilters
               category={category}
               onCategoryChange={setCategory}
+              categories={['همه', ...categories]}
+              onCategorySelect={(value) => {
+                if (value !== 'همه') {
+                  navigate(`/search?category=${encodeURIComponent(value)}`)
+                }
+              }}
+              hasLocation={hasLocation}
               pickupDay={pickupDay}
               onPickupDayChange={setPickupDay}
               maxDistance={maxDistance}
@@ -271,7 +356,27 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
               </p>
             </div>
 
-            {offers.length > 0 ? (
+            {loadError && (
+              <InlineAlert tone="error">
+                <p>{loadError}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setReloadKey((key) => key + 1)}
+                >
+                  تلاش دوباره
+                </Button>
+              </InlineAlert>
+            )}
+            {favoriteError && <InlineAlert tone="error">{favoriteError}</InlineAlert>}
+
+            {loading ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+                {Array.from({ length: 4 }, (_, index) => (
+                  <FoodListingCard key={index} state="loading" />
+                ))}
+              </div>
+            ) : offers.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                 {offers.map((offer) => (
                   <FoodListingCard
@@ -283,10 +388,8 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
                         : undefined
                     }
                     headingLevel={2}
-                    saved={Boolean(savedOffers[offer.id])}
-                    onSaveChange={(saved) =>
-                      setSavedOffers((current) => ({ ...current, [offer.id]: saved }))
-                    }
+                    saved={savedOffers[offer.id] ?? offer.isFavorite}
+                    onSaveChange={(saved) => void updateSaved(offer.id, saved)}
                     className="min-h-full"
                   />
                 ))}
@@ -313,9 +416,20 @@ function CollectionContent({ collection }: { collection: CollectionConfig }) {
 
 export default function OfferCollectionPage() {
   const { pathname } = useLocation()
-  const collectionId =
-    Object.entries(collectionPaths).find(([, path]) => path === pathname)?.[0] ?? 'today'
-  const collection = discoverySections.find((section) => section.id === collectionId)
+  const collectionId = Object.entries(collectionPaths).find(([, path]) => path === pathname)?.[0]
+  const collection = collectionId
+    ? {
+        id: collectionId as CollectionConfig['id'],
+        title:
+          collectionId === 'today'
+            ? 'فرصت‌های خوشمزه امروز'
+            : collectionId === 'favorites'
+              ? 'ذخیره‌ها'
+              : collectionId === 'popular-nearby'
+                ? 'محبوب‌های اطراف شما'
+                : 'آخرین فرصت‌های نجات غذا',
+      }
+    : undefined
 
   if (!collection) {
     return null

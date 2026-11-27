@@ -1,6 +1,7 @@
 import { forwardRef } from 'react';
 import type { TextareaHTMLAttributes } from 'react';
-import { FormField, fieldClasses, useFieldMeta } from './FormField';
+import { FormField } from './FormField';
+import { fieldClasses, useFieldMeta } from './formFieldUtils';
 
 export interface TextAreaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;

@@ -1,6 +1,7 @@
 import { forwardRef, useState } from 'react';
 import type { InputHTMLAttributes, ReactNode } from 'react';
-import { FormField, fieldClasses, useFieldMeta } from './FormField';
+import { FormField } from './FormField';
+import { fieldClasses, useFieldMeta } from './formFieldUtils';
 import { Eye, EyeOff } from 'lucide-react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
