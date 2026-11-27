@@ -7,13 +7,7 @@ import type {
 import type { FinanceSection } from '@/features/vendor-finance/navigation'
 import { ApiError } from '@/lib/api/client'
 import { formatJalaliMonthYear, localDate } from '@/lib/vendorDates'
-import {
-  isActiveReservation,
-  reservationCustomerLabel,
-  toPickupWindowFromTimestamps,
-} from '@/lib/vendorReservations'
-import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
-import { listVendorReservations } from './reservationsService'
+import { listFinanceReservations } from './financeReservationsService'
 import { fetchVendorDashboard } from './vendorDashboardApi'
 import type {
   VendorDashboardPlanDto,
@@ -47,48 +41,34 @@ function mapDashboardPlan(plan: VendorDashboardPlanDto): CurrentPlan {
   }
 }
 
-function mapDashboardStatus(status: string): ReservationStatus {
-  switch (status) {
-    case 'ready':
-    case 'ready_for_pickup':
-      return 'ready_for_pickup'
-    case 'completed':
-    case 'delivered':
-      return 'delivered'
-    case 'cancelled':
-    case 'expired':
-    case 'no_show':
-      return 'cancelled'
-    default:
-      return 'active'
-  }
+function isDashboardActiveReservation(status: string): boolean {
+  return (
+    status === 'active' ||
+    status === 'pending_payment' ||
+    status === 'paid' ||
+    status === 'ready' ||
+    status === 'ready_for_pickup'
+  )
 }
 
-function mapRecentReservation(item: VendorDashboardReservationSummaryDto): Reservation {
-  const firstItem = item.items[0]
-  const totalQuantity = item.items.reduce((sum, row) => sum + row.quantity, 0)
+function mapRecentReservation(
+  item: VendorDashboardReservationSummaryDto,
+): FinanceReservation {
+  const totalQuantity = item.items.reduce(
+    (sum, row) => sum + row.quantity,
+    0,
+  )
+
   return {
     id: item.id,
-    orderNumber: item.pickup_code || item.id.slice(0, 8),
-    customer: item.customer_name?.trim() || null,
-    offerId: item.id,
-    product: firstItem?.title?.trim() || 'بستهٔ رزروشده',
-    image: '',
+    customer:
+      item.customer_name?.trim() ||
+      `سفارش ${item.pickup_code || item.id.slice(0, 8)}`,
     quantity: Math.max(1, totalQuantity),
     amount: item.total_amount,
-    status: mapDashboardStatus(item.status),
-    ...toPickupWindowFromTimestamps(item.pickup_start, item.pickup_end, item.created_at),
   }
 }
 
-function toFinanceReservation(order: Reservation): FinanceReservation {
-  return {
-    id: order.id,
-    customer: reservationCustomerLabel(order),
-    quantity: order.quantity,
-    amount: order.amount,
-  }
-}
 
 function resolveDashboardStoreName(dto: VendorDashboardResponseDto): string | undefined {
   const approved = dto.stores.filter((store) => store.status === 'approved')
@@ -121,10 +101,13 @@ function buildDashboardFinanceMeta(
 
 async function tryListActiveReservations(
   signal?: AbortSignal,
-): Promise<{ ok: true; items: FinanceReservation[] } | { ok: false; error: unknown }> {
+): Promise<
+  { ok: true; items: FinanceReservation[] } |
+  { ok: false; error: unknown }
+> {
   try {
-    const orders = await listVendorReservations(signal)
-    return { ok: true, items: orders.filter(isActiveReservation).map(toFinanceReservation) }
+    const items = await listFinanceReservations(signal)
+    return { ok: true, items }
   } catch (error) {
     return { ok: false, error }
   }
@@ -167,9 +150,8 @@ async function loadLiveFinance(
     [404, 405, 501].includes(reservationsResult.error.status)
   ) {
     reservations = dashboard.recent_reservations
+      .filter((item) => isDashboardActiveReservation(item.status))
       .map(mapRecentReservation)
-      .filter(isActiveReservation)
-      .map(toFinanceReservation)
   } else {
     throw reservationsResult.error
   }

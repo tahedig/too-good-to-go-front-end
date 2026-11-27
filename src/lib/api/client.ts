@@ -5,10 +5,15 @@ type ApiErrorBody = {
   message?: string
   errors?: Record<string, string[] | string>
   error?: {
-    code?: string
-    message?: string
-    details?: unknown
+  code?: string
+  message?: string
+  details?: unknown
+  request_id?: string
   }
+}
+const STATUS_MESSAGES: Record<number, string> = {
+  401: 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.',
+  403: 'شما به این بخش دسترسی ندارید.',
 }
 
 export class ApiError extends Error {
@@ -16,19 +21,30 @@ export class ApiError extends Error {
   readonly fieldErrors: Record<string, string[]>
   readonly code?: string
   readonly retryAfter?: number
+  readonly requestId?: string
 
   constructor(
     message: string,
     status: number,
     fieldErrors: Record<string, string[]> = {},
-    options?: { code?: string; retryAfter?: number },
+    options?: string | {
+      code?: string
+      retryAfter?: number
+      requestId?: string
+    },
   ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
-    this.code = options?.code
-    this.retryAfter = options?.retryAfter
+
+    if (typeof options === 'string') {
+      this.requestId = options
+    } else {
+      this.code = options?.code
+      this.retryAfter = options?.retryAfter
+      this.requestId = options?.requestId
+    }
   }
 }
 
@@ -126,8 +142,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody
     throw new ApiError(
-      errorBody.error?.message ??
-        errorBody.message ??
+      (errorBody.error && STATUS_MESSAGES[response.status]) ||
+        errorBody.error?.message ||
+        errorBody.message ||
+        STATUS_MESSAGES[response.status] ||
         'در انجام درخواست مشکلی پیش آمد. لطفاً دوباره تلاش کنید.',
       response.status,
       {
@@ -135,8 +153,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
         ...readFieldErrors(errorBody.error?.details),
       },
       {
-        code: errorBody.error?.code,
-        retryAfter: parseRetryAfter(response, errorBody.error?.details),
+      code: errorBody.error?.code,
+      retryAfter: parseRetryAfter(response, errorBody.error?.details),
+      requestId: errorBody.error?.request_id,
       },
     )
   }

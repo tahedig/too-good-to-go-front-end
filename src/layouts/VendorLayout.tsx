@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, matchPath, NavLink, Outlet, useLocation } from 'react-router-dom'
 import {
   ChevronDown,
   LayoutDashboard,
@@ -12,42 +12,78 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { FINANCE_ITEMS, financePreviewSearch } from '@/features/vendor-finance/navigation'
 
 type NavItem = {
   to: string
   label: string
   icon: LucideIcon
-  end?: boolean
+  matches: (pathname: string) => boolean
+}
+
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/vendor', label: 'داشبورد', icon: LayoutDashboard, end: true },
-  { to: '/vendor/products', label: 'محصولات', icon: ShoppingBag },
-  { to: '/vendor/orders', label: 'سفارشات', icon: PackageCheck },
-  { to: '/vendor/stores', label: 'فروشگاه‌ها', icon: Store },
-  { to: '/vendor/finance', label: 'مالی', icon: Wallet },
-  { to: '/vendor/account', label: 'حساب فروشنده', icon: UserRound },
+  {
+    to: '/vendor',
+    label: 'داشبورد',
+    icon: LayoutDashboard,
+    matches: (pathname) => pathname === '/vendor' || pathname === '/vendor/dashboard',
+  },
+  {
+    to: '/vendor/products',
+    label: 'محصولات',
+    icon: ShoppingBag,
+    matches: (pathname) =>
+      pathname === '/vendor/products' || pathname.startsWith('/vendor/products/'),
+  },
+  {
+    to: '/vendor/orders',
+    label: 'سفارشات',
+    icon: PackageCheck,
+    matches: (pathname) => pathname === '/vendor/orders' || pathname.startsWith('/vendor/orders/'),
+  },
+  {
+    to: '/vendor/stores',
+    label: 'فروشگاه‌ها',
+    icon: Store,
+    matches: (pathname) => pathname === '/vendor/stores' || pathname.startsWith('/vendor/stores/'),
+  },
+  {
+    to: '/vendor/finance',
+    label: 'مالی',
+    icon: Wallet,
+    matches: (pathname) =>
+      pathname === '/vendor/finance' || pathname.startsWith('/vendor/finance/'),
+  },
+  {
+    to: '/vendor/account',
+    label: 'حساب فروشنده',
+    icon: UserRound,
+    matches: (pathname) =>
+      pathname === '/vendor/account' || pathname.startsWith('/vendor/account/'),
+  },
 ]
 
-const FINANCE_ITEMS = [
-  ['overview', 'مرور کلی'],
-  ['plans', 'طرح‌ها'],
-  ['transactions', 'تراکنش‌ها'],
-  ['settlements', 'تسویه‌ها'],
-] as const
+const menuIconStyles =
+  'size-11! border! border-border-default! px-0! text-text-primary! hover:bg-surface-secondary!'
 
 function BrandRow({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-[53px] shrink-0 items-center gap-3 border-b border-border-default px-3">
       {onClose ? (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={onClose}
           aria-label="بستن منو"
-          className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-text-primary transition-colors hover:bg-surface-secondary"
+          className={menuIconStyles}
         >
-          <X className="size-6" strokeWidth={1.75} />
-        </button>
+          <X className="size-6" strokeWidth={1.75} aria-hidden="true" />
+        </Button>
       ) : (
         <UserRound className="size-6 shrink-0 text-text-primary" strokeWidth={1.75} />
       )}
@@ -58,36 +94,99 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
   )
 }
 
+const ORDERS_ITEMS: readonly { to: string; label: string; aliases: readonly string[] }[] = [
+  {
+    to: '/vendor/orders',
+    label: 'سفارشات روزانه',
+    aliases: ['/vendor/orders', '/vendor/orders/list', '/vendor/orders/daily'],
+  },
+  {
+    to: '/vendor/reservations',
+    label: 'همه رزروها',
+    aliases: ['/vendor/reservations', '/vendor/orders/reservations'],
+  },
+]
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
-  const { pathname } = useLocation()
-  const onFinanceRoute = pathname.startsWith('/vendor/finance')
-  const [financeExpanded, setFinanceExpanded] = useState(onFinanceRoute)
+  const { pathname, search } = useLocation()
+  const normalizedPathname = normalizePathname(pathname)
+  const onOrdersRoute = ORDERS_ITEMS.some(({ aliases }) => aliases.includes(normalizedPathname))
+  const [ordersExpandedState, setOrdersExpandedState] = useState<boolean>()
+  const ordersExpanded = ordersExpandedState ?? onOrdersRoute
+
+  const onFinanceRoute = Boolean(matchPath('/vendor/finance/*', normalizedPathname))
+  const [expanded, setExpanded] = useState<boolean>()
+  const financeExpanded = expanded ?? onFinanceRoute
+  const financeSearch = onFinanceRoute ? financePreviewSearch(search) : ''
 
   return (
     <nav aria-label="ناوبری فروشنده" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+      {NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
+        if (to === '/vendor/orders') {
+          return (
+            <div key={to}>
+              <Button
+                variant="tertiary"
+                size="md"
+                fullWidth
+                aria-expanded={ordersExpanded}
+                onClick={() => setOrdersExpandedState(!ordersExpanded)}
+                className={`gap-3! rounded-[12px]! px-3! text-text-primary! ${onOrdersRoute ? 'bg-surface-sage! hover:bg-surface-sage!' : 'hover:bg-surface-secondary!'}`}
+              >
+                <Icon className="size-6 shrink-0" strokeWidth={1.75} aria-hidden="true" />
+                <span className="flex-1 text-start">{label}</span>
+                <ChevronDown
+                  className={`size-5 transition-transform ${ordersExpanded ? 'rotate-180' : ''}`}
+                  strokeWidth={1.75}
+                  aria-hidden="true"
+                />
+              </Button>
+              {ordersExpanded && (
+                <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
+                  {ORDERS_ITEMS.map((item) => {
+                    const active = item.aliases.includes(normalizedPathname)
+                    return (
+                      <NavLink
+                        key={item.to}
+                        to={item.to}
+                        onClick={onNavigate}
+                        className={`flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${active ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
+                      >
+                        {item.label}
+                      </NavLink>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        }
+
         if (to === '/vendor/finance') {
           return (
             <div key={to}>
-              <button
-                type="button"
+              <Button
+                variant="tertiary"
+                size="md"
+                fullWidth
                 aria-expanded={financeExpanded}
-                onClick={() => setFinanceExpanded((expanded) => !expanded)}
-                className={`flex h-12 w-full items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors ${onFinanceRoute ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
+                onClick={() => setExpanded(!financeExpanded)}
+                className={`gap-3! rounded-[12px]! px-3! text-text-primary! ${onFinanceRoute ? 'bg-surface-sage! hover:bg-surface-sage!' : 'hover:bg-surface-secondary!'}`}
               >
-                <Icon className="size-6 shrink-0" strokeWidth={1.75} />
+                <Icon className="size-6 shrink-0" strokeWidth={1.75} aria-hidden="true" />
                 <span className="flex-1 text-start">{label}</span>
                 <ChevronDown
                   className={`size-5 transition-transform ${financeExpanded ? 'rotate-180' : ''}`}
                   strokeWidth={1.75}
+                  aria-hidden="true"
                 />
-              </button>
+              </Button>
               {financeExpanded && (
                 <div className="flex flex-col gap-1 pb-2 pe-3 pt-1">
                   {FINANCE_ITEMS.map(([path, subLabel]) => (
                     <NavLink
                       key={path}
-                      to={`/vendor/finance/${path}`}
+                      to={`/vendor/finance/${path}${financeSearch}`}
                       onClick={onNavigate}
                       className={({ isActive }) =>
                         `flex h-9 items-center rounded-[12px] px-3 text-[13px] font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
@@ -102,22 +201,21 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           )
         }
 
+        const active = matches(normalizedPathname)
         return (
-          <NavLink
+          <Link
             key={to}
             to={to}
-            end={end}
+            aria-current={active ? 'page' : undefined}
             onClick={onNavigate}
-            className={({ isActive }) =>
-              [
-                'flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md text-text-primary transition-colors',
-                isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary',
-              ].join(' ')
-            }
+            className={[
+              'flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-text-primary transition-colors',
+              active ? 'bg-surface-sage' : 'hover:bg-surface-secondary',
+            ].join(' ')}
           >
             <Icon className="size-6 shrink-0" strokeWidth={1.75} />
             <span className="flex-1 text-start">{label}</span>
-          </NavLink>
+          </Link>
         )
       })}
     </nav>
@@ -125,7 +223,9 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export default function VendorLayout() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const { key } = useLocation()
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null)
+  const menuOpen = openMenuKey === key
   const headerRef = useRef<HTMLElement>(null)
   const headerOffset = useRef(0)
   const drawerRef = useRef<HTMLElement>(null)
@@ -166,12 +266,16 @@ export default function VendorLayout() {
     if (headerRef.current) headerRef.current.style.transform = ''
   }
 
+  function closeMenu() {
+    setOpenMenuKey(null)
+  }
+
   useEffect(() => {
     if (!menuOpen) return
     const menuButton = menuButtonRef.current
     drawerRef.current?.querySelector<HTMLButtonElement>('button')?.focus()
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') setMenuOpen(false)
+      if (event.key === 'Escape') setOpenMenuKey(null)
       if (event.key === 'Tab' && drawerRef.current) {
         const items = Array.from(drawerRef.current.querySelectorAll<HTMLElement>('button, a[href]'))
         const first = items[0]
@@ -187,7 +291,7 @@ export default function VendorLayout() {
     }
     const desktop = window.matchMedia('(min-width: 64rem)')
     const onResize = () => {
-      if (desktop.matches) setMenuOpen(false)
+      if (desktop.matches) setOpenMenuKey(null)
     }
     desktop.addEventListener('change', onResize)
     document.addEventListener('keydown', onKeyDown)
@@ -197,7 +301,7 @@ export default function VendorLayout() {
       document.removeEventListener('keydown', onKeyDown)
       desktop.removeEventListener('change', onResize)
       document.body.style.overflow = previousOverflow
-      if (!desktop.matches) menuButton?.focus()
+      if (!desktop.matches) menuButton?.focus({ preventScroll: true })
     }
   }, [menuOpen])
 
@@ -211,24 +315,25 @@ export default function VendorLayout() {
         </div>
       </aside>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col" inert={menuOpen}>
         {/* Mobile header */}
         <header
           ref={headerRef}
           onFocus={revealHeader}
-          className="sticky top-0 z-30 flex items-center justify-between bg-background px-5 py-4 will-change-transform lg:hidden"
+          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border-default bg-surface px-4 will-change-transform lg:hidden"
         >
-          <span className="text-title-md text-text-primary">ته‌دیگ</span>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             ref={menuButtonRef}
-            onClick={() => setMenuOpen(true)}
+            onClick={() => setOpenMenuKey(key)}
             aria-label="باز کردن منو"
             aria-expanded={menuOpen}
-            className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-text-primary transition-colors hover:bg-surface-secondary"
+            className={menuIconStyles}
           >
-            <Menu className="size-6" strokeWidth={1.75} />
-          </button>
+            <Menu className="size-6" strokeWidth={1.75} aria-hidden="true" />
+          </Button>
+          <span className="text-title-sm text-text-primary">ته‌دیگ</span>
         </header>
 
         {/* Desktop brand header; the product page supplies its store context when needed. */}
@@ -243,14 +348,14 @@ export default function VendorLayout() {
 
       {/* Mobile drawer */}
       <div
-        className={`fixed inset-0 z-50 lg:hidden ${menuOpen ? '' : 'pointer-events-none'}`}
+        className={`fixed inset-0 z-50 transition-[visibility] duration-200 motion-reduce:transition-none lg:hidden ${menuOpen ? '' : 'pointer-events-none invisible'}`}
         aria-hidden={!menuOpen}
       >
         <div
           className={`absolute inset-0 bg-primary/40 transition-opacity duration-200 ${
             menuOpen ? 'opacity-100' : 'opacity-0'
           }`}
-          onClick={() => setMenuOpen(false)}
+          onClick={closeMenu}
         />
         <aside
           ref={drawerRef}
@@ -263,8 +368,8 @@ export default function VendorLayout() {
           }`}
         >
           <div className="flex h-full flex-col gap-1 p-4">
-            <BrandRow onClose={() => setMenuOpen(false)} />
-            <NavList onNavigate={() => setMenuOpen(false)} />
+            <BrandRow onClose={closeMenu} />
+            <NavList onNavigate={closeMenu} />
           </div>
         </aside>
       </div>

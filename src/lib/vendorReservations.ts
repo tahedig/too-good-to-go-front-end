@@ -1,86 +1,49 @@
-import { isValidDate, localDate } from '@/lib/vendorDates'
-
-export { formatJalaliDate as formatPickupDate, isValidDate, localDate } from '@/lib/vendorDates'
-
-export type ReservationStatus = 'active' | 'ready_for_pickup' | 'delivered' | 'cancelled'
+export type ReservationStatus =
+  'pending_payment' | 'paid' | 'ready' | 'completed' | 'cancelled' | 'expired' | 'no_show'
 
 export type Reservation = {
   id: string
-  orderNumber: string
   customer: string | null
-  offerId: string
+  storeName: string
+  storeAddress: string
   product: string
   image: string
   quantity: number
   amount: number
-  pickupDate: string // Gregorian calendar date in the store's timezone, for filters and display
+  pickupDate: string // ISO calendar date in the browser's local timezone
   startTime: string
   endTime: string
-  pickupStartsAt: number
-  pickupEndsAt: number
   status: ReservationStatus
 }
 
-const tehranTime = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Asia/Tehran',
-  hourCycle: 'h23',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-const TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/
-
-/** TEAM-48 serializes pickup_date and both HH:mm values in UTC. */
-export function toStorePickupWindow(date: string, start: string, end: string) {
-  if (!isValidDate(date) || !TIME_PATTERN.test(start) || !TIME_PATTERN.test(end)) {
-    throw new Error('زمان تحویل یکی از رزروها در پاسخ سرور معتبر نیست.')
-  }
-  const pickupStartsAt = Date.parse(`${date}T${start}:00Z`)
-  let pickupEndsAt = Date.parse(`${date}T${end}:00Z`)
-  if (pickupEndsAt < pickupStartsAt) pickupEndsAt += 24 * 60 * 60 * 1000
-
-  return {
-    pickupDate: localDate(new Date(pickupStartsAt)),
-    startTime: tehranTime.format(pickupStartsAt),
-    endTime: tehranTime.format(pickupEndsAt),
-    pickupStartsAt,
-    pickupEndsAt,
-  }
+export function localDate(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
-
-export function toPickupWindowFromTimestamps(
-  pickupStart: string | null | undefined,
-  pickupEnd: string | null | undefined,
-  fallbackCreatedAt: string,
-) {
-  const startRaw = pickupStart ?? fallbackCreatedAt
-  const endRaw = pickupEnd ?? startRaw
-  const pickupStartsAt = Date.parse(startRaw)
-  let pickupEndsAt = Date.parse(endRaw)
-  if (!Number.isFinite(pickupStartsAt) || !Number.isFinite(pickupEndsAt)) {
-    throw new Error('زمان تحویل یکی از رزروها در پاسخ سرور معتبر نیست.')
-  }
-  if (pickupEndsAt < pickupStartsAt) pickupEndsAt = pickupStartsAt
-
-  return {
-    pickupDate: localDate(new Date(pickupStartsAt)),
-    startTime: tehranTime.format(pickupStartsAt),
-    endTime: tehranTime.format(pickupEndsAt),
-    pickupStartsAt,
-    pickupEndsAt,
-  }
+export function isValidDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const [year, month, day] = value.split('-').map(Number)
+  if (year < 1 || month < 1 || month > 12 || day < 1) return false
+  const date = new Date(0)
+  date.setFullYear(year, month - 1, day)
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
 }
-
+export function formatPickupDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number)
+  const date = new Date(0)
+  date.setFullYear(year, month - 1, day)
+  date.setHours(12, 0, 0, 0)
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
 export const STATUS_LABELS: Record<ReservationStatus, string> = {
-  active: 'فعال',
-  ready_for_pickup: 'آماده تحویل',
-  delivered: 'تحویل‌شده',
+  pending_payment: 'در انتظار پرداخت',
+  paid: 'پرداخت‌شده',
+  ready: 'آماده تحویل',
+  completed: 'تحویل‌شده',
   cancelled: 'لغوشده',
-}
-
-export function isActiveReservation(reservation: Reservation): boolean {
-  return reservation.status === 'active' || reservation.status === 'ready_for_pickup'
-}
-
-export function reservationCustomerLabel(reservation: Reservation): string {
-  return reservation.customer ?? `سفارش ${reservation.orderNumber || reservation.id}`
+  expired: 'منقضی‌شده',
+  no_show: 'عدم مراجعه',
 }

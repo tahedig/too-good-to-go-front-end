@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, replace } from 'react-router-dom'
 import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
@@ -13,7 +13,10 @@ import VendorStoresPage from '@/pages/vendor/StoresPage'
 import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
-import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
+import VendorAccountPage from '@/pages/vendor/AccountPage'
+import VendorLoginPage from '@/pages/vendor/LoginPage'
+import VendorFinancePage from '@/pages/vendor/FinancePage'
+import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
 import VendorListPage from '@/pages/admin/VendorListPage'
@@ -61,7 +64,10 @@ export const router = createBrowserRouter([
   },
   {
     element: <AuthLayout />,
-    children: [{ path: '/login', element: <LoginPage /> }],
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/vendor/login', element: <VendorLoginPage /> },
+    ],
   },
   {
     path: '/vendor',
@@ -87,8 +93,14 @@ export const router = createBrowserRouter([
         path: 'orders',
         element: <ReservationsPages key="orders" view="orders" />,
       },
-      { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
-      { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
+      {
+        path: 'orders/daily',
+        element: <ReservationsPages key="daily" view="daily" />,
+      },
+      {
+        path: 'orders/reservations',
+        element: <ReservationsPages key="reservations" />,
+      },
       {
         path: 'stores',
         element: <VendorStoresPage />,
@@ -103,22 +115,21 @@ export const router = createBrowserRouter([
       },
       {
         path: 'finance',
-        element: <VendorComingSoonPage title="مالی" />,
-      },
-      {
-        path: 'finance/:section',
-        element: <VendorComingSoonPage title="مالی" />,
-      },
-      {
-        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
-      },
-      {
-        path: 'finance',
-        element: <VendorComingSoonPage title="مالی" />,
+        children: [
+          {
+            index: true,
+            loader: ({ request }) =>
+              replace(`/vendor/finance/overview${new URL(request.url).search}`),
+          },
+          ...FINANCE_ITEMS.map(([section]) => ({
+            path: section,
+            element: <VendorFinancePage section={section} />,
+          })),
+        ],
       },
       {
         path: 'account',
-        element: <VendorComingSoonPage title="حساب فروشنده" />,
+        element: <VendorAccountPage />,
       },
     ],
   },
@@ -130,7 +141,11 @@ export const router = createBrowserRouter([
       </RequireRole>
     ),
     children: [
-      { index: true, element: <AdminDashboardPage />, handle: { title: 'داشبورد' } },
+      {
+        index: true,
+        element: <AdminDashboardPage />,
+        handle: { title: 'داشبورد' },
+      },
       {
         path: 'store-requests',
         element: <VendorListPage key="requests" mode="requests" />,
@@ -139,7 +154,10 @@ export const router = createBrowserRouter([
       {
         path: 'store-requests/:vendorId',
         element: <VendorReviewPage key="request-review" mode="requests" />,
-        handle: { title: 'بررسی درخواست', backTo: '/admin/store-requests' },
+        handle: {
+          title: 'بررسی درخواست',
+          backTo: '/admin/store-requests',
+        },
       },
       {
         path: 'stores',
@@ -149,7 +167,10 @@ export const router = createBrowserRouter([
       {
         path: 'stores/:vendorId',
         element: <VendorReviewPage key="store-details" mode="stores" />,
-        handle: { title: 'جزئیات فروشگاه', backTo: '/admin/stores' },
+        handle: {
+          title: 'جزئیات فروشگاه',
+          backTo: '/admin/stores',
+        },
       },
       {
         path: 'customers',
@@ -166,7 +187,11 @@ export const router = createBrowserRouter([
         element: <AdminComingSoonPage title="سفارشات" />,
         handle: { title: 'سفارشات' },
       },
-      { path: 'finance', element: <AdminComingSoonPage title="مالی" />, handle: { title: 'مالی' } },
+      {
+        path: 'finance',
+        element: <AdminComingSoonPage title="مالی" />,
+        handle: { title: 'مالی' },
+      },
       {
         path: 'finance/:section',
         element: <AdminComingSoonPage title="مالی" />,
