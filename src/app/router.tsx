@@ -13,6 +13,8 @@ import VendorStoresPage from '@/pages/vendor/StoresPage'
 import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
+import VendorOrdersPage from '@/pages/vendor/OrdersPage'
+import VendorReservationsPage from '@/pages/vendor/ReservationsPage'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
@@ -24,6 +26,7 @@ import OfferCollectionPage from '@/pages/OfferCollectionPage'
 import OrdersPage from '@/pages/OrdersPage'
 import PublicStorePage from '@/pages/PublicStorePage'
 import ProfilePage from '@/pages/ProfilePage'
+import HelpSupportPage from '@/pages/HelpSupportPage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
 import ProductDetailsPage from '@/pages/ProductDetailsPage'
 import CheckoutPage from '@/pages/CheckoutPage'
@@ -57,6 +60,7 @@ export const router = createBrowserRouter([
       { path: 'stores/:storeId', element: <PublicStorePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'profile/personal', element: <PersonalInfoPage /> },
+      { path: 'profile/support', element: <HelpSupportPage /> },
     ],
   },
   {
@@ -83,12 +87,11 @@ export const router = createBrowserRouter([
         path: 'products/:id/edit',
         element: <ProductEditorPage />,
       },
-      {
-        path: 'orders',
-        element: <ReservationsPages key="orders" view="orders" />,
-      },
+      { path: 'orders', element: <VendorOrdersPage /> },
       { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
-      { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
+      { path: 'orders/reservations', element: <VendorReservationsPage /> },
+      { path: 'orders/list', element: <VendorOrdersPage /> },
+      { path: 'reservations', element: <VendorReservationsPage /> },
       {
         path: 'stores',
         element: <VendorStoresPage />,
