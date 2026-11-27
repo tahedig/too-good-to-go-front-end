@@ -1,6 +1,7 @@
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { Compass, Heart, PackageCheck, UserRound } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { env } from '@/config/env'
 import { tokenStorage } from '@/services/tokenStorage'
 
 type UserNavItem = {
@@ -10,13 +11,18 @@ type UserNavItem = {
   matches: (pathname: string) => boolean
 }
 
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
+}
+
 const USER_NAV_ITEMS: UserNavItem[] = [
   {
     to: '/',
     label: 'اکتشاف',
     icon: Compass,
     matches: (pathname) =>
-      ['/', '/map', '/search', '/today', '/popular-nearby', '/last-chance'].includes(pathname),
+      ['/', '/map', '/search', '/today', '/popular-nearby', '/last-chance'].includes(pathname) ||
+      pathname.startsWith('/stores'),
   },
   {
     to: '/favorites',
@@ -38,9 +44,21 @@ const USER_NAV_ITEMS: UserNavItem[] = [
   },
 ]
 
+function canOpenProfileDirect(): boolean {
+  if (env.profileApiMode === 'mock') return true
+  if (tokenStorage.getToken()) return true
+  if (typeof sessionStorage === 'undefined') return false
+  try {
+    return Boolean(sessionStorage.getItem('auth_session'))
+  } catch {
+    return false
+  }
+}
+
 function DesktopSidebar() {
   const { pathname } = useLocation()
-  const isAuthenticated = Boolean(tokenStorage.getToken())
+  const normalizedPathname = normalizePathname(pathname)
+  const profileDirect = canOpenProfileDirect()
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-65 shrink-0 border-e border-border-default bg-surface lg:block">
@@ -53,10 +71,10 @@ function DesktopSidebar() {
         </div>
         <nav aria-label="ناوبری مشتری" className="flex flex-col gap-1">
           {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
-            const active = matches(pathname)
-            const destination = to === '/profile' && !isAuthenticated ? '/login' : to
+            const active = matches(normalizedPathname)
+            const destination = to === '/profile' && !profileDirect ? '/login' : to
             return (
-              <NavLink
+              <Link
                 key={to}
                 to={destination}
                 aria-current={active ? 'page' : undefined}
@@ -66,7 +84,7 @@ function DesktopSidebar() {
               >
                 <Icon className="size-6 shrink-0" strokeWidth={1.75} />
                 <span className="flex-1 text-start">{label}</span>
-              </NavLink>
+              </Link>
             )
           })}
         </nav>
@@ -77,7 +95,8 @@ function DesktopSidebar() {
 
 function MobileNavigation() {
   const { pathname } = useLocation()
-  const isAuthenticated = Boolean(tokenStorage.getToken())
+  const normalizedPathname = normalizePathname(pathname)
+  const profileDirect = canOpenProfileDirect()
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 lg:hidden">
@@ -86,10 +105,10 @@ function MobileNavigation() {
         className="flex h-[72px] border-t border-border-default bg-surface p-1"
       >
         {USER_NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
-          const active = matches(pathname)
-          const destination = to === '/profile' && !isAuthenticated ? '/login' : to
+          const active = matches(normalizedPathname)
+          const destination = to === '/profile' && !profileDirect ? '/login' : to
           return (
-            <NavLink
+            <Link
               key={to}
               to={destination}
               aria-current={active ? 'page' : undefined}
@@ -101,7 +120,7 @@ function MobileNavigation() {
             >
               <Icon className="size-6 shrink-0" strokeWidth={1.75} />
               <span>{label}</span>
-            </NavLink>
+            </Link>
           )
         })}
       </nav>

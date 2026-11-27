@@ -24,6 +24,7 @@ import OfferCollectionPage from '@/pages/OfferCollectionPage'
 import OrdersPage from '@/pages/OrdersPage'
 import PublicStorePage from '@/pages/PublicStorePage'
 import ProfilePage from '@/pages/ProfilePage'
+import HelpSupportPage from '@/pages/HelpSupportPage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
 import ProductDetailsPage from '@/pages/ProductDetailsPage'
 import CheckoutPage from '@/pages/CheckoutPage'
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: 'stores/:storeId', element: <PublicStorePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'profile/personal', element: <PersonalInfoPage /> },
+      { path: 'profile/support', element: <HelpSupportPage /> },
     ],
   },
   {
