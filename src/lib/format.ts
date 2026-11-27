@@ -15,14 +15,3 @@ export function formatPrice(value: number): string {
 export function formatDistanceKm(km: number): string {
   return `${distanceFormat.format(km)} کیلومتر`;
 }
-
-export function formatDateTime(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-
-  return new Intl.DateTimeFormat('fa-IR', {
-    dateStyle: 'long',
-    timeStyle: 'short',
-    timeZone: 'Asia/Tehran',
-  }).format(date)
-}

@@ -4,7 +4,7 @@ export type FieldStatus = 'default' | 'error' | 'success' | 'disabled'
 
 const statusStyles: Record<FieldStatus, string> = {
   default:
-    'border-border-input bg-surface ' +
+    'bg-surface ' +
     'hover:not-focus-within:border-primary hover:not-focus-within:shadow-[inset_0_0_0_0.5px_var(--color-primary)]',
   error: 'border-error bg-surface shadow-[inset_0_0_0_0.5px_var(--color-error)]',
   success: 'border-success bg-surface shadow-[inset_0_0_0_0.5px_var(--color-success)]',
@@ -14,10 +14,11 @@ const statusStyles: Record<FieldStatus, string> = {
 const focusStyles =
   'focus-within:border-focus focus-within:shadow-[inset_0_0_0_2px_var(--color-focus)]'
 
-export function fieldClasses(status: FieldStatus, extra = ''): string {
+export function fieldClasses(status: FieldStatus, extra = '', subtle = false): string {
   return [
     'border transition-colors duration-150',
     statusStyles[status],
+    status === 'default' && (subtle ? 'border-border-default' : 'border-border-input'),
     status !== 'disabled' && focusStyles,
     extra,
   ]
