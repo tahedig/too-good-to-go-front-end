@@ -15,6 +15,30 @@ React + TypeScript + Vite + Tailwind CSS v4.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier
 
+## Containers
+
+Build and run the frontend locally:
+
+    docker compose up --build
+
+The container listens on <http://localhost:8080>. It proxies `/api/*` to
+`BACKEND_UPSTREAM` after removing the `/api` prefix. Local Compose defaults to
+`http://host.docker.internal:8080`, which matches the Go API's exposed port.
+
+Container endpoints:
+
+- `/healthz` — lightweight container health check
+- `/version.json` — deployed version and commit metadata
+
+For staging, copy `deploy/staging.env.example` to the ignored
+`deploy/staging.env`, replace the placeholder with an immutable commit-tagged
+image, and deploy it:
+
+    docker compose --env-file deploy/staging.env -f deploy/compose.staging.yaml up -d
+
+If the API is a service on the same Docker network, set `BACKEND_UPSTREAM` to
+its service URL, for example `http://api:8080`.
+
 ## Folder structure
 
 - `src/app` — router, App root
