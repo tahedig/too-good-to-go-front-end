@@ -3,6 +3,7 @@ import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
 import AdminLayout from '@/layouts/AdminLayout'
+import RequireRole from '@/features/auth/components/RequireRole'
 import HomePage from '@/pages/HomePage'
 import LoginPage from '@/pages/LoginPage'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -15,6 +16,8 @@ import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
+import VendorListPage from '@/pages/admin/VendorListPage'
+import VendorReviewPage from '@/pages/admin/VendorReviewPage'
 import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
@@ -121,18 +124,64 @@ export const router = createBrowserRouter([
   },
   {
     path: '/admin',
-    element: <AdminLayout />,
+    element: (
+      <RequireRole role="admin">
+        <AdminLayout />
+      </RequireRole>
+    ),
     children: [
-      { index: true, element: <AdminDashboardPage /> },
-      { path: 'store-requests', element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" /> },
-      { path: 'stores', element: <AdminComingSoonPage title="فروشگاه‌ها" /> },
-      { path: 'customers', element: <AdminComingSoonPage title="مشتریان" /> },
-      { path: 'products', element: <AdminComingSoonPage title="محصولات" /> },
-      { path: 'orders', element: <AdminComingSoonPage title="سفارشات" /> },
-      { path: 'finance', element: <AdminComingSoonPage title="مالی" /> },
-      { path: 'finance/:section', element: <AdminComingSoonPage title="مالی" /> },
-      { path: 'support', element: <AdminComingSoonPage title="پشتیبانی" /> },
-      { path: 'settings', element: <AdminComingSoonPage title="تنظیمات" /> },
+      { index: true, element: <AdminDashboardPage />, handle: { title: 'داشبورد' } },
+      {
+        path: 'store-requests',
+        element: <VendorListPage key="requests" mode="requests" />,
+        handle: { title: 'درخواست فروشگاه‌ها' },
+      },
+      {
+        path: 'store-requests/:vendorId',
+        element: <VendorReviewPage key="request-review" mode="requests" />,
+        handle: { title: 'بررسی درخواست', backTo: '/admin/store-requests' },
+      },
+      {
+        path: 'stores',
+        element: <VendorListPage key="stores" mode="stores" />,
+        handle: { title: 'فروشگاه‌ها' },
+      },
+      {
+        path: 'stores/:vendorId',
+        element: <VendorReviewPage key="store-details" mode="stores" />,
+        handle: { title: 'جزئیات فروشگاه', backTo: '/admin/stores' },
+      },
+      {
+        path: 'customers',
+        element: <AdminComingSoonPage title="مشتریان" />,
+        handle: { title: 'مشتریان' },
+      },
+      {
+        path: 'products',
+        element: <AdminComingSoonPage title="محصولات" />,
+        handle: { title: 'محصولات' },
+      },
+      {
+        path: 'orders',
+        element: <AdminComingSoonPage title="سفارشات" />,
+        handle: { title: 'سفارشات' },
+      },
+      { path: 'finance', element: <AdminComingSoonPage title="مالی" />, handle: { title: 'مالی' } },
+      {
+        path: 'finance/:section',
+        element: <AdminComingSoonPage title="مالی" />,
+        handle: { title: 'مالی' },
+      },
+      {
+        path: 'support',
+        element: <AdminComingSoonPage title="پشتیبانی" />,
+        handle: { title: 'پشتیبانی' },
+      },
+      {
+        path: 'settings',
+        element: <AdminComingSoonPage title="تنظیمات" />,
+        handle: { title: 'تنظیمات' },
+      },
     ],
   },
   { path: '*', element: <NotFoundPage /> },
