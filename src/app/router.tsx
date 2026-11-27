@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, replace } from 'react-router-dom'
 import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
@@ -16,6 +16,7 @@ import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
+import AdminLoginPage from '@/pages/admin/LoginPage'
 import VendorListPage from '@/pages/admin/VendorListPage'
 import VendorReviewPage from '@/pages/admin/VendorReviewPage'
 import MapPage from '@/pages/MapPage'
@@ -61,7 +62,10 @@ export const router = createBrowserRouter([
   },
   {
     element: <AuthLayout />,
-    children: [{ path: '/login', element: <LoginPage /> }],
+    children: [
+      { path: '/login', element: <LoginPage /> },
+      { path: '/admin/login', element: <AdminLoginPage /> },
+    ],
   },
   {
     path: '/vendor',
@@ -87,8 +91,14 @@ export const router = createBrowserRouter([
         path: 'orders',
         element: <ReservationsPages key="orders" view="orders" />,
       },
-      { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
-      { path: 'orders/reservations', element: <ReservationsPages key="reservations" /> },
+      {
+        path: 'orders/daily',
+        element: <ReservationsPages key="daily" view="daily" />,
+      },
+      {
+        path: 'orders/reservations',
+        element: <ReservationsPages key="reservations" />,
+      },
       {
         path: 'stores',
         element: <VendorStoresPage />,
@@ -130,7 +140,16 @@ export const router = createBrowserRouter([
       </RequireRole>
     ),
     children: [
-      { index: true, element: <AdminDashboardPage />, handle: { title: 'داشبورد' } },
+      {
+        index: true,
+        element: <AdminDashboardPage />,
+        handle: { title: 'داشبورد' },
+      },
+      {
+        path: 'dashboard',
+        loader: ({ request }) =>
+          replace(`/admin${new URL(request.url).search}`),
+      },
       {
         path: 'store-requests',
         element: <VendorListPage key="requests" mode="requests" />,
@@ -139,7 +158,10 @@ export const router = createBrowserRouter([
       {
         path: 'store-requests/:vendorId',
         element: <VendorReviewPage key="request-review" mode="requests" />,
-        handle: { title: 'بررسی درخواست', backTo: '/admin/store-requests' },
+        handle: {
+          title: 'بررسی درخواست',
+          backTo: '/admin/store-requests',
+        },
       },
       {
         path: 'stores',
@@ -149,7 +171,10 @@ export const router = createBrowserRouter([
       {
         path: 'stores/:vendorId',
         element: <VendorReviewPage key="store-details" mode="stores" />,
-        handle: { title: 'جزئیات فروشگاه', backTo: '/admin/stores' },
+        handle: {
+          title: 'جزئیات فروشگاه',
+          backTo: '/admin/stores',
+        },
       },
       {
         path: 'customers',
@@ -166,7 +191,11 @@ export const router = createBrowserRouter([
         element: <AdminComingSoonPage title="سفارشات" />,
         handle: { title: 'سفارشات' },
       },
-      { path: 'finance', element: <AdminComingSoonPage title="مالی" />, handle: { title: 'مالی' } },
+      {
+        path: 'finance',
+        element: <AdminComingSoonPage title="مالی" />,
+        handle: { title: 'مالی' },
+      },
       {
         path: 'finance/:section',
         element: <AdminComingSoonPage title="مالی" />,
