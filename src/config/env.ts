@@ -1,8 +1,16 @@
+const useMockApi = import.meta.env.VITE_USE_MOCK_API === 'true'
+const adminMode = import.meta.env.VITE_ADMIN_API_MODE
+
 export const env = {
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api',
   appName: import.meta.env.VITE_APP_NAME ?? 'crumb',
   supportEmail: import.meta.env.VITE_SUPPORT_EMAIL ?? 'support@example.com',
-  profileApiMode: import.meta.env.VITE_PROFILE_API_MODE === 'mock' ? 'mock' : 'remote',
-  /** When true, features with a mock adapter use in-browser data instead of the backend. */
-  useMockApi: import.meta.env.VITE_USE_MOCK_API === 'true',
+  profileApiMode: import.meta.env.VITE_PROFILE_API_MODE === 'mock'
+    ? 'mock'
+    : 'remote',
+  adminApiMode:
+    adminMode === 'mock' || (!adminMode && useMockApi)
+      ? 'mock'
+      : 'remote',
+  useMockApi,
 }

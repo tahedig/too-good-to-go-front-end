@@ -8,7 +8,7 @@ import type {
   VendorStatus,
 } from '../types'
 
-/* Backend DTOs (snake_case) for the admin vendor-approval endpoints (TEAM-45). */
+/* Backend DTOs (snake_case) for the admin vendor-approval endpoints (GET/POST /admin/vendors). */
 type VendorDecisionDto = {
   type: VendorDecision['type']
   reason_code: string
@@ -79,7 +79,11 @@ async function withFieldNames<T>(request: Promise<T>): Promise<T> {
         messages,
       ]),
     )
-    throw new ApiError(error.message, error.status, fieldErrors, error.requestId)
+    throw new ApiError(error.message, error.status, fieldErrors, {
+      code: error.code,
+      retryAfter: error.retryAfter,
+      requestId: error.requestId,
+    })
   }
 }
 

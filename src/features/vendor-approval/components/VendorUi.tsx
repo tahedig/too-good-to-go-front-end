@@ -17,7 +17,7 @@ export function VendorStatusBadge({
   return (
     <span
       className={[
-        'inline-flex h-7 items-center rounded-sm px-2 text-caption whitespace-nowrap',
+        'inline-flex h-7 items-center justify-center rounded-sm px-2 text-caption whitespace-nowrap',
         tone,
         className,
       ]

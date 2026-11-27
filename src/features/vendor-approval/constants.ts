@@ -57,6 +57,7 @@ const dateFormat = new Intl.DateTimeFormat('fa-IR', {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
+  timeZone: 'Asia/Tehran',
 })
 
 export function formatVendorDate(iso: string | null) {

@@ -8,10 +8,6 @@ import type {
   VendorStatus,
 } from '../types'
 
-/**
- * In-memory stand-in for the backend (data resets on reload). It enforces the same rules the
- * real API must enforce. Set localStorage `mock_api_fail` to "1" to test error states.
- */
 const IMAGE = '/vendor-bakery.jpg'
 
 function vendor(
