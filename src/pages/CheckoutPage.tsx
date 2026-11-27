@@ -99,6 +99,7 @@ export default function CheckoutPage() {
   const [feedback, setFeedback] = useState('')
   const [requiresLogin, setRequiresLogin] = useState(false)
   const [reservationFailed, setReservationFailed] = useState(false)
+  const [reservationError, setReservationError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [remoteOfferState, setRemoteOfferState] = useState<
     | { status: 'loading' }
@@ -146,6 +147,7 @@ export default function CheckoutPage() {
     setFeedback('')
     setRequiresLogin(false)
     setReservationFailed(false)
+    setReservationError('')
 
     try {
       idempotencyKey.current ??= crypto.randomUUID()
@@ -166,6 +168,13 @@ export default function CheckoutPage() {
         setFeedback('برای ثبت رزرو وارد حساب کاربری شوید.')
       } else {
         setReservationFailed(true)
+        setReservationError(
+          error instanceof ApiError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : 'رزرو انجام نشد. دوباره تلاش کنید.',
+        )
       }
     } finally {
       setIsSubmitting(false)
@@ -253,7 +262,7 @@ export default function CheckoutPage() {
               className="flex items-start gap-3 rounded-lg bg-error-subtle p-4 text-body-md text-error"
             >
               <CircleAlert className="mt-0.5 size-6 shrink-0" strokeWidth={1.75} />
-              رزرو انجام نشد. دوباره تلاش کنید.
+              {reservationError || 'رزرو انجام نشد. دوباره تلاش کنید.'}
             </p>
           )}
 
@@ -293,6 +302,7 @@ export default function CheckoutPage() {
                   setQuantity(value)
                   setFeedback('')
                   setReservationFailed(false)
+                  setReservationError('')
                   idempotencyKey.current = null
                 }}
                 label="تعداد بسته‌ها"
@@ -367,6 +377,7 @@ export default function CheckoutPage() {
                   setAcceptPickupTerms(event.target.checked)
                   setFeedback('')
                   setReservationFailed(false)
+                  setReservationError('')
                 }}
                 className="size-6 accent-primary"
               />
