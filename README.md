@@ -39,6 +39,36 @@ image, and deploy it:
 If the API is a service on the same Docker network, set `BACKEND_UPSTREAM` to
 its service URL, for example `http://api:8080`.
 
+### Automated staging deployment
+
+Every successful push to `develop` publishes an immutable
+`develop-<commit-sha>` image and then deploys that exact image to staging. The
+deployment connects to the private staging network through OpenVPN, uses a
+verified SSH host key, and performs both container-local and external smoke
+checks. A failed deployment restores the previous Compose and environment
+state automatically.
+
+Create a GitHub Environment named `staging` with these variables:
+
+- `STAGING_HOST` — VPN/private SSH address of the staging server
+- `STAGING_USER` — restricted SSH deployment user
+- `STAGING_DEPLOY_DIR` — absolute server directory containing the deployment
+- `STAGING_URL` — URL reachable from the VPN-connected Actions runner
+
+Add these Environment secrets:
+
+- `STAGING_OVPN_CONFIG_B64` — base64-encoded, self-contained OpenVPN profile
+- `STAGING_SSH_PRIVATE_KEY` — private key for the restricted deployment user
+- `STAGING_SSH_KNOWN_HOSTS` — verified SSH `known_hosts` entry for the server
+- `STAGING_VPN_USERNAME` and `STAGING_VPN_PASSWORD` — only when the OpenVPN
+  profile contains `auth-user-pass`
+- `STAGING_VPN_KEY_PASSPHRASE` — only when the VPN client key requires one
+
+The staging server must already have Docker and Compose, a read-only GHCR
+login, the external `staging-app` Docker network, and an ignored `.env` file
+based on `deploy/staging.env.example`. Do not store VPN profiles, SSH private
+keys, package tokens, or the server `.env` file in the repository.
+
 ## Folder structure
 
 - `src/app` — router, App root

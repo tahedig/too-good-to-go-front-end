@@ -1,11 +1,17 @@
 services:
   frontend:
     image: ${FRONTEND_IMAGE:?FRONTEND_IMAGE must reference an immutable commit-tagged image}
+    container_name: staging-frontend
     pull_policy: always
     environment:
-      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://host.docker.internal:8080}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-http://api:8080}
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_BIND:-127.0.0.1}:${FRONTEND_PORT:-8080}:80"
     restart: unless-stopped
+    networks:
+      - staging-app
+
+networks:
+  staging-app:
+    external: true
+    name: ${APP_NETWORK:-staging-app}
