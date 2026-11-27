@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronLeft, Handbag, HelpCircle, LogOut, WalletCards } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { ApiError } from '@/lib/api/client'
+import { formatNumber } from '@/lib/format'
 import { profileApi } from '@/features/profile/api/profileApi'
+import { CustomerProfileShell } from '@/features/profile/components/CustomerProfileShell'
 import { ProfileLoading } from '@/features/profile/components/ProfileLoading'
-import { tokenStorage } from '@/services/tokenStorage'
+import { logoutService } from '@/services/authService'
+import { catalogueService } from '@/services/catalogueService'
+import { orderService } from '@/services/orderService'
 import type { CustomerProfile } from '@/features/profile/types'
 
 function SettingRow({ to, label, detail }: { to?: string; label: string; detail?: string }) {
@@ -55,15 +59,74 @@ function Toggle({ label, defaultChecked = false }: { label: string; defaultCheck
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CustomerProfile | null>(null)
+  const [completedPackages, setCompletedPackages] = useState<number | null>(null)
+  const [completedSpend, setCompletedSpend] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
+  const hasSavedLocation =
+    typeof localStorage !== 'undefined' && Boolean(catalogueService.getLocation())
 
   useEffect(() => {
     let active = true
     profileApi
       .getCurrent()
       .then((data) => {
-        if (active) setProfile(data)
+        if (!active) return
+        setProfile(data)
+        return (async () => {
+          setCompletedPackages(null)
+          setCompletedSpend(null)
+
+          let packages = 0
+          let totalAmount = 0
+          let cursor: string | undefined
+
+          const visitedCursors = new Set<string>()
+          const visitedOrders = new Set<string>()
+
+          do {
+            const response = await orderService.listMyOrders({
+              group: 'past',
+              limit: 50,
+              cursor,
+            })
+
+            if (!active) return
+
+            for (const order of response.orders) {
+              if (visitedOrders.has(order.id)) continue
+              visitedOrders.add(order.id)
+
+              if (order.status !== 'completed') continue
+
+              packages += order.items.reduce(
+                (sum, item) => sum + item.quantity,
+                0,
+              )
+
+              totalAmount += order.total_amount
+            }
+
+            cursor = response.next_cursor || undefined
+
+            if (cursor) {
+              if (visitedCursors.has(cursor)) {
+                throw new Error('Repeated pagination cursor')
+              }
+
+              visitedCursors.add(cursor)
+            }
+          } while (cursor && active)
+
+          if (!active) return
+
+          setCompletedPackages(packages)
+          setCompletedSpend(totalAmount)
+        })().catch(() => {
+          if (!active) return
+          setCompletedPackages(null)
+          setCompletedSpend(null)
+        })
       })
       .catch((requestError: unknown) => {
         if (!active) return
@@ -77,21 +140,28 @@ export default function ProfilePage() {
   }, [retryKey])
 
   return (
-    <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
+    <CustomerProfileShell>
+      <main className="mx-auto w-full max-w-[1180px] px-4 pb-8 pt-5 sm:px-8 sm:pb-12 sm:pt-10 lg:px-20">
         {!profile && !error ? (
           <ProfileLoading />
         ) : error ? (
           <div className="mx-auto max-w-xl space-y-4 pt-8">
             <InlineAlert tone="error">{error}</InlineAlert>
-            <Button
-              fullWidth
-              onClick={() => {
-                setError('')
-                setRetryKey((value) => value + 1)
-              }}
-            >
-              تلاش دوباره
-            </Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <ButtonLink to="/login" fullWidth>
+                ورود به حساب کاربری
+              </ButtonLink>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => {
+                  setError('')
+                  setRetryKey((value) => value + 1)
+                }}
+              >
+                تلاش دوباره
+              </Button>
+            </div>
           </div>
         ) : profile ? (
           <>
@@ -107,13 +177,17 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-3 lg:col-start-1 lg:row-start-2">
                 <section className="rounded-lg bg-primary-subtle p-5">
                   <Handbag className="size-6 text-primary" strokeWidth={1.75} />
-                  <p className="mt-4 text-price-lg text-primary">۴</p>
+                  <p className="mt-4 text-price-lg text-primary">
+                    {completedPackages === null ? '—' : formatNumber(completedPackages)}
+                  </p>
                   <p className="mt-2 text-caption text-text-secondary">نجات غذای تکمیل‌شده</p>
                 </section>
                 <section className="rounded-lg bg-primary p-5 text-on-primary">
                   <WalletCards className="size-6" strokeWidth={1.75} />
-                  <p className="mt-4 text-price-lg">۳۰۰٬۰۰۰</p>
-                  <p className="mt-2 text-caption text-on-primary/75">تومان صرفه‌جویی</p>
+                  <p className="mt-4 text-price-lg">
+                    {completedSpend === null ? '—' : formatNumber(completedSpend)}
+                  </p>
+                  <p className="mt-2 text-caption text-on-primary/75">تومان سفارش تکمیل‌شده</p>
                 </section>
               </div>
 
@@ -122,8 +196,14 @@ export default function ProfilePage() {
                 aria-label="تنظیمات پروفایل"
               >
                 <SettingRow to="/profile/personal" label="اطلاعات شخصی" />
-                <SettingRow label="مکان ترجیحی" detail="تهران، ولیعصر" />
-                <SettingRow label="راهنمایی و پشتیبانی" />
+                <SettingRow
+                  to="/map"
+                  label="مکان ترجیحی"
+                  detail={
+                    hasSavedLocation ? 'موقعیت روی نقشه ثبت شده است' : 'انتخاب موقعیت روی نقشه'
+                  }
+                />
+                <SettingRow to="/profile/support" label="راهنمایی و پشتیبانی" />
               </section>
 
               <section
@@ -143,8 +223,7 @@ export default function ProfilePage() {
                 icon={<LogOut strokeWidth={1.75} />}
                 className="lg:col-start-1 lg:row-start-4"
                 onClick={() => {
-                  sessionStorage.removeItem('auth_session')
-                  tokenStorage.clearToken()
+                  logoutService()
                   window.location.assign('/')
                 }}
               >
@@ -154,16 +233,17 @@ export default function ProfilePage() {
 
             <footer className="mt-12 hidden items-center justify-between border-t border-border-default pt-5 text-caption text-text-secondary sm:flex">
               <span>ته‌دیگ</span>
-              <a
-                href="mailto:support@example.com"
+              <Link
+                to="/profile/support"
                 className="inline-flex items-center gap-2 hover:text-primary"
               >
                 <HelpCircle className="size-5" />
                 راهنمایی و پشتیبانی
-              </a>
+              </Link>
             </footer>
           </>
         ) : null}
-    </main>
+      </main>
+    </CustomerProfileShell>
   )
 }

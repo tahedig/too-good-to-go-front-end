@@ -135,10 +135,10 @@ function SelectedOffer({ offer }: { offer: DiscoveryOffer }) {
           </p>
         </div>
         <Link
-          to="/#today-offers"
+          to={offer.storeId ? `/stores/${encodeURIComponent(offer.storeId)}` : '/#today-offers'}
           className="inline-flex min-h-11 items-center gap-2 rounded-md border border-primary px-4 text-label-md text-primary transition-colors hover:bg-primary-subtle"
         >
-          مشاهده پیشنهادها
+          {offer.storeId ? 'مشاهده فروشگاه' : 'مشاهده پیشنهادها'}
           <ArrowRight className="size-5" strokeWidth={1.75} />
         </Link>
       </div>
