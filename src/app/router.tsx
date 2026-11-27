@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, replace } from 'react-router-dom'
 import UserLayout from '@/layouts/UserLayout'
 import AuthLayout from '@/layouts/AuthLayout'
 import VendorLayout from '@/layouts/VendorLayout'
@@ -70,6 +70,11 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <VendorDashboardPage />,
+      },
+      {
+        path: 'dashboard',
+        loader: ({ request }) =>
+          replace(`/vendor${new URL(request.url).search}`),
       },
       {
         path: 'products',
