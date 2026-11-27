@@ -4,8 +4,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, CircleAlert, Clock3, Info, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
-import { publicStores } from '@/features/store/mockData'
-import { discoveryApi, type OfferDetail } from '@/features/discovery/api/discoveryApi'
+import { catalogueService } from '@/services/catalogueService'
+import type { CatalogueOfferDetailDto } from '@/types/catalogueTypes'
 import { reservationApi } from '@/features/reservations/api/reservationApi'
 import { ApiError } from '@/lib/api/client'
 import { formatDateTime, formatPrice } from '@/lib/format'
@@ -26,17 +26,9 @@ type CheckoutOffer = {
   allergens: string[]
   allergensDeclared: boolean
   cancellationDeadline?: string
-  isLive: boolean
 }
 
-function findProduct(productId: string) {
-  for (const store of Object.values(publicStores)) {
-    const product = store.products.find((item) => item.id === productId)
-    if (product) return { product, store }
-  }
-}
-
-function mapOffer(offer: OfferDetail): CheckoutOffer {
+function mapOffer(offer: CatalogueOfferDetailDto): CheckoutOffer {
   return {
     id: offer.id,
     title: offer.title,
@@ -52,30 +44,6 @@ function mapOffer(offer: OfferDetail): CheckoutOffer {
     allergens: offer.allergens.map((allergen) => allergen.label),
     allergensDeclared: offer.allergens_declared,
     cancellationDeadline: offer.cancellation_deadline,
-    isLive: true,
-  }
-}
-
-function mapMockOffer(productId: string): CheckoutOffer | undefined {
-  const listing = findProduct(productId)
-  if (!listing) return undefined
-
-  const { product, store } = listing
-  return {
-    id: product.id,
-    title: product.name,
-    category: product.category,
-    storeName: store.name,
-    imageSrc: product.imageSrc,
-    price: product.price,
-    originalPrice: product.referenceValue,
-    quantityAvailable: product.remaining,
-    pickupWindow: product.pickup,
-    address: store.address,
-    pickupInstructions: store.pickupGuide,
-    allergens: [],
-    allergensDeclared: false,
-    isLive: false,
   }
 }
 
@@ -108,13 +76,12 @@ export default function CheckoutPage() {
     | { productId: string; status: 'ready'; offer: CheckoutOffer }
   >({ status: 'loading' })
   const idempotencyKey = useRef<string | null>(null)
-  const mockOffer = mapMockOffer(productId)
 
   useEffect(() => {
-    if (!requestedQuantityIsValid || !productId || mapMockOffer(productId)) return
+    if (!requestedQuantityIsValid || !productId) return
 
     const controller = new AbortController()
-    discoveryApi
+    catalogueService
       .getOffer(productId, controller.signal)
       .then((offer) => setRemoteOfferState({ productId, status: 'ready', offer: mapOffer(offer) }))
       .catch((error: unknown) => {
@@ -137,8 +104,8 @@ export default function CheckoutPage() {
       return
     }
 
-    if (!offer || !offer.isLive) return
-    if (!Number.isSafeInteger(quantity) || quantity < 1) {
+    if (!offer || isSubmitting) return
+    if (!quantityIsValid) {
       setFeedback('تعداد بسته‌ها معتبر نیست.')
       return
     }
@@ -183,11 +150,10 @@ export default function CheckoutPage() {
 
   const remoteStateMatchesProduct =
     'productId' in remoteOfferState && remoteOfferState.productId === productId
-  const remoteOffer =
+  const offer =
     remoteStateMatchesProduct && remoteOfferState.status === 'ready'
       ? remoteOfferState.offer
       : undefined
-  const offer = mockOffer ?? remoteOffer
 
   if (
     !requestedQuantityIsValid ||
@@ -246,7 +212,7 @@ export default function CheckoutPage() {
       <main className="mx-auto max-w-[430px]">
         <header className="flex h-[94px] items-center gap-3">
           <Link
-            to={`/products/${offer.id}`}
+            to={`/products/${encodeURIComponent(offer.id)}`}
             aria-label="بازگشت به جزئیات محصول"
             className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-primary"
           >
@@ -401,12 +367,6 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {!offer.isLive && (
-            <p role="status" className="rounded-lg bg-accent-subtle p-4 text-body-md text-primary">
-              این پیشنهاد نمایشی است و امکان ثبت رزرو واقعی ندارد.
-            </p>
-          )}
-
           {offer.quantityAvailable === 0 && (
             <p role="alert" className="rounded-lg bg-error-subtle p-4 text-body-md text-error">
               موجودی این پیشنهاد به پایان رسیده است.
@@ -420,7 +380,6 @@ export default function CheckoutPage() {
             disabled={
               isSubmitting ||
               !acceptPickupTerms ||
-              !offer.isLive ||
               !quantityIsValid ||
               offer.quantityAvailable === 0
             }

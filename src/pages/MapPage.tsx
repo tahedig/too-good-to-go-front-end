@@ -1,27 +1,22 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Map as MapIcon, MapPin, SlidersHorizontal, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { Radio } from '@/components/ui/Radio'
 import { SearchField } from '@/components/ui/SearchField'
 import { DiscoveryMapCanvas } from '@/features/discovery/components/DiscoveryMapCanvas'
-import { discoverySections, type DiscoveryOffer } from '@/features/discovery/mockData'
+import { catalogueService, type CatalogueFilters } from '@/services/catalogueService'
+import type { DiscoveryLocation, DiscoveryOffer } from '@/types/discoveryTypes'
 import { formatDistanceKm, formatPrice } from '@/lib/format'
 
-const categories = ['همه', 'نانوایی', 'غذای آماده', 'کافه', 'خواربار']
 const sortOptions = [
   { value: 'distance', label: 'نزدیک‌ترین' },
   { value: 'price', label: 'ارزان‌ترین' },
 ]
 
 type SortOrder = (typeof sortOptions)[number]['value']
-
-const mapOffers: DiscoveryOffer[] = Array.from(
-  new globalThis.Map<string, DiscoveryOffer>(
-    discoverySections.flatMap((section) => section.offers).map((offer) => [offer.id, offer]),
-  ).values(),
-)
 
 function MapHeader({
   hasLocation,
@@ -42,8 +37,7 @@ function MapHeader({
               aria-label="تغییر محدوده‌ی انتخاب‌شده"
             >
               <MapPin className="size-6" strokeWidth={1.75} />
-              <span className="hidden sm:inline">تهران، ولیعصر</span>
-              <span className="sm:hidden">ولیعصر</span>
+              <span>موقعیت انتخاب‌شده</span>
             </button>
           ) : (
             <span className="inline-flex min-h-11 items-center gap-2 px-2 text-body-md text-text-secondary">
@@ -69,7 +63,15 @@ function MapHeader({
   )
 }
 
-function LocationRequired({ onChoose }: { onChoose: () => void }) {
+function LocationRequired({
+  onChoose,
+  error,
+  onRetry,
+}: {
+  onChoose: () => void
+  error: string
+  onRetry: () => void
+}) {
   return (
     <div className="mx-auto grid w-full max-w-[1180px] gap-6 px-4 pb-28 pt-6 sm:px-6 sm:pb-12 lg:min-h-[calc(100vh-160px)] lg:grid-cols-[400px_minmax(0,1fr)] lg:items-center lg:gap-16 lg:px-20 lg:py-12">
       <div className="order-2 flex flex-col items-center gap-4 rounded-2xl bg-surface p-6 text-center shadow-1 lg:order-1">
@@ -80,6 +82,14 @@ function LocationRequired({ onChoose }: { onChoose: () => void }) {
         <p className="text-body-md text-text-secondary">
           با انتخاب محدوده، فروشگاه‌ها و پیشنهادهای نزدیک به تو روی نقشه نمایش داده می‌شوند.
         </p>
+        {error && (
+          <InlineAlert tone="error">
+            {error}
+            <Button variant="secondary" size="sm" onClick={onRetry}>
+              تلاش دوباره
+            </Button>
+          </InlineAlert>
+        )}
         <Button
           variant="secondary"
           fullWidth
@@ -111,7 +121,7 @@ function SelectedOffer({ offer }: { offer: DiscoveryOffer }) {
         />
         <div className="min-w-0 flex-1 space-y-1">
           <h2 className="truncate text-title-sm text-primary">{offer.merchantName}</h2>
-          <p className="text-caption text-text-secondary">{offer.category} · ولیعصر</p>
+          {offer.category && <p className="text-caption text-text-secondary">{offer.category}</p>}
           <p className="text-caption text-text-secondary">
             تحویل {offer.pickup.replace('امروز، ', '')}
           </p>
@@ -121,9 +131,7 @@ function SelectedOffer({ offer }: { offer: DiscoveryOffer }) {
         <div>
           <p className="text-price-md text-primary">{formatPrice(offer.price)}</p>
           <p className="mt-1 text-caption text-text-secondary">
-            {offer.distanceKm === undefined
-              ? 'فاصله نامشخص'
-              : formatDistanceKm(offer.distanceKm)}
+            {offer.distanceKm === undefined ? 'فاصله نامشخص' : formatDistanceKm(offer.distanceKm)}
           </p>
         </div>
         <Link
@@ -139,24 +147,105 @@ function SelectedOffer({ offer }: { offer: DiscoveryOffer }) {
 }
 
 export default function MapPage() {
-  const [hasLocation, setHasLocation] = useState(false)
+  const [location, setLocation] = useState<DiscoveryLocation | undefined>(() =>
+    catalogueService.getLocation(),
+  )
   const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('همه')
   const [sortOrder, setSortOrder] = useState<SortOrder>('distance')
   const [filtersOpen, setFiltersOpen] = useState(false)
-  const [selectedOfferId, setSelectedOfferId] = useState(mapOffers[0]?.id)
+  const [selectedOfferId, setSelectedOfferId] = useState<string>()
   const [recentered, setRecentered] = useState(false)
+  const [filterData, setFilterData] = useState<CatalogueFilters>()
+  const [mapOffers, setMapOffers] = useState<DiscoveryOffer[]>([])
+  const [loading, setLoading] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const [locationError, setLocationError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    catalogueService
+      .getFilters()
+      .then((data) => {
+        if (active) setFilterData(data)
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setLoadError(error instanceof Error ? error.message : 'دریافت فیلترها ناموفق بود.')
+      })
+    return () => {
+      active = false
+    }
+  }, [reloadKey])
+
+  useEffect(() => {
+    if (!location || !filterData) return
+    let active = true
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return undefined
+        setLoading(true)
+        setLoadError('')
+        setMapOffers([])
+        const categoryId =
+          selectedCategory === 'همه'
+            ? undefined
+            : filterData.categories.find((category) => category.name === selectedCategory)?.id
+        return catalogueService.getMapOffers(
+          { location, categoryIds: categoryId === undefined ? undefined : [categoryId] },
+          filterData.categories,
+        )
+      })
+      .then((response) => {
+        if (!active || !response) return
+        const { offers } = response
+        setMapOffers(offers)
+        setSelectedOfferId(offers[0]?.id)
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setLoadError(
+            error instanceof Error ? error.message : 'دریافت پیشنهادهای نقشه ناموفق بود.',
+          )
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [filterData, location, reloadKey, selectedCategory])
+
+  function chooseLocation() {
+    if (!navigator.geolocation) {
+      setLocationError('مرورگر شما امکان دریافت موقعیت مکانی را ندارد.')
+      return
+    }
+    setLocationError('')
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const nextLocation = {
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        }
+        catalogueService.saveLocation(nextLocation)
+        setLocation(nextLocation)
+      },
+      () => setLocationError('دریافت موقعیت مکانی انجام نشد. دسترسی مکان‌یابی را بررسی کنید.'),
+      { enableHighAccuracy: false, timeout: 10000 },
+    )
+  }
 
   const visibleOffers = useMemo(() => {
     const search = query.trim().toLocaleLowerCase()
     const filtered = mapOffers.filter((offer) => {
-      const matchesCategory = selectedCategory === 'همه' || offer.category === selectedCategory
       const matchesSearch =
         !search ||
         `${offer.merchantName} ${offer.category} ${offer.description}`
           .toLocaleLowerCase()
           .includes(search)
-      return matchesCategory && matchesSearch
+      return matchesSearch
     })
 
     return filtered.sort((a, b) =>
@@ -164,17 +253,27 @@ export default function MapPage() {
         ? a.price - b.price
         : (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity),
     )
-  }, [query, selectedCategory, sortOrder])
+  }, [mapOffers, query, sortOrder])
 
   const selectedOffer =
     visibleOffers.find((offer) => offer.id === selectedOfferId) ?? visibleOffers[0]
 
   return (
     <div dir="rtl" className="min-h-screen bg-background text-text-primary">
-      <MapHeader hasLocation={hasLocation} onClearLocation={() => setHasLocation(false)} />
+      <MapHeader
+        hasLocation={Boolean(location)}
+        onClearLocation={() => {
+          catalogueService.clearLocation()
+          setLocation(undefined)
+        }}
+      />
 
-      {!hasLocation ? (
-        <LocationRequired onChoose={() => setHasLocation(true)} />
+      {!location ? (
+        <LocationRequired
+          onChoose={chooseLocation}
+          error={locationError || (!filterData ? loadError : '')}
+          onRetry={() => (locationError ? chooseLocation() : setReloadKey((key) => key + 1))}
+        />
       ) : (
         <main className="mx-auto w-full max-w-[1440px] px-4 pb-28 pt-5 sm:px-6 sm:pb-10 sm:pt-8 lg:px-20">
           <div className="mb-5 flex items-center gap-3">
@@ -210,31 +309,34 @@ export default function MapPage() {
           </div>
 
           <div className="mb-5 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {categories.map((category) => {
-              const active = selectedCategory === category
-              return (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSelectedCategory(category)}
-                  aria-pressed={active}
-                  className={[
-                    'min-h-11 shrink-0 rounded-md border px-4 text-label-md transition-colors',
-                    active
-                      ? 'border-primary bg-primary-subtle text-primary'
-                      : 'border-border-input bg-surface text-primary hover:bg-surface-secondary',
-                  ].join(' ')}
-                >
-                  {category}
-                </button>
-              )
-            })}
+            {['همه', ...(filterData?.categories.map((category) => category.name) ?? [])].map(
+              (category) => {
+                const active = selectedCategory === category
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category)}
+                    aria-pressed={active}
+                    className={[
+                      'min-h-11 shrink-0 rounded-md border px-4 text-label-md transition-colors',
+                      active
+                        ? 'border-primary bg-primary-subtle text-primary'
+                        : 'border-border-input bg-surface text-primary hover:bg-surface-secondary',
+                    ].join(' ')}
+                  >
+                    {category}
+                  </button>
+                )
+              },
+            )}
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6">
             <div className="relative h-[min(56vh,560px)] min-h-[390px] lg:h-[calc(100vh-300px)] lg:min-h-[560px]">
               <DiscoveryMapCanvas
                 offers={visibleOffers}
+                center={location}
                 selectedOfferId={selectedOffer?.id}
                 onOfferSelect={(offer) => setSelectedOfferId(offer.id)}
                 onRecenter={() => setRecentered(true)}
@@ -250,6 +352,25 @@ export default function MapPage() {
             </div>
 
             <aside className="flex min-w-0 flex-col gap-4">
+              {(locationError || loadError) && (
+                <InlineAlert tone="error">
+                  {locationError || loadError}
+                  {loadError && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setReloadKey((key) => key + 1)}
+                    >
+                      تلاش دوباره
+                    </Button>
+                  )}
+                </InlineAlert>
+              )}
+              {loading && (
+                <p role="status" className="text-body-md text-text-secondary">
+                  در حال دریافت پیشنهادها…
+                </p>
+              )}
               {selectedOffer ? (
                 <SelectedOffer offer={selectedOffer} />
               ) : (
@@ -286,7 +407,7 @@ export default function MapPage() {
                           </span>
                           <span className="mt-1 block text-caption text-text-secondary">
                             {offer.distanceKm === undefined
-                              ? `فاصله نامشخص · ${offer.category}`
+                              ? offer.category
                               : `${formatDistanceKm(offer.distanceKm)} · ${offer.category}`}
                           </span>
                         </span>
@@ -328,16 +449,18 @@ export default function MapPage() {
       >
         <fieldset className="space-y-2">
           <legend className="mb-2 text-label-md">دسته‌بندی</legend>
-          {categories.map((category) => (
-            <Radio
-              key={category}
-              name="map-category"
-              value={category}
-              label={category}
-              checked={selectedCategory === category}
-              onChange={() => setSelectedCategory(category)}
-            />
-          ))}
+          {['همه', ...(filterData?.categories.map((category) => category.name) ?? [])].map(
+            (category) => (
+              <Radio
+                key={category}
+                name="map-category"
+                value={category}
+                label={category}
+                checked={selectedCategory === category}
+                onChange={() => setSelectedCategory(category)}
+              />
+            ),
+          )}
         </fieldset>
         <fieldset className="space-y-2">
           <legend className="mb-2 text-label-md">مرتب‌سازی بر اساس</legend>
