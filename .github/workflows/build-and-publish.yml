@@ -135,7 +135,10 @@ jobs:
         )
       )
     needs: build-and-publish
-    runs-on: ubuntu-latest
+    # Keep the VPN client on the OpenVPN 2.6 series used by Ubuntu 24.04.
+    # The same profile succeeds with OpenVPN 2.6 on Windows, while the
+    # ubuntu-latest runner's OpenVPN 2.7 client times out during TLS setup.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment:
       name: staging
@@ -204,6 +207,10 @@ jobs:
           # A staging VPN must not replace the hosted runner's default route;
           # doing so disconnects the runner from GitHub mid-job.
           sed -i -E '/^[[:space:]]*redirect-gateway([[:space:]].*)?$/d' "$profile"
+          sed -i -E '/^[[:space:]]*persist-key([[:space:]].*)?$/d' "$profile"
+          if ! grep -Eq '^[[:space:]]*auth-nocache([[:space:]].*)?$' "$profile"; then
+            printf '\nauth-nocache\n' >> "$profile"
+          fi
 
           if grep -Eq '^[[:space:]]*auth-user-pass' "$profile"; then
             : "${VPN_USERNAME:?The VPN profile requires STAGING_VPN_USERNAME}"
@@ -222,6 +229,8 @@ jobs:
           sudo openvpn \
             --config "$profile" \
             --pull-filter ignore redirect-gateway \
+            --tls-exit \
+            --verb 4 \
             --daemon staging-vpn \
             --writepid "$pid_file" \
             --log "$log_file"
@@ -232,6 +241,13 @@ jobs:
               connected=true
               break
             fi
+
+            if [[ -s "$pid_file" ]] && ! sudo kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+              sudo tail -n 100 "$log_file" || true
+              echo "OpenVPN exited before staging SSH became reachable" >&2
+              exit 1
+            fi
+
             sleep 2
           done
 
