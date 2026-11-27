@@ -1,5 +1,16 @@
 import type { DiscoveryLocationDto } from './catalogueTypes'
 
+export interface ProductAvailabilityPreview {
+  id: string
+  title: string
+  imageSrc: string
+  category: string
+  price: number
+  referenceValue: number
+  pickup: string
+  storeName: string
+}
+
 export type DiscoveryOffer = {
   id: string
   storeId: string

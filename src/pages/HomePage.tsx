@@ -193,7 +193,24 @@ function OfferCarousel({
             <FoodListingCard
               key={offer.id}
               {...offer}
-              renderLink={(props) => <Link to={`/products/${encodeURIComponent(offer.id)}`} {...props} />}
+              renderLink={(props) => (
+                <Link
+                  to={`/products/${encodeURIComponent(offer.id)}`}
+                  state={{
+                    availabilityPreview: {
+                      id: offer.id,
+                      title: offer.description,
+                      imageSrc: offer.imageSrc ?? '',
+                      category: offer.category,
+                      price: offer.price,
+                      referenceValue: offer.referenceValue,
+                      pickup: offer.pickup,
+                      storeName: offer.merchantName,
+                    },
+                  }}
+                  {...props}
+                />
+              )}
               saved={saved[offer.id] ?? offer.isFavorite}
               onSaveChange={(value) => onSaveChange(offer.id, value)}
               className="w-[270px] shrink-0 snap-start"
