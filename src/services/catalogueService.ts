@@ -3,6 +3,7 @@ import type {
   CatalogueFiltersResponseDto,
   CatalogueMapResponseDto,
   CatalogueOfferCardDto,
+  CatalogueOfferDetailDto,
   CatalogueOfferListDto,
   DiscoveryLocationDto,
   FavoriteOfferResponseDto,
@@ -128,6 +129,10 @@ function mapOfferList(
 }
 
 export const catalogueService = {
+  getOffer(id: string, signal?: AbortSignal) {
+    return apiRequest<CatalogueOfferDetailDto>(`/offers/${encodeURIComponent(id)}`, { signal })
+  },
+
   getLocation(): DiscoveryLocation | undefined {
     const raw = localStorage.getItem(LOCATION_STORAGE_KEY)
     if (!raw) return undefined

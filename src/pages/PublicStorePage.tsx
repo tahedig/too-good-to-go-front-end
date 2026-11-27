@@ -197,13 +197,14 @@ function ProductSection({ store }: { store: PublicStore }) {
               statusLabel={product.availabilityBadge}
               saved={savedOffers[product.id] ?? product.isFavorite}
               onSaveChange={(saved) => void updateSaved(product.id, saved)}
+              renderLink={(props) => <Link to={`/products/${encodeURIComponent(product.id)}`} {...props} />}
               showDescription={false}
               showDisclaimer={false}
               swapImageActions
               className="min-h-[522px]"
             />
           ))}
-          <Button fullWidth onClick={() => navigate(`/search?q=${encodeURIComponent(store.name)}`)}>
+          <Button fullWidth onClick={() => navigate(`/products/${encodeURIComponent(store.products[0].id)}`)}>
             مشاهده محصول
           </Button>
         </div>

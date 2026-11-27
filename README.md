@@ -100,6 +100,11 @@ The implemented vendor pages use service modules under `src/services/vendor/`:
 
 The supplied Go API list is now used by `ordersService.ts` and `reservationsService.ts`: both load the authenticated vendor's orders from `GET /orders`, including cursor pagination. The current contract has no separate reservation endpoint or delivery-confirmation action, so the reservation view is read-only. `productsService.ts` remains a clearly marked local demo adapter because the supplied list does not include vendor product CRUD or image-upload endpoints; the public store-offers endpoint does not provide enough data or operations for product create/edit. New integrations use `apiRequest` in `src/lib/api/client.ts`, which reads `VITE_API_BASE_URL` and the stored access token.
 
+## Customer product details
+
+Selecting an offer from discovery, search, or a public store opens
+`/products/:productId` and loads the latest details from `GET /offers/:id`.
+
 ## Design system
 
 Tokens are defined in `src/index.css` (`@theme`) following the approved Figma

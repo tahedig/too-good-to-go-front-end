@@ -25,6 +25,19 @@ export type CatalogueOfferCardDto = {
   is_favorite: boolean
 }
 
+export type CatalogueOfferDetailDto = Omit<CatalogueOfferCardDto, 'image_url' | 'store'> & {
+  description: string
+  image_url?: string | null
+  cancellation_deadline: string
+  allergens: Array<{ value: string; label: string }>
+  allergens_declared: boolean
+  store: CatalogueStoreRefDto & {
+    address: string
+    pickup_instructions?: string
+    location: DiscoveryLocationDto
+  }
+}
+
 export type CatalogueOfferListDto = {
   items: CatalogueOfferCardDto[]
   has_more: boolean

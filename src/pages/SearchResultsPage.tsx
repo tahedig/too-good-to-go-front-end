@@ -583,11 +583,7 @@ export default function SearchResultsPage() {
                   <FoodListingCard
                     key={offer.id}
                     {...offer}
-                    renderLink={
-                      offer.storeId
-                        ? (props) => <Link to={`/stores/${offer.storeId}`} {...props} />
-                        : undefined
-                    }
+                    renderLink={(props) => <Link to={`/products/${encodeURIComponent(offer.id)}`} {...props} />}
                     headingLevel={2}
                     saved={savedOffers[offer.id] ?? offer.isFavorite}
                     onSaveChange={(saved) => void updateSaved(offer.id, saved)}
