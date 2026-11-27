@@ -74,7 +74,6 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
   const [actionError, setActionError] = useState('')
   const [outcome, setOutcome] = useState<Outcome | null>(null)
 
-  // State is only set from the request callbacks; loading is derived from the request key.
   const requestKey = `${vendorId}|${reloadCount}`
   useEffect(() => {
     let active = true
@@ -106,13 +105,13 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
     setDialog(kind)
   }
 
-  async function runAction(action: () => Promise<Vendor>, result: Outcome) {
+  async function runAction(action: () => Promise<Vendor>, nextOutcome: Outcome) {
     setActing(true)
     setActionError('')
     try {
       setVendor(await action())
       setDialog(null)
-      setOutcome(result)
+      setOutcome(nextOutcome)
       window.scrollTo({ top: 0 })
     } catch (caught) {
       setActionError(describeError(caught, 'انجام نشد. لطفاً دوباره تلاش کنید.').message)
@@ -124,7 +123,6 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
   async function submitDecision(payload: VendorDecisionPayload) {
     if (!vendor) return
     const isReject = dialog === 'reject'
-    // Errors propagate to the dialog so it can show field-level messages.
     const updated = isReject
       ? await vendorApprovalApi.reject(vendor.id, payload)
       : await vendorApprovalApi.suspend(vendor.id, payload)
@@ -135,6 +133,7 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
   }
 
   const container = 'mx-auto flex w-full max-w-160 flex-col gap-4'
+  const loginReturnTo = encodeURIComponent(location.pathname + location.search)
 
   if (loadError) {
     return (
@@ -143,10 +142,18 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
           tone="error"
           title={loadError.notFound ? 'فروشگاه پیدا نشد' : 'درخواست بارگذاری نشد'}
           action={
-            loadError.unauthorized ? (
-              <Link to="/login" className={linkButtonClass('primary', 'w-full')}>
-                ورود دوباره
-              </Link>
+            loadError.unauthorized || loadError.forbidden ? (
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  to={`/admin/login?returnTo=${loginReturnTo}`}
+                  className={linkButtonClass('primary', 'w-full')}
+                >
+                  ورود به پنل مدیریت
+                </Link>
+                <Button variant="secondary" fullWidth size="md" onClick={load}>
+                  تلاش دوباره
+                </Button>
+              </div>
             ) : (
               !loadError.notFound && (
                 <Button fullWidth size="md" onClick={load}>
@@ -285,6 +292,11 @@ export default function VendorReviewPage({ mode }: { mode: VendorListMode }) {
           </p>
         )}
       </section>
+
+      <BackToListLink
+        to={listLink.path}
+        label={mode === 'requests' ? 'بازگشت به درخواست‌ها' : 'بازگشت به فروشگاه‌ها'}
+      />
 
       <ConfirmDialog
         open={dialog === 'approve'}
