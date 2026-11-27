@@ -7,6 +7,16 @@ on:
   pull_request:
     branches:
       - develop
+  workflow_dispatch:
+    inputs:
+      staging_action:
+        description: Staging operation to run from the trusted develop workflow
+        required: true
+        default: connectivity
+        type: choice
+        options:
+          - connectivity
+          - deploy
 
 permissions:
   contents: read
@@ -15,6 +25,7 @@ permissions:
 jobs:
   quality:
     name: Quality checks
+    if: github.event_name != 'workflow_dispatch' || inputs.staging_action == 'deploy'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -102,8 +113,27 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy-staging:
-    name: Deploy frontend to staging
-    if: github.event_name == 'push'
+    name: Check or deploy frontend staging
+    if: >-
+      always() &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.staging_action == 'connectivity') ||
+        (
+          needs.build-and-publish.result == 'success' &&
+          (
+            (
+              github.event_name == 'pull_request' &&
+              github.head_ref == 'fix/staging-vpn-ssh-timeout'
+            ) ||
+            (github.event_name == 'push' && vars.STAGING_AUTO_DEPLOY_ENABLED == 'true') ||
+            (
+              github.event_name == 'workflow_dispatch' &&
+              inputs.staging_action == 'deploy' &&
+              github.ref == 'refs/heads/develop'
+            )
+          )
+        )
+      )
     needs: build-and-publish
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -171,6 +201,10 @@ jobs:
           printf '%s' "$OVPN_CONFIG_B64" | base64 --decode > "$profile"
           chmod 600 "$profile"
 
+          # A staging VPN must not replace the hosted runner's default route;
+          # doing so disconnects the runner from GitHub mid-job.
+          sed -i -E '/^[[:space:]]*redirect-gateway([[:space:]].*)?$/d' "$profile"
+
           if grep -Eq '^[[:space:]]*auth-user-pass' "$profile"; then
             : "${VPN_USERNAME:?The VPN profile requires STAGING_VPN_USERNAME}"
             : "${VPN_PASSWORD:?The VPN profile requires STAGING_VPN_PASSWORD}"
@@ -187,6 +221,7 @@ jobs:
 
           sudo openvpn \
             --config "$profile" \
+            --pull-filter ignore redirect-gateway \
             --daemon staging-vpn \
             --writepid "$pid_file" \
             --log "$log_file"
@@ -206,6 +241,8 @@ jobs:
             exit 1
           fi
 
+          ip route get "$STAGING_HOST"
+
       - name: Configure SSH
         shell: bash
         run: |
@@ -215,14 +252,32 @@ jobs:
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/staging_deploy" "$HOME/.ssh/known_hosts"
 
-          ssh \
+          # Secrets copied from Windows may contain CRLF line endings.
+          sed -i 's/\r$//' "$HOME/.ssh/staging_deploy" "$HOME/.ssh/known_hosts"
+
+          ssh-keygen -y -f "$HOME/.ssh/staging_deploy" >/dev/null
+          ssh-keygen -F "$STAGING_HOST" -f "$HOME/.ssh/known_hosts" >/dev/null
+
+          pid_file="$RUNNER_TEMP/staging-openvpn.pid"
+          [[ -s "$pid_file" ]]
+          sudo kill -0 "$(cat "$pid_file")"
+          timeout 2 bash -c "</dev/tcp/$STAGING_HOST/22"
+
+          timeout 30 ssh \
             -i "$HOME/.ssh/staging_deploy" \
             -o BatchMode=yes \
+            -o ConnectTimeout=10 \
+            -o ConnectionAttempts=2 \
             -o IdentitiesOnly=yes \
+            -o ServerAliveInterval=5 \
+            -o ServerAliveCountMax=2 \
             -o StrictHostKeyChecking=yes \
             "$STAGING_USER@$STAGING_HOST" true
 
       - name: Deploy exact image and verify staging
+        if: >-
+          (github.event_name == 'push' && vars.STAGING_AUTO_DEPLOY_ENABLED == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.staging_action == 'deploy')
         shell: bash
         run: |
           set -euo pipefail
@@ -230,7 +285,11 @@ jobs:
           ssh_options=(
             -i "$HOME/.ssh/staging_deploy"
             -o BatchMode=yes
+            -o ConnectTimeout=10
+            -o ConnectionAttempts=2
             -o IdentitiesOnly=yes
+            -o ServerAliveInterval=5
+            -o ServerAliveCountMax=2
             -o StrictHostKeyChecking=yes
           )
           target="$STAGING_USER@$STAGING_HOST"
@@ -275,6 +334,35 @@ jobs:
 
           ssh "${ssh_options[@]}" "$target" \
             "cd '$STAGING_DEPLOY_DIR' && ./deploy-staging.sh confirm"
+
+      - name: Verify staging prerequisites without deployment
+        if: >-
+          (github.event_name == 'pull_request' && github.head_ref == 'fix/staging-vpn-ssh-timeout') ||
+          (github.event_name == 'workflow_dispatch' && inputs.staging_action == 'connectivity')
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ssh_options=(
+            -i "$HOME/.ssh/staging_deploy"
+            -o BatchMode=yes
+            -o ConnectTimeout=10
+            -o ConnectionAttempts=2
+            -o IdentitiesOnly=yes
+            -o ServerAliveInterval=5
+            -o ServerAliveCountMax=2
+            -o StrictHostKeyChecking=yes
+          )
+
+          ssh "${ssh_options[@]}" "$STAGING_USER@$STAGING_HOST" \
+            "docker version >/dev/null &&
+             docker compose version >/dev/null &&
+             docker network inspect staging-app >/dev/null &&
+             test -d '$STAGING_DEPLOY_DIR' &&
+             test -f '$STAGING_DEPLOY_DIR/.env' &&
+             test -f '$STAGING_DEPLOY_DIR/compose.yaml'"
+
+          echo "VPN, SSH, Docker, staging network, and deployment files are ready"
 
       - name: Disconnect staging VPN
         if: always()

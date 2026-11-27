@@ -54,6 +54,8 @@ Create a GitHub Environment named `staging` with these variables:
 - `STAGING_USER` — restricted SSH deployment user
 - `STAGING_DEPLOY_DIR` — absolute server directory containing the deployment
 - `STAGING_URL` — URL reachable from the VPN-connected Actions runner
+- `STAGING_AUTO_DEPLOY_ENABLED` — set to `false` while validating connectivity,
+  then change to `true` to enable automatic deployment after `develop` pushes
 
 Add these Environment secrets:
 
@@ -68,6 +70,20 @@ The staging server must already have Docker and Compose, a read-only GHCR
 login, the external `staging-app` Docker network, and an ignored `.env` file
 based on `deploy/staging.env.example`. Do not store VPN profiles, SSH private
 keys, package tokens, or the server `.env` file in the repository.
+
+For the initial rollout, keep `STAGING_AUTO_DEPLOY_ENABLED=false`, merge the
+workflow, and manually run **Build and publish develop image** with
+`staging_action=connectivity` on `develop`. This trusted, read-only check opens
+the VPN and verifies SSH without changing the server. After it succeeds, set
+the variable to `true` and run `staging_action=deploy` once to deploy the
+current `develop` image. Future pushes then deploy automatically.
+
+During the initial VPN/SSH troubleshooting only, the
+`fix/staging-vpn-ssh-timeout` pull request also runs the same read-only staging
+connectivity check. This temporary exception exposes staging Environment
+secrets to workflow code controlled by that PR, so the Environment must require
+a reviewer and the exception must be removed after the check succeeds and
+before the PR is merged.
 
 ## Folder structure
 
