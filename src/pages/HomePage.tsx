@@ -3,15 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowLeft, MapPin, SlidersHorizontal, UserRound } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { FoodListingCard } from '@/components/ui/FoodListingCard'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { Radio } from '@/components/ui/Radio'
 import { SearchField } from '@/components/ui/SearchField'
 import { DiscoveryMapPreview } from '@/features/discovery/components/DiscoveryMapPreview'
-import { discoveryApi, type CatalogueOfferCard } from '@/features/discovery/api/discoveryApi'
-import { discoverySections, type DiscoveryOffer } from '@/features/discovery/mockData'
+import { catalogueService } from '@/services/catalogueService'
+import type { DiscoveryOffer, DiscoverySection } from '@/types/discoveryTypes'
 import { toEnglishDigits } from '@/lib/digits'
-
-const categories = ['همه', 'نانوایی', 'غذای آماده', 'کافه', 'خواربار', 'تخفیف ویژه']
 
 const sortOptions = [
   { value: 'distance', label: 'نزدیک‌ترین' },
@@ -20,35 +19,6 @@ const sortOptions = [
 ]
 
 type SortOrder = (typeof sortOptions)[number]['value']
-
-const homeSectionTitles = [
-  { id: 'today', title: 'فرصت‌های خوشمزه امروز' },
-  { id: 'favorites', title: 'محبوب‌های اطراف شما' },
-  { id: 'last-chance', title: 'آخرین فرصت‌های نجات غذا' },
-] as const
-
-type HomeSection = {
-  id: (typeof homeSectionTitles)[number]['id']
-  title: string
-  offers: DiscoveryOffer[]
-}
-
-function mapCatalogueOffer(offer: CatalogueOfferCard): DiscoveryOffer {
-  return {
-    id: offer.id,
-    storeId: offer.store.id,
-    productId: offer.id,
-    merchantName: offer.title,
-    category: offer.category_name ?? 'غافلگیری',
-    distanceKm: offer.distance_m === undefined ? undefined : offer.distance_m / 1000,
-    description: offer.store.name,
-    price: offer.price,
-    referenceValue: offer.original_price,
-    pickup: offer.pickup_window,
-    imageSrc: offer.image_url ?? '',
-    allergens: [],
-  }
-}
 
 function pickupTime(pickup: string): number {
   const time = pickup.match(/[0-9۰-۹]{1,2}:[0-9۰-۹]{2}/)?.[0]
@@ -61,14 +31,14 @@ function DiscoveryHeader() {
   return (
     <>
       <div className="flex items-center justify-between gap-4 px-4 pb-4 pt-4 sm:hidden">
-        <button
-          type="button"
+        <Link
+          to="/map"
           className="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-label-md text-primary hover:bg-surface-secondary"
           aria-label="انتخاب محدوده"
         >
           <MapPin className="size-6" strokeWidth={1.75} />
-          تهران، ولیعصر
-        </button>
+          انتخاب محدوده
+        </Link>
         <Link to="/" className="text-title-lg font-bold text-primary">
           ته‌دیگ
         </Link>
@@ -83,13 +53,13 @@ function DiscoveryHeader() {
           >
             <UserRound strokeWidth={1.75} />
           </Link>
-          <button
-            type="button"
+          <Link
+            to="/map"
             className="flex min-h-11 items-center gap-2 px-2 text-body-md text-primary"
           >
             <MapPin className="size-6" strokeWidth={1.75} />
-            تهران، ولیعصر
-          </button>
+            انتخاب محدوده
+          </Link>
         </div>
 
         <nav aria-label="ناوبری اصلی" className="hidden items-center gap-6 sm:flex lg:hidden">
@@ -154,9 +124,11 @@ function SearchAndFilters({
 function CategoryFilters({
   selected,
   onSelect,
+  categories,
 }: {
   selected: string
   onSelect: (category: string) => void
+  categories: string[]
 }) {
   return (
     <div className="hidden flex-wrap gap-2 sm:flex" aria-label="دسته‌بندی پیشنهادها">
@@ -197,7 +169,7 @@ function OfferCarousel({
   id: string
 }) {
   const collectionPath =
-    id === 'today' ? '/today' : id === 'favorites' ? '/favorites' : '/last-chance'
+    id === 'today' ? '/today' : id === 'last-chance' ? '/last-chance' : '/popular-nearby'
 
   return (
     <section id={id} className="min-w-0 space-y-4">
@@ -221,12 +193,8 @@ function OfferCarousel({
             <FoodListingCard
               key={offer.id}
               {...offer}
-              renderLink={
-                offer.productId
-                  ? (props) => <Link to={`/products/${offer.productId}`} {...props} />
-                  : undefined
-              }
-              saved={Boolean(saved[offer.id])}
+              renderLink={(props) => <Link to={`/products/${encodeURIComponent(offer.id)}`} {...props} />}
+              saved={saved[offer.id] ?? offer.isFavorite}
               onSaveChange={(value) => onSaveChange(offer.id, value)}
               className="w-[270px] shrink-0 snap-start"
             />
@@ -248,79 +216,72 @@ export default function HomePage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('distance')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [saved, setSaved] = useState<Record<string, boolean>>({})
-  const [apiSections, setApiSections] = useState<HomeSection[]>([])
-  const [offersLoading, setOffersLoading] = useState(true)
-  const [offersError, setOffersError] = useState('')
-  const [reloadOffers, setReloadOffers] = useState(0)
+  const [sections, setSections] = useState<DiscoverySection[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [homeError, setHomeError] = useState('')
+  const [favoriteError, setFavoriteError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    const controller = new AbortController()
-
-    async function loadHomeOffers() {
-      setOffersLoading(true)
-      setOffersError('')
-
-      try {
-        const [today, popular, lastChance] = await Promise.all([
-          discoveryApi.getHomeToday(controller.signal),
-          discoveryApi.getHomePopularNearby(controller.signal),
-          discoveryApi.getHomeLastChance(controller.signal),
+    let active = true
+    void Promise.resolve()
+      .then(() => {
+        if (!active) return undefined
+        setLoading(true)
+        setHomeError('')
+        return Promise.all([
+          catalogueService.getHomeCategories(),
+          catalogueService.getHomeSections(catalogueService.getLocation()),
         ])
-        const lists = [today, popular, lastChance]
-        setApiSections(
-          homeSectionTitles
-            .map((section, index) => ({
-              ...section,
-              offers: lists[index].items.map(mapCatalogueOffer),
-            }))
-            .filter((section) => section.id !== 'favorites' || section.offers.length > 0),
-        )
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setOffersError(
-            error instanceof Error
-              ? `دریافت پیشنهادها ناموفق بود: ${error.message}`
-              : 'دریافت پیشنهادها ناموفق بود. لطفاً دوباره تلاش کنید.',
-          )
-        }
-      } finally {
-        if (!controller.signal.aborted) setOffersLoading(false)
-      }
+      })
+      .then((response) => {
+        if (!active || !response) return
+        const [homeCategories, homeSections] = response
+        if (!active) return
+        setCategories(homeCategories.map((category) => category.name))
+        setSections(homeSections)
+      })
+      .catch((error: unknown) => {
+        if (active)
+          setHomeError(error instanceof Error ? error.message : 'دریافت پیشنهادها ناموفق بود.')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
     }
+  }, [reloadKey])
 
-    void loadHomeOffers()
-    return () => controller.abort()
-  }, [reloadOffers])
-
-  const sections = useMemo(
+  const visibleSections = useMemo(
     () =>
-      (offersError ? discoverySections : apiSections).map((section) => {
-        const offers = section.offers
-          .filter((offer) => {
-            if (selectedCategory === 'همه') return true
-            if (selectedCategory === 'تخفیف ویژه') return offer.referenceValue >= offer.price * 1.5
-            return offer.category === selectedCategory
-          })
-          .filter((offer) => {
-            const search = query.trim().toLocaleLowerCase()
-            return (
-              !search ||
-              `${offer.merchantName} ${offer.category} ${offer.description}`
-                .toLocaleLowerCase()
-                .includes(search)
-            )
-          })
+      sections.map((section) => {
+        const search = query.trim().toLocaleLowerCase()
+        const offers = section.offers.filter(
+          (offer) =>
+            !search ||
+            `${offer.merchantName} ${offer.category} ${offer.description}`
+              .toLocaleLowerCase()
+              .includes(search),
+        )
         if (sortOrder === 'price') offers.sort((a, b) => a.price - b.price)
         if (sortOrder === 'distance')
           offers.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
         if (sortOrder === 'time') offers.sort((a, b) => pickupTime(a.pickup) - pickupTime(b.pickup))
         return { ...section, offers }
       }),
-    [apiSections, offersError, query, selectedCategory, sortOrder],
+    [query, sections, sortOrder],
   )
 
-  function updateSaved(id: string, value: boolean) {
-    setSaved((current) => ({ ...current, [id]: value }))
+  async function updateSaved(id: string, value: boolean) {
+    setFavoriteError('')
+    try {
+      await catalogueService.setFavorite(id, value)
+      setSaved((current) => ({ ...current, [id]: value }))
+    } catch (error) {
+      setFavoriteError(error instanceof Error ? error.message : 'ذخیره پیشنهاد ناموفق بود.')
+    }
   }
 
   return (
@@ -343,46 +304,52 @@ export default function HomePage() {
                   )
                 }
               />
-              <CategoryFilters selected={selectedCategory} onSelect={setSelectedCategory} />
+              <CategoryFilters
+                selected={selectedCategory}
+                categories={['همه', ...categories]}
+                onSelect={(category) => {
+                  setSelectedCategory(category)
+                  if (category !== 'همه') {
+                    navigate(`/search?category=${encodeURIComponent(category)}`)
+                  }
+                }}
+              />
             </section>
 
             <DiscoveryMapPreview />
 
-            <div className="space-y-8 sm:space-y-10">
-              {offersLoading ? (
-                <p
-                  role="status"
-                  className="rounded-lg bg-surface p-5 text-body-md text-text-secondary"
+            {homeError && (
+              <InlineAlert tone="error">
+                <p>{homeError}</p>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setReloadKey((key) => key + 1)}
                 >
-                  در حال دریافت پیشنهادهای نزدیک شما…
-                </p>
-              ) : (
-                <>
-                  {offersError && (
-                    <section role="alert" className="space-y-3 rounded-lg bg-accent-subtle p-5">
-                      <p className="text-body-md text-primary">
-                        دریافت پیشنهادهای واقعی ناموفق بود. موارد زیر فقط نمونه هستند و امکان ثبت
-                        رزرو ندارند. {offersError}
-                      </p>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setReloadOffers((value) => value + 1)}
-                      >
-                        تلاش دوباره
-                      </Button>
-                    </section>
-                  )}
-                  {sections.map((section) => (
-                    <OfferCarousel
-                      key={section.id}
-                      id={section.id}
-                      title={section.title}
-                      offers={section.offers}
-                      saved={saved}
-                      onSaveChange={updateSaved}
-                    />
+                  تلاش دوباره
+                </Button>
+              </InlineAlert>
+            )}
+            {favoriteError && <InlineAlert tone="error">{favoriteError}</InlineAlert>}
+
+            <div className="space-y-8 sm:space-y-10">
+              {loading ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {Array.from({ length: 3 }, (_, index) => (
+                    <FoodListingCard key={index} state="loading" />
                   ))}
-                </>
+                </div>
+              ) : (
+                visibleSections.map((section) => (
+                  <OfferCarousel
+                    key={section.id}
+                    id={section.id}
+                    title={section.title}
+                    offers={section.offers}
+                    saved={saved}
+                    onSaveChange={updateSaved}
+                  />
+                ))
               )}
             </div>
           </main>

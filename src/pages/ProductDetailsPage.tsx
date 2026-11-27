@@ -3,14 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, Check, Clock3, Heart, Info, MapPin, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
-import { publicStores, type PublicStore, type StoreProduct } from '@/features/store/mockData'
-import { discoveryApi, type OfferDetail } from '@/features/discovery/api/discoveryApi'
+import { catalogueService } from '@/services/catalogueService'
+import type { CatalogueOfferDetailDto } from '@/types/catalogueTypes'
 import { formatDateTime, formatDistanceKm, formatPrice } from '@/lib/format'
-
-type ProductListing = {
-  product: StoreProduct
-  store: PublicStore
-}
 
 type ProductDetailsData = {
   id: string
@@ -31,39 +26,9 @@ type ProductDetailsData = {
   allergens: string[]
   allergensDeclared: boolean
   cancellationDeadline?: string
-  isLive: boolean
 }
 
-function findProduct(productId: string): ProductListing | undefined {
-  for (const store of Object.values(publicStores)) {
-    const product = store.products.find((item) => item.id === productId)
-    if (product) return { product, store }
-  }
-}
-
-function mapMockProduct({ product, store }: ProductListing): ProductDetailsData {
-  return {
-    id: product.id,
-    storeId: store.id,
-    storeName: store.name,
-    category: product.category,
-    distanceText: formatDistanceKm(product.distanceKm),
-    name: product.name,
-    description: product.description,
-    price: product.price,
-    referenceValue: product.referenceValue,
-    pickup: product.pickup,
-    imageSrc: product.imageSrc,
-    remaining: product.remaining,
-    address: store.address,
-    pickupInstructions: store.pickupGuide,
-    allergens: [],
-    allergensDeclared: false,
-    isLive: false,
-  }
-}
-
-function mapOffer(offer: OfferDetail): ProductDetailsData {
+function mapOffer(offer: CatalogueOfferDetailDto): ProductDetailsData {
   return {
     id: offer.id,
     storeId: offer.store.id,
@@ -85,7 +50,6 @@ function mapOffer(offer: OfferDetail): ProductDetailsData {
     allergens: offer.allergens.map((allergen) => allergen.label),
     allergensDeclared: offer.allergens_declared,
     cancellationDeadline: offer.cancellation_deadline,
-    isLive: true,
   }
 }
 
@@ -119,7 +83,7 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
     <div dir="rtl" className="min-h-dvh bg-background text-text-primary">
       <header className="mx-auto flex h-20 max-w-[720px] items-center gap-3 px-4 sm:px-8">
         <Link
-          to={product.isLive ? '/' : `/stores/${product.storeId}`}
+          to={product.storeId ? `/stores/${encodeURIComponent(product.storeId)}` : '/'}
           aria-label="بازگشت"
           className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-primary"
         >
@@ -295,7 +259,6 @@ function ProductDetailsContent({ product }: { product: ProductDetailsData }) {
 
 export default function ProductDetailsPage() {
   const { productId = '' } = useParams()
-  const mockListing = findProduct(productId)
   const [state, setState] = useState<
     | { status: 'loading' }
     | { productId: string; status: 'loading' }
@@ -304,11 +267,10 @@ export default function ProductDetailsPage() {
   >({ status: 'loading' })
 
   useEffect(() => {
-    const mockListing = findProduct(productId)
-    if (mockListing || !productId) return
+    if (!productId) return
 
     const controller = new AbortController()
-    discoveryApi
+    catalogueService
       .getOffer(productId, controller.signal)
       .then((offer) => setState({ productId, status: 'ready', product: mapOffer(offer) }))
       .catch((error: unknown) => {
@@ -323,12 +285,6 @@ export default function ProductDetailsPage() {
 
     return () => controller.abort()
   }, [productId])
-
-  if (mockListing) {
-    return (
-      <ProductDetailsContent key={mockListing.product.id} product={mapMockProduct(mockListing)} />
-    )
-  }
 
   if (!productId) {
     return (
