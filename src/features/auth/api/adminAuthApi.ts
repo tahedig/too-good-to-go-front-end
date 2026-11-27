@@ -119,13 +119,19 @@ export const adminAuthApi = {
     }
 
     tokenStorage.setToken(accessToken)
-    sessionStorage.setItem(
-      'auth_session',
-      JSON.stringify({
-        accessToken,
-        user,
-      }),
-    )
+    if (typeof sessionStorage !== 'undefined') {
+      try {
+        sessionStorage.setItem(
+          'auth_session',
+          JSON.stringify({
+            accessToken,
+            user,
+          }),
+        )
+      } catch {
+        // Ignore storage errors in restricted environments.
+      }
+    }
 
     return {
       accessToken,
@@ -152,22 +158,35 @@ export const adminAuthApi = {
 
   getStoredSession(): AdminSession | null {
     const token = tokenStorage.getToken()
-    const rawSession = sessionStorage.getItem('auth_session')
+    if (typeof sessionStorage === 'undefined') {
+      return token ? { accessToken: token, user: { id: '', phone: '', role: '' } } : null
+    }
+    let rawSession: string | null
+    try {
+      rawSession = sessionStorage.getItem('auth_session')
+    } catch {
+      rawSession = null
+    }
     if (!rawSession) {
       return token ? { accessToken: token, user: { id: '', phone: '', role: '' } } : null
     }
     try {
       const parsed = JSON.parse(rawSession) as Partial<AdminSession>
       const accessToken = parsed.accessToken || token || ''
-      if (!accessToken || !parsed.user) return null
-      return { accessToken, user: parsed.user }
+      if (!accessToken) return null
+      return { accessToken, user: parsed.user ?? { id: '', phone: '', role: '' } }
     } catch {
-      return null
+      return token ? { accessToken: token, user: { id: '', phone: '', role: '' } } : null
     }
   },
 
   logout(): void {
     tokenStorage.clearToken()
-    sessionStorage.removeItem('auth_session')
+    if (typeof sessionStorage === 'undefined') return
+    try {
+      sessionStorage.removeItem('auth_session')
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
   },
 }

@@ -16,12 +16,13 @@ import VendorOrdersPage from '@/pages/vendor/OrdersPage'
 import VendorReservationsPage from '@/pages/vendor/ReservationsPage'
 import VendorAccountPage from '@/pages/vendor/AccountPage'
 import VendorLoginPage from '@/pages/vendor/LoginPage'
-import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
 import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import VendorFinancePage from '@/pages/vendor/FinancePage'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
 import AdminLoginPage from '@/pages/admin/LoginPage'
+import VendorListPage from '@/pages/admin/VendorListPage'
+import VendorReviewPage from '@/pages/admin/VendorReviewPage'
 import MapPage from '@/pages/MapPage'
 import SearchResultsPage from '@/pages/SearchResultsPage'
 import OfferCollectionPage from '@/pages/OfferCollectionPage'
@@ -123,9 +124,6 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
-      },
-      {
         path: 'account',
         element: <VendorAccountPage />,
       },
@@ -141,8 +139,16 @@ export const router = createBrowserRouter([
         path: 'dashboard',
         loader: ({ request }) => replace(`/admin${new URL(request.url).search}`),
       },
-      { path: 'store-requests', element: <AdminComingSoonPage title="درخواست فروشگاه‌ها" /> },
-      { path: 'stores', element: <AdminComingSoonPage title="فروشگاه‌ها" /> },
+      { path: 'store-requests', element: <VendorListPage key="requests" mode="requests" /> },
+      {
+        path: 'store-requests/:vendorId',
+        element: <VendorReviewPage key="request-review" mode="requests" />,
+      },
+      { path: 'stores', element: <VendorListPage key="stores" mode="stores" /> },
+      {
+        path: 'stores/:vendorId',
+        element: <VendorReviewPage key="store-details" mode="stores" />,
+      },
       { path: 'customers', element: <AdminComingSoonPage title="مشتریان" /> },
       { path: 'products', element: <AdminComingSoonPage title="محصولات" /> },
       { path: 'orders', element: <AdminComingSoonPage title="سفارشات" /> },

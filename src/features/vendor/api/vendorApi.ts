@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/api/client'
+import { tokenStorage } from '@/services/tokenStorage'
 import type {
   ListVendorOrdersParams,
   VendorOrderListResponse,
@@ -8,24 +9,36 @@ import type {
   VerifyPickupResponse,
 } from '../types'
 
-function getAuthHeader(): Record<string, string> {
-  if (typeof window === 'undefined') return {}
-  let token =
-    localStorage.getItem('access_token') ||
-    localStorage.getItem('token') ||
-    sessionStorage.getItem('token')
-  if (!token) {
+function getLegacyAuthHeader(): Record<string, string> {
+  if (tokenStorage.getToken()) return {}
+  if (typeof sessionStorage !== 'undefined') {
     try {
       const rawSession = sessionStorage.getItem('auth_session')
       if (rawSession) {
         const parsed = JSON.parse(rawSession) as { accessToken?: string; access_token?: string }
-        token = parsed.accessToken ?? parsed.access_token ?? null
+        if (parsed.accessToken || parsed.access_token) return {}
       }
     } catch {
-      token = null
+      // Let apiRequest handle invalid session state consistently.
     }
   }
-  return token ? { Authorization: `Bearer ${token}` } : {}
+
+  let legacyToken: string | null = null
+  if (typeof localStorage !== 'undefined') {
+    try {
+      legacyToken = localStorage.getItem('token')
+    } catch {
+      legacyToken = null
+    }
+  }
+  if (!legacyToken && typeof sessionStorage !== 'undefined') {
+    try {
+      legacyToken = sessionStorage.getItem('token')
+    } catch {
+      legacyToken = null
+    }
+  }
+  return legacyToken ? { Authorization: `Bearer ${legacyToken}` } : {}
 }
 
 export const vendorApi = {
@@ -34,7 +47,7 @@ export const vendorApi = {
    */
   getStore: async (): Promise<VendorStoreActive> => {
     return apiRequest<VendorStoreActive>('/vendor/store', {
-      headers: getAuthHeader(),
+      headers: getLegacyAuthHeader(),
     })
   },
 
@@ -50,7 +63,7 @@ export const vendorApi = {
 
     const qs = query.toString() ? `?${query.toString()}` : ''
     return apiRequest<VendorOrderListResponse>(`/vendor/orders${qs}`, {
-      headers: getAuthHeader(),
+      headers: getLegacyAuthHeader(),
     })
   },
 
@@ -60,7 +73,7 @@ export const vendorApi = {
   getSummary: async (date?: string): Promise<VendorOrderSummary> => {
     const qs = date ? `?date=${encodeURIComponent(date)}` : ''
     return apiRequest<VendorOrderSummary>(`/vendor/orders/summary${qs}`, {
-      headers: getAuthHeader(),
+      headers: getLegacyAuthHeader(),
     })
   },
 
@@ -71,10 +84,13 @@ export const vendorApi = {
     orderId: string,
     payload: VerifyPickupPayload = {},
   ): Promise<VerifyPickupResponse> => {
-    return apiRequest<VerifyPickupResponse>(`/vendor/orders/${orderId}/verify-pickup`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify(payload),
-    })
+    return apiRequest<VerifyPickupResponse>(
+      `/vendor/orders/${encodeURIComponent(orderId)}/verify-pickup`,
+      {
+        method: 'POST',
+        headers: getLegacyAuthHeader(),
+        body: JSON.stringify(payload),
+      },
+    )
   },
 }

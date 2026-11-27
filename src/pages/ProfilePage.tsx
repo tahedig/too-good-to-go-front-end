@@ -4,10 +4,13 @@ import { ChevronLeft, Handbag, HelpCircle, LogOut, WalletCards } from 'lucide-re
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { ApiError } from '@/lib/api/client'
+import { formatNumber } from '@/lib/format'
 import { profileApi } from '@/features/profile/api/profileApi'
 import { CustomerProfileShell } from '@/features/profile/components/CustomerProfileShell'
 import { ProfileLoading } from '@/features/profile/components/ProfileLoading'
 import { logoutService } from '@/services/authService'
+import { catalogueService } from '@/services/catalogueService'
+import { orderService } from '@/services/orderService'
 import type { CustomerProfile } from '@/features/profile/types'
 
 function SettingRow({ to, label, detail }: { to?: string; label: string; detail?: string }) {
@@ -56,15 +59,38 @@ function Toggle({ label, defaultChecked = false }: { label: string; defaultCheck
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<CustomerProfile | null>(null)
+  const [completedPackages, setCompletedPackages] = useState<number | null>(null)
+  const [completedSpend, setCompletedSpend] = useState<number | null>(null)
   const [error, setError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
+  const hasSavedLocation = Boolean(catalogueService.getLocation())
 
   useEffect(() => {
     let active = true
     profileApi
       .getCurrent()
       .then((data) => {
-        if (active) setProfile(data)
+        if (!active) return
+        setProfile(data)
+        return orderService
+          .listMyOrders({ group: 'past', limit: 50 })
+          .then((ordersResponse) => {
+            if (!active) return
+            const completed = ordersResponse.orders.filter((order) => order.status === 'completed')
+            const packages = completed.reduce(
+              (sum, order) =>
+                sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0),
+              0,
+            )
+            const totalAmount = completed.reduce((sum, order) => sum + order.total_amount, 0)
+            setCompletedPackages(packages)
+            setCompletedSpend(totalAmount)
+          })
+          .catch(() => {
+            if (!active) return
+            setCompletedPackages(0)
+            setCompletedSpend(0)
+          })
       })
       .catch((requestError: unknown) => {
         if (!active) return
@@ -115,13 +141,17 @@ export default function ProfilePage() {
               <div className="grid grid-cols-2 gap-3 lg:col-start-1 lg:row-start-2">
                 <section className="rounded-lg bg-primary-subtle p-5">
                   <Handbag className="size-6 text-primary" strokeWidth={1.75} />
-                  <p className="mt-4 text-price-lg text-primary">۴</p>
+                  <p className="mt-4 text-price-lg text-primary">
+                    {completedPackages === null ? '—' : formatNumber(completedPackages)}
+                  </p>
                   <p className="mt-2 text-caption text-text-secondary">نجات غذای تکمیل‌شده</p>
                 </section>
                 <section className="rounded-lg bg-primary p-5 text-on-primary">
                   <WalletCards className="size-6" strokeWidth={1.75} />
-                  <p className="mt-4 text-price-lg">۳۰۰٬۰۰۰</p>
-                  <p className="mt-2 text-caption text-on-primary/75">تومان صرفه‌جویی</p>
+                  <p className="mt-4 text-price-lg">
+                    {completedSpend === null ? '—' : formatNumber(completedSpend)}
+                  </p>
+                  <p className="mt-2 text-caption text-on-primary/75">تومان سفارش تکمیل‌شده</p>
                 </section>
               </div>
 
@@ -130,7 +160,13 @@ export default function ProfilePage() {
                 aria-label="تنظیمات پروفایل"
               >
                 <SettingRow to="/profile/personal" label="اطلاعات شخصی" />
-                <SettingRow label="مکان ترجیحی" detail="تهران، ولیعصر" />
+                <SettingRow
+                  to="/map"
+                  label="مکان ترجیحی"
+                  detail={
+                    hasSavedLocation ? 'موقعیت روی نقشه ثبت شده است' : 'انتخاب موقعیت روی نقشه'
+                  }
+                />
                 <SettingRow to="/profile/support" label="راهنمایی و پشتیبانی" />
               </section>
 

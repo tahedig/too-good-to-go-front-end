@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { MapPin, UserRound } from 'lucide-react'
+import { catalogueService } from '@/services/catalogueService'
 
 function Header() {
+  const hasLocation = Boolean(catalogueService.getLocation())
   return (
     <header className="hidden h-20 items-center justify-between border-b border-border-default px-8 sm:flex">
       <div className="flex items-center gap-3">
@@ -13,10 +15,13 @@ function Header() {
         >
           <UserRound strokeWidth={1.75} />
         </Link>
-        <span className="inline-flex min-h-11 items-center gap-2 px-2 text-body-md text-primary">
+        <Link
+          to="/map"
+          className="inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-body-md text-primary hover:bg-surface-secondary"
+        >
           <MapPin className="size-6" strokeWidth={1.75} />
-          تهران، ولیعصر
-        </span>
+          {hasLocation ? 'موقعیت انتخاب‌شده' : 'انتخاب موقعیت'}
+        </Link>
       </div>
       <Link to="/" className="text-title-xl font-bold text-primary">
         ته‌دیگ

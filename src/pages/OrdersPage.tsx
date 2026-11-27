@@ -1,18 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  ArrowRight,
-  Check,
-  Clock3,
-  Compass,
-  MapPin,
-  PackageCheck,
-  ShoppingBag,
-  UserRound,
-  X,
-} from 'lucide-react'
+import { ArrowRight, Check, Clock3, Compass, PackageCheck, ShoppingBag, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
 import { ApiError } from '@/lib/api/client'
@@ -68,50 +58,21 @@ function pickupWindow(order: OrderDto): string {
   return sameDay ? `${start} تا ${end.split('، ').at(-1) ?? end}` : `${start} تا ${end}`
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: unknown): { status: number | null; message: string } {
   if (error instanceof ApiError) {
-    if (error.status === 401) return 'برای مشاهده سفارش‌ها ابتدا وارد حساب کاربری خود شوید.'
-    return error.message
+    if (error.status === 401) {
+      return { status: 401, message: 'برای مشاهده سفارش‌ها ابتدا وارد حساب کاربری خود شوید.' }
+    }
+    if (error.status === 403) {
+      return {
+        status: 403,
+        message: 'حساب فعلی دسترسی مشتری ندارد. برای مشاهده سفارش‌ها با حساب مشتری وارد شوید.',
+      }
+    }
+    return { status: error.status, message: error.message }
   }
-  if (error instanceof Error) return error.message
-  return 'دریافت سفارش‌ها انجام نشد. لطفاً دوباره تلاش کنید.'
-}
-
-function CustomerHeader() {
-  return (
-    <>
-      <div className="flex items-center justify-between gap-4 px-4 pb-4 pt-4 sm:hidden">
-        <Link
-          to="/"
-          aria-label="بازگشت به اکتشاف"
-          className="grid size-11 place-items-center rounded-md text-primary hover:bg-surface-secondary"
-        >
-          <ArrowRight strokeWidth={1.75} />
-        </Link>
-        <Link to="/" className="text-title-lg font-bold text-primary">
-          ته‌دیگ
-        </Link>
-      </div>
-      <header className="hidden h-20 items-center justify-between border-b border-border-default px-8 sm:flex">
-        <div className="flex items-center gap-3">
-          <Link
-            to="/profile"
-            aria-label="پروفایل"
-            className="grid size-11 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
-          >
-            <UserRound strokeWidth={1.75} />
-          </Link>
-          <span className="inline-flex min-h-11 items-center gap-2 px-2 text-body-md text-primary">
-            <MapPin className="size-6" strokeWidth={1.75} />
-            تهران، ولیعصر
-          </span>
-        </div>
-        <Link to="/" className="text-title-xl font-bold text-primary">
-          ته‌دیگ
-        </Link>
-      </header>
-    </>
-  )
+  if (error instanceof Error) return { status: null, message: error.message }
+  return { status: null, message: 'دریافت سفارش‌ها انجام نشد. لطفاً دوباره تلاش کنید.' }
 }
 
 function OrderCard({
@@ -205,7 +166,9 @@ export default function OrdersPage() {
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const [loadError, setLoadError] = useState('')
+  const [loadError, setLoadError] = useState<{ status: number | null; message: string } | null>(
+    null,
+  )
   const [moreError, setMoreError] = useState('')
   const [retryCount, setRetryCount] = useState(0)
   const [selectedOrder, setSelectedOrder] = useState<OrderDto | null>(null)
@@ -218,7 +181,7 @@ export default function OrdersPage() {
         if (!active) return
         setOrders(response.orders)
         setNextCursor(response.next_cursor)
-        setLoadError('')
+        setLoadError(null)
         setLoading(false)
       })
       .catch((error: unknown) => {
@@ -242,7 +205,7 @@ export default function OrdersPage() {
     selectedFilterRef.current = filter
     setLoading(true)
     setLoadingMore(false)
-    setLoadError('')
+    setLoadError(null)
     setMoreError('')
     setOrders([])
     setNextCursor(null)
@@ -273,161 +236,153 @@ export default function OrdersPage() {
       setNextCursor(response.next_cursor)
     } catch (error) {
       if (selectedFilterRef.current !== requestedFilter) return
-      setMoreError(errorMessage(error))
+      setMoreError(errorMessage(error).message)
     } finally {
       if (selectedFilterRef.current === requestedFilter) setLoadingMore(false)
     }
   }
 
+  const authError = loadError?.status === 401 || loadError?.status === 403
+
   return (
-    <div dir="rtl" className="min-h-screen bg-background text-text-primary">
-      <div className="mx-auto flex min-h-screen max-w-[1440px]">
-        <div className="min-w-0 flex-1">
-          <CustomerHeader />
-
-          <main className="mx-auto w-full max-w-[1180px] px-4 pb-32 pt-0 sm:px-6 sm:pb-12 lg:px-20 lg:pt-8">
-            <div className="mb-5 flex items-center gap-3 sm:hidden">
-              <h1 className="min-w-0 flex-1 text-title-xl text-primary">سفارشات</h1>
-              <Link
-                to="/"
-                aria-label="بازگشت به اکتشاف"
-                className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
-              >
-                <ArrowRight strokeWidth={1.75} />
-              </Link>
-            </div>
-
-            <section aria-labelledby="orders-title">
-              <header className="mb-6 hidden sm:block">
-                <h1 id="orders-title" className="text-title-xl text-primary sm:text-display-xl">
-                  سفارشات
-                </h1>
-              </header>
-
-              <div className="mb-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {orderFilters.map((filter) => {
-                  const active = selectedFilter === filter.value
-                  return (
-                    <button
-                      key={filter.value}
-                      type="button"
-                      aria-pressed={active}
-                      onClick={() => changeFilter(filter.value)}
-                      className={[
-                        'min-h-11 shrink-0 rounded-lg border px-4 text-label-md transition-colors',
-                        active
-                          ? 'border-primary bg-primary-subtle text-primary'
-                          : 'border-border-input bg-surface text-primary hover:bg-surface-secondary',
-                      ].join(' ')}
-                    >
-                      {filter.label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {loadError ? (
-                <div className="space-y-4">
-                  <InlineAlert tone="error">{loadError}</InlineAlert>
-                  <Button
-                    variant="secondary"
-                    onClick={() => {
-                      setLoading(true)
-                      setLoadError('')
-                      setRetryCount((count) => count + 1)
-                    }}
-                  >
-                    تلاش دوباره
-                  </Button>
-                </div>
-              ) : loading ? (
-                <p
-                  role="status"
-                  className="rounded-2xl border border-border-default bg-surface p-6 text-body-md text-text-secondary"
-                >
-                  در حال دریافت سفارش‌ها...
-                </p>
-              ) : orders.length === 0 ? (
-                <EmptyOrders />
-              ) : (
-                <div className="space-y-8">
-                  {selectedFilter !== 'past' && upcomingOrders.length > 0 && (
-                    <section aria-labelledby="upcoming-orders-title" className="space-y-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <h2
-                          id="upcoming-orders-title"
-                          className="text-title-md text-primary sm:text-title-lg"
-                        >
-                          سفارش‌های در انتظار دریافت
-                        </h2>
-                        <p className="text-caption text-text-secondary">
-                          {upcomingOrders.length.toLocaleString('fa-IR')} سفارش
-                        </p>
-                      </div>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        {upcomingOrders.map((order) => (
-                          <OrderCard
-                            key={order.id}
-                            order={order}
-                            onViewDetails={setSelectedOrder}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {selectedFilter !== 'upcoming' && pastOrders.length > 0 && (
-                    <section aria-labelledby="past-orders-title" className="space-y-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <h2
-                          id="past-orders-title"
-                          className="text-title-md text-primary sm:text-title-lg"
-                        >
-                          سفارش‌های گذشته
-                        </h2>
-                        <p className="text-caption text-text-secondary">
-                          {pastOrders.length.toLocaleString('fa-IR')} سفارش
-                        </p>
-                      </div>
-                      <div className="grid gap-4 xl:grid-cols-2">
-                        {pastOrders.map((order) => (
-                          <OrderCard
-                            key={order.id}
-                            order={order}
-                            onViewDetails={setSelectedOrder}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  )}
-
-                  {moreError && <InlineAlert tone="error">{moreError}</InlineAlert>}
-                  {nextCursor && (
-                    <Button
-                      variant="secondary"
-                      fullWidth
-                      isLoading={loadingMore}
-                      onClick={loadNextPage}
-                    >
-                      بارگذاری سفارش‌های بیشتر
-                    </Button>
-                  )}
-                </div>
-              )}
-            </section>
-
-            <footer className="mt-10 hidden items-center justify-between border-t border-border-default pt-5 text-caption text-text-secondary sm:flex">
-              <span>ته‌دیگ · غذای خوب، دورریز کمتر.</span>
-              <a
-                href="mailto:support@example.com"
-                className="inline-flex items-center gap-2 hover:text-primary"
-              >
-                راهنمایی و پشتیبانی
-              </a>
-            </footer>
-          </main>
+    <>
+      <main className="mx-auto w-full max-w-[1180px] px-4 pb-8 pt-4 sm:px-6 sm:pb-12 lg:px-20 lg:pt-8">
+        <div className="mb-5 flex items-center gap-3 sm:hidden">
+          <h1 className="min-w-0 flex-1 text-title-xl text-primary">سفارشات</h1>
+          <Link
+            to="/"
+            aria-label="بازگشت به اکتشاف"
+            className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-primary hover:bg-surface-secondary"
+          >
+            <ArrowRight strokeWidth={1.75} />
+          </Link>
         </div>
-      </div>
+
+        <section aria-labelledby="orders-title">
+          <header className="mb-6 hidden sm:block">
+            <h1 id="orders-title" className="text-title-xl text-primary sm:text-display-xl">
+              سفارشات
+            </h1>
+          </header>
+
+          <div className="mb-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {orderFilters.map((filter) => {
+              const active = selectedFilter === filter.value
+              return (
+                <button
+                  key={filter.value}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => changeFilter(filter.value)}
+                  className={[
+                    'min-h-11 shrink-0 rounded-lg border px-4 text-label-md transition-colors',
+                    active
+                      ? 'border-primary bg-primary-subtle text-primary'
+                      : 'border-border-input bg-surface text-primary hover:bg-surface-secondary',
+                  ].join(' ')}
+                >
+                  {filter.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {loadError ? (
+            <div className="space-y-4">
+              <InlineAlert tone={authError ? 'warning' : 'error'}>{loadError.message}</InlineAlert>
+              <div className="flex flex-wrap gap-3">
+                {authError && (
+                  <ButtonLink to="/login?returnTo=%2Forders" variant="primary">
+                    ورود به حساب کاربری
+                  </ButtonLink>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setLoading(true)
+                    setLoadError(null)
+                    setRetryCount((count) => count + 1)
+                  }}
+                >
+                  تلاش دوباره
+                </Button>
+              </div>
+            </div>
+          ) : loading ? (
+            <p
+              role="status"
+              className="rounded-2xl border border-border-default bg-surface p-6 text-body-md text-text-secondary"
+            >
+              در حال دریافت سفارش‌ها...
+            </p>
+          ) : orders.length === 0 ? (
+            <EmptyOrders />
+          ) : (
+            <div className="space-y-8">
+              {selectedFilter !== 'past' && upcomingOrders.length > 0 && (
+                <section aria-labelledby="upcoming-orders-title" className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2
+                      id="upcoming-orders-title"
+                      className="text-title-md text-primary sm:text-title-lg"
+                    >
+                      سفارش‌های در انتظار دریافت
+                    </h2>
+                    <p className="text-caption text-text-secondary">
+                      {upcomingOrders.length.toLocaleString('fa-IR')} سفارش
+                    </p>
+                  </div>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {upcomingOrders.map((order) => (
+                      <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {selectedFilter !== 'upcoming' && pastOrders.length > 0 && (
+                <section aria-labelledby="past-orders-title" className="space-y-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2
+                      id="past-orders-title"
+                      className="text-title-md text-primary sm:text-title-lg"
+                    >
+                      سفارش‌های گذشته
+                    </h2>
+                    <p className="text-caption text-text-secondary">
+                      {pastOrders.length.toLocaleString('fa-IR')} سفارش
+                    </p>
+                  </div>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {pastOrders.map((order) => (
+                      <OrderCard key={order.id} order={order} onViewDetails={setSelectedOrder} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {moreError && <InlineAlert tone="error">{moreError}</InlineAlert>}
+              {nextCursor && (
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  isLoading={loadingMore}
+                  onClick={loadNextPage}
+                >
+                  بارگذاری سفارش‌های بیشتر
+                </Button>
+              )}
+            </div>
+          )}
+        </section>
+
+        <footer className="mt-10 hidden items-center justify-between border-t border-border-default pt-5 text-caption text-text-secondary sm:flex">
+          <span>ته‌دیگ · غذای خوب، دورریز کمتر.</span>
+          <Link to="/profile/support" className="inline-flex items-center gap-2 hover:text-primary">
+            راهنمایی و پشتیبانی
+          </Link>
+        </footer>
+      </main>
       <Modal
         open={Boolean(selectedOrder)}
         onClose={() => setSelectedOrder(null)}
@@ -484,6 +439,6 @@ export default function OrdersPage() {
           </div>
         )}
       </Modal>
-    </div>
+    </>
   )
 }

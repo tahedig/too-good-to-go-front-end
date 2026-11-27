@@ -33,14 +33,17 @@ function DashboardLoading() {
   )
 }
 
-function getActivityRoute(type: AdminActivityType): string {
+function getActivityRoute(type: AdminActivityType, id: string): string {
+  const hasEntityId = Boolean(id) && !id.startsWith('activity-')
   switch (type) {
     case 'reservation':
       return '/admin/orders'
     case 'store_decision':
-      return '/admin/stores'
+      return hasEntityId ? `/admin/stores/${encodeURIComponent(id)}` : '/admin/stores'
     default:
-      return '/admin/store-requests'
+      return hasEntityId
+        ? `/admin/store-requests/${encodeURIComponent(id)}`
+        : '/admin/store-requests'
   }
 }
 
@@ -162,7 +165,10 @@ export default function AdminDashboardPage() {
   ]
 
   const totalRequests = requestStatus
-    ? requestStatus.pending + requestStatus.approved + requestStatus.rejected
+    ? requestStatus.pending +
+      requestStatus.approved +
+      requestStatus.rejected +
+      requestStatus.suspended
     : 0
 
   const statusRows = [
@@ -183,6 +189,12 @@ export default function AdminDashboardPage() {
       label: 'ردشده',
       count: requestStatus?.rejected,
       barClassName: 'bg-error',
+    },
+    {
+      key: 'suspended',
+      label: 'تعلیق‌شده',
+      count: requestStatus?.suspended,
+      barClassName: 'bg-text-secondary',
     },
   ]
 
@@ -279,7 +291,7 @@ export default function AdminDashboardPage() {
             {recentActivity.map((item) => (
               <li key={item.id}>
                 <Link
-                  to={getActivityRoute(item.type)}
+                  to={getActivityRoute(item.type, item.id)}
                   className="flex flex-col gap-2.5 rounded-sm transition-opacity hover:opacity-80 lg:gap-4"
                 >
                   <div className="flex items-center gap-2.5">

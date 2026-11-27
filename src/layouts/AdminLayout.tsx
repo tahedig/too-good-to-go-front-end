@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   Menu,
   PackageCheck,
   Settings,
@@ -15,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { adminAuthApi } from '@/features/auth/api/adminAuthApi'
 
 type NavItem = {
   to: string
@@ -100,6 +103,12 @@ const FINANCE_ITEMS = [
 
 function getAdminPageTitle(pathname: string): string {
   const normalizedPathname = normalizePathname(pathname)
+  if (normalizedPathname.startsWith('/admin/store-requests/')) {
+    return 'بررسی درخواست'
+  }
+  if (normalizedPathname.startsWith('/admin/stores/')) {
+    return 'جزئیات فروشگاه'
+  }
   if (normalizedPathname.startsWith('/admin/finance')) {
     const section = normalizedPathname.split('/')[3]
     const sub = FINANCE_ITEMS.find(([key]) => key === section)?.[1]
@@ -201,6 +210,45 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+function AdminSessionAction({ onNavigate }: { onNavigate?: () => void }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const session = adminAuthApi.getStoredSession()
+  const returnTo = encodeURIComponent(location.pathname + location.search)
+
+  if (!session?.accessToken) {
+    return (
+      <div className="mt-auto border-t border-border-default pt-3">
+        <Link
+          to={`/admin/login?returnTo=${returnTo}`}
+          onClick={onNavigate}
+          className="flex h-11 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-primary transition-colors hover:bg-surface-secondary"
+        >
+          <LogIn className="size-5 shrink-0" strokeWidth={1.75} />
+          <span>ورود به پنل مدیریت</span>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-auto border-t border-border-default pt-3">
+      <button
+        type="button"
+        onClick={() => {
+          adminAuthApi.logout()
+          onNavigate?.()
+          void navigate('/admin/login', { replace: true })
+        }}
+        className="flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-error transition-colors hover:bg-error-subtle"
+      >
+        <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
+        <span>خروج از حساب</span>
+      </button>
+    </div>
+  )
+}
+
 export default function AdminLayout() {
   const { pathname } = useLocation()
   const pageTitle = getAdminPageTitle(pathname)
@@ -245,6 +293,7 @@ export default function AdminLayout() {
         <div className="flex h-full flex-col gap-1 p-4">
           <BrandRow />
           <NavList />
+          <AdminSessionAction />
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
@@ -312,6 +361,7 @@ export default function AdminLayout() {
           <div className="flex h-full flex-col gap-1 p-4">
             <BrandRow onClose={() => setMenuOpen(false)} />
             <NavList onNavigate={() => setMenuOpen(false)} />
+            <AdminSessionAction onNavigate={() => setMenuOpen(false)} />
           </div>
         </aside>
       </div>

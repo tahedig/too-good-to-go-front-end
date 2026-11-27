@@ -129,12 +129,13 @@ test('Customer routes render only UserLayout sidebar without duplicate sidebars 
       2,
       `expected single desktop+mobile UserLayout nav pair on ${route}`,
     )
-    assert.equal(
-      countMatches(html, /aria-label="ناوبری پایین"/g),
-      0,
-      `expected no duplicate bottom nav on ${route}`,
-    )
+    assert.equal(countMatches(html, /aria-label="ناوبری پایین"/g), 0)
   }
+
+  const ordersHtml = renderCustomerRoute('/orders')
+  assert.doesNotMatch(ordersHtml, /تهران، ولیعصر/)
+  assert.doesNotMatch(ordersHtml, /mailto:support@example\.com/)
+  assert.match(ordersHtml, /href="\/profile\/support"/)
 
   const homeHtml = renderCustomerRoute('/')
   assert.equal(countMatches(homeHtml, /<aside\b/g), 1)

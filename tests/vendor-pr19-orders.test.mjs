@@ -167,4 +167,26 @@ test('OrderDateSelector uses bounded-width VendorDatePicker and formats ISO pick
     }),
   )
   assert.match(cardHtml, /۵ آذر ۱۴۰۵/)
+  assert.match(cardHtml, /src="\/vendor-bakery\.jpg"/)
+
+  const cancelledCardHtml = renderToStaticMarkup(
+    React.createElement(VendorOrderCard, {
+      order: {
+        id: 'ord-2',
+        order_number: 'TG-0002',
+        customer: { id: 'c2', name: '', phone: '09121112233' },
+        package: { id: 'p1', title: 'بسته صبحانه', image_url: '' },
+        quantity: 1,
+        unit_price: 45000,
+        total_price: 45000,
+        status: 'cancelled',
+        pickup_date: '2026-11-26',
+        pickup_time_slot: { start_time: '18:00', end_time: '19:00' },
+        created_at: '2026-11-26T10:00:00Z',
+      },
+      onVerifyPickup: () => {},
+    }),
+  )
+  assert.match(cancelledCardHtml, /لغو شده/)
+  assert.match(cancelledCardHtml, /مشتری/)
 })
