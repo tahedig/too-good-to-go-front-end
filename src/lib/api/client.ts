@@ -5,13 +5,12 @@ type ApiErrorBody = {
   message?: string
   errors?: Record<string, string[] | string>
   error?: {
-    message?: string
-    details?: unknown
-    request_id?: string
+  code?: string
+  message?: string
+  details?: unknown
+  request_id?: string
   }
 }
-
-// The backend's 401/403 messages are shared English strings, so they are replaced here.
 const STATUS_MESSAGES: Record<number, string> = {
   401: 'نشست شما منقضی شده است. لطفاً دوباره وارد شوید.',
   403: 'شما به این بخش دسترسی ندارید.',
@@ -20,20 +19,32 @@ const STATUS_MESSAGES: Record<number, string> = {
 export class ApiError extends Error {
   readonly status: number
   readonly fieldErrors: Record<string, string[]>
-  /** Backend request id, useful for finding the request in server logs. */
+  readonly code?: string
+  readonly retryAfter?: number
   readonly requestId?: string
 
   constructor(
     message: string,
     status: number,
     fieldErrors: Record<string, string[]> = {},
-    requestId?: string,
+    options?: string | {
+      code?: string
+      retryAfter?: number
+      requestId?: string
+    },
   ) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.fieldErrors = fieldErrors
-    this.requestId = requestId
+
+    if (typeof options === 'string') {
+      this.requestId = options
+    } else {
+      this.code = options?.code
+      this.retryAfter = options?.retryAfter
+      this.requestId = options?.requestId
+    }
   }
 }
 
@@ -85,6 +96,19 @@ function readFieldErrors(details: unknown): Record<string, string[]> {
   )
 }
 
+function parseRetryAfter(response: Response, details: unknown): number | undefined {
+  const headerValue = response.headers.get('Retry-After')
+  if (headerValue) {
+    const parsed = Number(headerValue)
+    if (Number.isFinite(parsed) && parsed > 0) return Math.ceil(parsed)
+  }
+  if (details && typeof details === 'object' && 'retry_after_seconds' in details) {
+    const value = details.retry_after_seconds
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return Math.ceil(value)
+  }
+  return undefined
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response
   const baseUrl = env.apiBaseUrl.replace(/\/$/, '')
@@ -103,13 +127,22 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     throw new ApiError('ارتباط با سرور برقرار نشد. لطفاً اتصال اینترنت را بررسی کنید.', 0)
   }
 
-  const body = (await response.json().catch(() => null)) as ApiErrorBody | T | null
+  const rawText = response.status === 204 ? '' : await response.text().catch(() => '')
+  let body: ApiErrorBody | T | null = null
+  let parseFailed = false
+
+  if (rawText.trim() !== '') {
+    try {
+      body = JSON.parse(rawText) as ApiErrorBody | T
+    } catch {
+      parseFailed = true
+    }
+  }
 
   if (!response.ok) {
     const errorBody = (body ?? {}) as ApiErrorBody
-    const envelopeMessage = errorBody.error && STATUS_MESSAGES[response.status]
     throw new ApiError(
-      envelopeMessage ||
+      (errorBody.error && STATUS_MESSAGES[response.status]) ||
         errorBody.error?.message ||
         errorBody.message ||
         STATUS_MESSAGES[response.status] ||
@@ -119,7 +152,18 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
         ...normaliseFieldErrors(errorBody.errors),
         ...readFieldErrors(errorBody.error?.details),
       },
-      errorBody.error?.request_id,
+      {
+      code: errorBody.error?.code,
+      retryAfter: parseRetryAfter(response, errorBody.error?.details),
+      requestId: errorBody.error?.request_id,
+      },
+    )
+  }
+
+  if (parseFailed) {
+    throw new ApiError(
+      'پاسخ دریافتی از سرور معتبر نیست. بررسی کنید بک‌اند در حال اجرا باشد و پورت ۸۰۸۰ توسط سرویس دیگری اشغال نشده باشد.',
+      502,
     )
   }
 
