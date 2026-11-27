@@ -1,18 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Clock3, Info, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
-import { publicStores } from '@/features/store/mockData'
-import { formatPickupDate, localDate } from '@/lib/vendorReservations'
-import { formatPrice } from '@/lib/format'
+import { catalogueService } from '@/services/catalogueService'
+import type { CatalogueOfferDetailDto } from '@/types/catalogueTypes'
+import { formatDateTime, formatPrice } from '@/lib/format'
 import { toEnglishDigits } from '@/lib/digits'
 
-function findProduct(productId: string) {
-  for (const store of Object.values(publicStores)) {
-    const product = store.products.find((item) => item.id === productId)
-    if (product) return { product, store }
+type CheckoutOffer = {
+  id: string
+  title: string
+  category: string
+  storeName: string
+  imageSrc: string
+  price: number
+  originalPrice: number
+  quantityAvailable: number
+  pickupWindow: string
+  address: string
+  pickupInstructions: string
+  allergens: string[]
+  allergensDeclared: boolean
+  cancellationDeadline?: string
+}
+
+function mapOffer(offer: CatalogueOfferDetailDto): CheckoutOffer {
+  return {
+    id: offer.id,
+    title: offer.title,
+    category: offer.category_name ?? offer.category_slug ?? 'غافلگیری',
+    storeName: offer.store.name,
+    imageSrc: offer.image_url ?? '',
+    price: offer.price,
+    originalPrice: offer.original_price,
+    quantityAvailable: offer.quantity_available,
+    pickupWindow: offer.pickup_window,
+    address: offer.store.address,
+    pickupInstructions: offer.store.pickup_instructions ?? '',
+    allergens: offer.allergens.map((allergen) => allergen.label),
+    allergensDeclared: offer.allergens_declared,
+    cancellationDeadline: offer.cancellation_deadline,
   }
 }
 
@@ -29,22 +58,36 @@ export default function CheckoutPage() {
   const [searchParams] = useSearchParams()
   const productId = searchParams.get('productId') ?? ''
   const requestedQuantity = Number(toEnglishDigits(searchParams.get('quantity') ?? ''))
-  const listing = findProduct(productId)
-  const [quantity, setQuantity] = useState(requestedQuantity)
+  const requestedQuantityIsValid = Number.isSafeInteger(requestedQuantity) && requestedQuantity >= 1
+  const [quantity, setQuantity] = useState(requestedQuantityIsValid ? requestedQuantity : 1)
   const [acceptPickupTerms, setAcceptPickupTerms] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [remoteOfferState, setRemoteOfferState] = useState<
+    | { status: 'loading' }
+    | { productId: string; status: 'loading' }
+    | { productId: string; status: 'error'; message: string }
+    | { productId: string; status: 'ready'; offer: CheckoutOffer }
+  >({ status: 'loading' })
 
-  if (!listing) return <Navigate to="/" replace />
-  if (
-    !Number.isSafeInteger(requestedQuantity) ||
-    requestedQuantity < 1 ||
-    requestedQuantity > listing.product.remaining
-  ) {
-    return <Navigate to={`/products/${listing.product.id}`} replace />
-  }
+  useEffect(() => {
+    if (!requestedQuantityIsValid || !productId) return
 
-  const { product, store } = listing
-  const subtotal = product.price * quantity
+    const controller = new AbortController()
+    catalogueService
+      .getOffer(productId, controller.signal)
+      .then((offer) => setRemoteOfferState({ productId, status: 'ready', offer: mapOffer(offer) }))
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setRemoteOfferState({
+            productId,
+            status: 'error',
+            message: error instanceof Error ? error.message : 'دریافت اطلاعات محصول ناموفق بود.',
+          })
+        }
+      })
+
+    return () => controller.abort()
+  }, [productId, requestedQuantityIsValid])
 
   function submitReservation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -56,12 +99,71 @@ export default function CheckoutPage() {
     setFeedback('ثبت رزرو پس از اتصال سرویس بک‌اند فعال می‌شود.')
   }
 
+  const remoteStateMatchesProduct =
+    'productId' in remoteOfferState && remoteOfferState.productId === productId
+  const offer =
+    remoteStateMatchesProduct && remoteOfferState.status === 'ready'
+      ? remoteOfferState.offer
+      : undefined
+
+  if (
+    !requestedQuantityIsValid ||
+    !productId ||
+    (!offer && remoteStateMatchesProduct && remoteOfferState.status === 'error')
+  ) {
+    const message = !requestedQuantityIsValid
+      ? 'تعداد انتخاب‌شده معتبر نیست.'
+      : !productId
+        ? 'شناسهٔ پیشنهاد مشخص نشده است.'
+        : remoteStateMatchesProduct && remoteOfferState.status === 'error'
+          ? remoteOfferState.message
+          : ''
+    return (
+      <div dir="rtl" className="min-h-dvh bg-background px-4 pb-8 text-text-primary">
+        <main className="mx-auto max-w-[430px] py-10">
+          <Link to="/" className="text-label-md text-primary underline">
+            بازگشت به پیشنهادها
+          </Link>
+          <p
+            role="alert"
+            className="mt-6 rounded-lg bg-surface p-5 text-body-md text-text-secondary"
+          >
+            {message}
+          </p>
+        </main>
+      </div>
+    )
+  }
+
+  if (!offer) {
+    return (
+      <div dir="rtl" className="min-h-dvh bg-background px-4 pb-8 text-text-primary">
+        <main className="mx-auto max-w-[430px] py-10">
+          <Link to="/" className="text-label-md text-primary underline">
+            بازگشت به پیشنهادها
+          </Link>
+          <p
+            role="status"
+            className="mt-6 rounded-lg bg-surface p-5 text-body-md text-text-secondary"
+          >
+            در حال بررسی موجودی و جزئیات…
+          </p>
+        </main>
+      </div>
+    )
+  }
+
+  const subtotal = offer.price * quantity
+  const quantityIsValid =
+    Number.isSafeInteger(quantity) && quantity >= 1 && quantity <= offer.quantityAvailable
+  const pickupInstructions = offer.pickupInstructions ? ` ${offer.pickupInstructions}` : ''
+
   return (
     <div dir="rtl" className="min-h-dvh bg-background px-4 pb-8 text-text-primary">
       <main className="mx-auto max-w-[430px]">
         <header className="flex h-[94px] items-center gap-3">
           <Link
-            to={`/products/${product.id}`}
+            to={`/products/${encodeURIComponent(offer.id)}`}
             aria-label="بازگشت به جزئیات محصول"
             className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface text-primary"
           >
@@ -73,20 +175,27 @@ export default function CheckoutPage() {
         <form onSubmit={submitReservation} className="space-y-6">
           <section aria-label="محصول انتخاب‌شده" className="rounded-2xl bg-surface p-5">
             <div className="flex items-start gap-3">
-              <img
-                src={product.imageSrc}
-                alt=""
-                className="size-20 shrink-0 rounded-lg object-cover"
-              />
+              {offer.imageSrc ? (
+                <img
+                  src={offer.imageSrc}
+                  alt=""
+                  className="size-20 shrink-0 rounded-lg object-cover"
+                />
+              ) : (
+                <div
+                  aria-hidden="true"
+                  className="size-20 shrink-0 rounded-lg bg-surface-secondary"
+                />
+              )}
               <div className="min-w-0 flex-1 text-end">
-                <h2 className="truncate text-title-sm text-primary">{product.name}</h2>
+                <h2 className="truncate text-title-sm text-primary">{offer.title}</h2>
                 <p className="mt-1 text-caption text-text-secondary">
-                  بستهٔ غافلگیری {store.category}
+                  {offer.storeName} · {offer.category}
                 </p>
                 <div className="mt-2 flex items-baseline justify-end gap-2">
-                  <span className="text-price-md text-primary">{formatPrice(product.price)}</span>
+                  <span className="text-price-md text-primary">{formatPrice(offer.price)}</span>
                   <span className="text-caption text-text-secondary line-through">
-                    {formatPrice(product.referenceValue)}
+                    {formatPrice(offer.originalPrice)}
                   </span>
                 </div>
               </div>
@@ -95,7 +204,7 @@ export default function CheckoutPage() {
               <QuantityStepper
                 value={quantity}
                 min={1}
-                max={product.remaining}
+                max={Math.max(1, offer.quantityAvailable)}
                 onChange={(value) => {
                   setQuantity(value)
                   setFeedback('')
@@ -103,6 +212,12 @@ export default function CheckoutPage() {
                 label="تعداد بسته‌ها"
               />
             </div>
+            {quantity > offer.quantityAvailable && offer.quantityAvailable > 0 && (
+              <p role="alert" className="mt-3 text-body-md text-error">
+                موجودی فعلی {offer.quantityAvailable.toLocaleString('fa-IR')} بسته است؛ تعداد را
+                کاهش دهید.
+              </p>
+            )}
           </section>
 
           <section aria-labelledby="pickup-heading" className="rounded-2xl bg-surface p-5">
@@ -112,13 +227,15 @@ export default function CheckoutPage() {
             <div className="mt-4 space-y-3 text-body-md">
               <p className="flex items-center gap-2">
                 <Clock3 className="size-6 shrink-0" strokeWidth={1.75} />
-                {product.pickup}
+                {offer.pickupWindow}
               </p>
               <p className="flex items-center gap-2">
                 <MapPin className="size-6 shrink-0" strokeWidth={1.75} />
-                {store.address}
+                {offer.address}
               </p>
-              <p className="text-caption text-text-secondary">{formatPickupDate(localDate())}</p>
+              {pickupInstructions && (
+                <p className="text-caption text-text-secondary">{pickupInstructions}</p>
+              )}
             </div>
           </section>
 
@@ -143,10 +260,14 @@ export default function CheckoutPage() {
             </h2>
             <div className="space-y-3">
               <CheckoutNotice>
-                محتویات دقیق ممکن است متفاوت باشد. مواد اولیه و حساسیت‌زاها نامشخص است.
+                {offer.allergensDeclared
+                  ? `حساسیت‌زاها: ${offer.allergens.join('، ') || 'موردی اعلام نشده است.'}`
+                  : 'مواد اولیه و حساسیت‌زاها اعلام نشده‌اند.'}
               </CheckoutNotice>
               <CheckoutNotice>
-                لغو تا ساعت ۱۶:۰۰ امکان‌پذیر است؛ پس از آن امکان لغو نیست.
+                {offer.cancellationDeadline
+                  ? `مهلت لغو تا ${formatDateTime(offer.cancellationDeadline)} است.`
+                  : 'مهلت لغو در جزئیات این پیشنهاد مشخص نشده است.'}
               </CheckoutNotice>
             </div>
           </section>
@@ -174,8 +295,19 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          <Button type="submit" fullWidth className="h-[52px]">
-            رزرو
+          {offer.quantityAvailable === 0 && (
+            <p role="alert" className="rounded-lg bg-error-subtle p-4 text-body-md text-error">
+              موجودی این پیشنهاد به پایان رسیده است.
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            fullWidth
+            disabled={!acceptPickupTerms || !quantityIsValid || offer.quantityAvailable === 0}
+            className="h-[52px]"
+          >
+            ثبت رزرو
           </Button>
         </form>
       </main>

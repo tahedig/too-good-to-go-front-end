@@ -3,9 +3,17 @@ services:
     build:
       context: .
       args:
-        VITE_API_BASE_URL: /api/v1
+        VITE_API_BASE_URL: /api
         VITE_APP_NAME: crumb
         VITE_SUPPORT_EMAIL: support@example.com
+        VITE_PROFILE_API_MODE: remote
+        APP_VERSION: local
+        VCS_REF: local
+        BUILD_DATE: local
+    environment:
+      BACKEND_UPSTREAM: http://host.docker.internal:8080
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
     ports:
-      - "8080:80"
+      - '3000:80'
     restart: unless-stopped
