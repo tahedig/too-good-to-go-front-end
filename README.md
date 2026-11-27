@@ -108,8 +108,19 @@ Selecting an offer from discovery, search, or a public store opens
 
 ## Customer checkout
 
-The `/checkout` page loads the current stock and pickup details for the
-selected offer. Customers can review the quantity, price, and pickup terms.
+The `/checkout` page reloads the offer to check its current stock and pickup
+details, then creates the reservation with `POST /reservations`, the accepted
+pickup terms, and an `Idempotency-Key`. The endpoint requires customer login.
+The backend calculates the service fee and final amount, so the exact total is
+shown after the reservation response.
+
+## Reservation confirmation
+
+The `/reservations/:reservationId/confirmation` page displays the reservation
+response passed through router state, including its reference, pickup code,
+status, and final amount. The current backend exposes no
+`GET /reservations/:id`; opening the confirmation URL without that state cannot
+reload the reservation.
 
 ## Design system
 

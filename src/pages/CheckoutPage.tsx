@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Clock3, Info, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { QuantityStepper } from '@/components/ui/QuantityStepper'
 import { catalogueService } from '@/services/catalogueService'
 import type { CatalogueOfferDetailDto } from '@/types/catalogueTypes'
+import { reservationApi } from '@/features/reservations/api/reservationApi'
+import { ApiError } from '@/lib/api/client'
 import { formatDateTime, formatPrice } from '@/lib/format'
 import { toEnglishDigits } from '@/lib/digits'
 
@@ -56,18 +58,22 @@ function CheckoutNotice({ children }: { children: string }) {
 
 export default function CheckoutPage() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const productId = searchParams.get('productId') ?? ''
   const requestedQuantity = Number(toEnglishDigits(searchParams.get('quantity') ?? ''))
   const requestedQuantityIsValid = Number.isSafeInteger(requestedQuantity) && requestedQuantity >= 1
   const [quantity, setQuantity] = useState(requestedQuantityIsValid ? requestedQuantity : 1)
   const [acceptPickupTerms, setAcceptPickupTerms] = useState(false)
   const [feedback, setFeedback] = useState('')
+  const [requiresLogin, setRequiresLogin] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [remoteOfferState, setRemoteOfferState] = useState<
     | { status: 'loading' }
     | { productId: string; status: 'loading' }
     | { productId: string; status: 'error'; message: string }
     | { productId: string; status: 'ready'; offer: CheckoutOffer }
   >({ status: 'loading' })
+  const idempotencyKey = useRef<string | null>(null)
 
   useEffect(() => {
     if (!requestedQuantityIsValid || !productId) return
@@ -89,14 +95,52 @@ export default function CheckoutPage() {
     return () => controller.abort()
   }, [productId, requestedQuantityIsValid])
 
-  function submitReservation(event: FormEvent<HTMLFormElement>) {
+  async function submitReservation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!acceptPickupTerms) {
       setFeedback('برای ادامه، شرایط تحویل را بپذیرید.')
       return
     }
 
-    setFeedback('ثبت رزرو پس از اتصال سرویس بک‌اند فعال می‌شود.')
+    if (!offer || isSubmitting) return
+    if (!quantityIsValid) {
+      setFeedback('تعداد بسته‌ها معتبر نیست.')
+      return
+    }
+
+    setIsSubmitting(true)
+    setFeedback('')
+    setRequiresLogin(false)
+
+    try {
+      idempotencyKey.current ??= crypto.randomUUID()
+      const reservation = await reservationApi.create(
+        {
+          offer_id: offer.id,
+          quantity,
+          terms_accepted: true,
+        },
+        idempotencyKey.current,
+      )
+      navigate(`/reservations/${encodeURIComponent(reservation.id)}/confirmation`, {
+        state: { reservation },
+      })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setRequiresLogin(true)
+        setFeedback('برای ثبت رزرو وارد حساب کاربری شوید.')
+      } else if (error instanceof ApiError && error.status === 404) {
+        setFeedback('این پیشنهاد دیگر در دسترس نیست.')
+      } else if (error instanceof ApiError && error.status === 409) {
+        setFeedback('موجودی یا وضعیت این پیشنهاد تغییر کرده است. جزئیات را دوباره بررسی کنید.')
+      } else {
+        setFeedback(
+          error instanceof Error ? error.message : 'ثبت رزرو ناموفق بود. لطفاً دوباره تلاش کنید.',
+        )
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const remoteStateMatchesProduct =
@@ -208,6 +252,7 @@ export default function CheckoutPage() {
                 onChange={(value) => {
                   setQuantity(value)
                   setFeedback('')
+                  idempotencyKey.current = null
                 }}
                 label="تعداد بسته‌ها"
               />
@@ -241,16 +286,16 @@ export default function CheckoutPage() {
 
           <section aria-label="خلاصه هزینه" className="space-y-4 rounded-2xl bg-surface p-5">
             <div className="flex items-center justify-between gap-4 text-label-md">
-              <span>{quantity.toLocaleString('fa-IR')} بستهٔ نانوایی</span>
+              <span>{quantity.toLocaleString('fa-IR')} بسته</span>
               <span>{formatPrice(subtotal)}</span>
             </div>
             <div className="flex items-center justify-between gap-4 text-label-md">
               <span>کارمزد خدمات</span>
-              <span>{formatPrice(0)}</span>
+              <span>محاسبه در پاسخ رزرو</span>
             </div>
             <div className="flex items-center justify-between gap-4 border-t border-border-default pt-4 text-title-md text-primary">
               <span>مبلغ قابل پرداخت</span>
-              <span>{formatPrice(subtotal)}</span>
+              <span>پس از ثبت رزرو مشخص می‌شود</span>
             </div>
           </section>
 
@@ -293,6 +338,14 @@ export default function CheckoutPage() {
                 {feedback}
               </p>
             )}
+            {requiresLogin && (
+              <Link
+                to="/login"
+                className="mt-2 inline-flex min-h-11 items-center text-label-md text-primary underline"
+              >
+                ورود به حساب کاربری
+              </Link>
+            )}
           </div>
 
           {offer.quantityAvailable === 0 && (
@@ -304,7 +357,13 @@ export default function CheckoutPage() {
           <Button
             type="submit"
             fullWidth
-            disabled={!acceptPickupTerms || !quantityIsValid || offer.quantityAvailable === 0}
+            isLoading={isSubmitting}
+            disabled={
+              isSubmitting ||
+              !acceptPickupTerms ||
+              !quantityIsValid ||
+              offer.quantityAvailable === 0
+            }
             className="h-[52px]"
           >
             ثبت رزرو
