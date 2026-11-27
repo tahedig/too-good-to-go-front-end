@@ -106,6 +106,11 @@ The supplied Go API list is now used by `ordersService.ts` and `reservationsServ
 Selecting an offer from discovery, search, or a public store opens
 `/products/:productId` and loads the latest details from `GET /offers/:id`.
 
+## Customer checkout
+
+The `/checkout` page loads the current stock and pickup details for the
+selected offer. Customers can review the quantity, price, and pickup terms.
+
 ## Design system
 
 Tokens are defined in `src/index.css` (`@theme`) following the approved Figma

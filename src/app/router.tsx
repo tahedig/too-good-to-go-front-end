@@ -23,11 +23,16 @@ import PublicStorePage from '@/pages/PublicStorePage'
 import ProfilePage from '@/pages/ProfilePage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
 import ProductDetailsPage from '@/pages/ProductDetailsPage'
+import CheckoutPage from '@/pages/CheckoutPage'
 
 export const router = createBrowserRouter([
   {
     path: '/products/:productId',
     element: <ProductDetailsPage />,
+  },
+  {
+    path: '/checkout',
+    element: <CheckoutPage />,
   },
   {
     path: '/',
