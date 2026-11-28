@@ -7,6 +7,7 @@ let storeService
 
 before(async () => {
   process.env.VITE_API_BASE_URL = '/api'
+  process.env.VITE_USE_MOCK_API = 'false'
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
     value: { getItem: (key) => (key === 'access_token' ? 'vendor-token' : null) },
@@ -18,6 +19,7 @@ before(async () => {
 after(async () => {
   await vite?.close()
   delete globalThis.localStorage
+  delete process.env.VITE_USE_MOCK_API
 })
 
 function mockApi(t, respond) {

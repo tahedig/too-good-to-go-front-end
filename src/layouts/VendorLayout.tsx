@@ -307,20 +307,12 @@ export default function VendorLayout() {
 
   return (
     <div className="flex min-h-dvh bg-background">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-65 shrink-0 border-e border-border-default bg-surface lg:block">
-        <div className="flex h-full flex-col gap-1 p-4">
-          <BrandRow />
-          <NavList />
-        </div>
-      </aside>
-
       <div className="flex min-w-0 flex-1 flex-col" inert={menuOpen}>
-        {/* Mobile header */}
+        {/* Shared mobile/desktop header from the vendor designs. */}
         <header
           ref={headerRef}
           onFocus={revealHeader}
-          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border-b border-border-default bg-surface px-4 will-change-transform lg:hidden"
+          className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between border border-border-default bg-surface px-4 will-change-transform"
         >
           <Button
             variant="secondary"
@@ -336,11 +328,6 @@ export default function VendorLayout() {
           <span className="text-title-sm text-text-primary">ته‌دیگ</span>
         </header>
 
-        {/* Desktop brand header; the product page supplies its store context when needed. */}
-        <header className="hidden h-12 shrink-0 items-center border-b border-border-default bg-background lg:flex">
-          <span className="text-title-lg text-text-primary">ته‌دیگ</span>
-        </header>
-
         <main className="flex-1">
           <Outlet />
         </main>
@@ -348,7 +335,7 @@ export default function VendorLayout() {
 
       {/* Mobile drawer */}
       <div
-        className={`fixed inset-0 z-50 transition-[visibility] duration-200 motion-reduce:transition-none lg:hidden ${menuOpen ? '' : 'pointer-events-none invisible'}`}
+        className={`fixed inset-0 z-50 transition-[visibility] duration-200 motion-reduce:transition-none ${menuOpen ? '' : 'pointer-events-none invisible'}`}
         aria-hidden={!menuOpen}
       >
         <div

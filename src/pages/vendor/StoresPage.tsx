@@ -1,70 +1,117 @@
 import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, MapPin, Package, Store, UserRound } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, MapPin, Wheat } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { env } from '@/config/env'
+import { formatDateTime, formatNumber } from '@/lib/format'
 import { storeService } from '@/services/storeService'
 import type { VendorStore } from '@/types/storeTypes'
 
-function StoreCard({ store }: { store: VendorStore }) {
-  const approved = store.status === 'approved'
-  const badgeColor =
-    store.status === 'approved'
-      ? 'bg-success-subtle text-success'
-      : store.status === 'rejected' || store.status === 'suspended'
-        ? 'bg-error-subtle text-error'
-        : 'bg-warning-subtle text-warning'
+function StoreIdentity({ title }: { title: string }) {
+  return (
+    <div className="flex h-12 w-full items-center gap-3">
+      <h2 className="flex-1 text-[20px] font-bold leading-7 text-text-primary">{title}</h2>
+      <span className="grid size-12 place-items-center rounded-xl bg-surface-sage text-primary">
+        <Wheat className="size-8" strokeWidth={1.5} aria-hidden="true" />
+      </span>
+    </div>
+  )
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid min-h-[22px] grid-cols-2 gap-3 text-[14px] leading-[22px]">
+      <span className="text-right text-[13px] text-text-secondary">{label}</span>
+      <span className="text-right font-medium text-text-primary">{value || '—'}</span>
+    </div>
+  )
+}
+
+function ApprovedStore({ store }: { store: VendorStore }) {
+  const openDays = store.openingHours.filter((day) => day.enabled)
+  const hoursSummary = openDays.length
+    ? `${openDays[0].day} تا ${openDays.at(-1)?.day} · ${openDays[0].opensAt} تا ${openDays[0].closesAt}`
+    : 'ساعت کاری ثبت نشده است.'
 
   return (
-    <article className="overflow-hidden rounded-lg border border-border-default bg-surface shadow-1">
-      <img
-        src={store.images[0]?.url ?? '/vendor-bakery.jpg'}
-        alt={`تصویر ${store.name}`}
-        className="h-44 w-full object-cover lg:h-52"
-      />
-      <div className="flex flex-col gap-5 p-4 lg:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-caption text-text-secondary">فروشگاه</p>
-            <h3 className="mt-1 text-title-md text-text-primary">{store.name}</h3>
-            {store.branch && <p className="text-body-md text-text-secondary">{store.branch}</p>}
-          </div>
-          <span className={`rounded-full px-3 py-1 text-caption font-semibold ${badgeColor}`}>
-            {store.statusLabel}
-          </span>
+    <section className="order-1 flex min-w-0 flex-col gap-4 xl:order-2">
+      <StoreIdentity title="فروشگاه تأییدشده" />
+      <article className="flex flex-col gap-[14px] rounded-2xl border border-border-default bg-surface p-5">
+        <div className="flex items-center gap-3">
+          <h3 className="flex-1 text-[18px] font-bold leading-[29px] text-text-primary">
+            {store.name}
+          </h3>
+          <StatusBadge
+            status="approved"
+            label="تأییدشده"
+            compact
+            showIcon={false}
+            className="h-6 rounded-md font-medium"
+          />
         </div>
+        <div className="flex flex-col gap-5">
+          <img
+            src={store.images[0]?.url ?? '/vendor-bakery.jpg'}
+            alt={`تصویر ${store.name}`}
+            className="h-45 w-full rounded-xl object-cover"
+          />
+          <div className="flex flex-col gap-4">
+            <DetailRow label="مالک" value={store.owner} />
+            <DetailRow label="دسته‌بندی" value={store.category} />
+            <DetailRow label="نشانی" value={store.address} />
+            <DetailRow label="ثبت" value={formatDateTime(store.registeredAt).split('،')[0]} />
+            <DetailRow label="ساعت کاری" value={hoursSummary} />
+            <DetailRow label="محصولات" value={formatNumber(store.productsCount)} />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Link
+            to={`/vendor/stores/${store.id}`}
+            className="flex h-12 items-center justify-center rounded-[9px] border border-border-default bg-surface text-[14px] font-medium text-text-primary transition-colors hover:bg-surface-secondary"
+          >
+            مشخصات
+          </Link>
+          <button
+            type="button"
+            className="h-13 rounded-[10px] border-[1.5px] border-primary bg-surface px-6 text-[16px] text-primary"
+          >
+            غیرفعال‌سازی
+          </button>
+        </div>
+      </article>
+    </section>
+  )
+}
 
-        <dl className="grid gap-3 border-t border-border-default pt-4 sm:grid-cols-2">
-          <div className="flex items-center gap-2 text-body-md text-text-secondary">
-            <UserRound className="size-5 shrink-0" strokeWidth={1.75} />
-            <dt className="sr-only">مالک</dt>
-            <dd>{store.owner}</dd>
-          </div>
-          <div className="flex items-center gap-2 text-body-md text-text-secondary">
-            <Store className="size-5 shrink-0" strokeWidth={1.75} />
-            <dt className="sr-only">دسته‌بندی</dt>
-            <dd>{store.category}</dd>
-          </div>
-          <div className="flex items-start gap-2 text-body-md text-text-secondary sm:col-span-2">
-            <MapPin className="mt-0.5 size-5 shrink-0" strokeWidth={1.75} />
-            <dt className="sr-only">آدرس</dt>
-            <dd>{store.address}</dd>
-          </div>
-          {approved && (
-            <div className="flex items-center gap-2 text-body-md text-text-secondary">
-              <Package className="size-5 shrink-0" strokeWidth={1.75} />
-              <dt className="sr-only">محصولات</dt>
-              <dd>{store.productsCount} محصول</dd>
-            </div>
-          )}
-        </dl>
-
+function StoreRequest({ store }: { store: VendorStore }) {
+  return (
+    <article className="overflow-hidden rounded-xl border border-border-default bg-surface pb-5">
+      <div className="flex flex-col gap-[14px] p-5">
+        <div className="flex items-center gap-3">
+          <h3 className="flex-1 text-[18px] font-bold leading-[29px] text-text-primary">
+            {store.name}
+          </h3>
+          <StatusBadge
+            status={store.status}
+            label={store.statusLabel}
+            compact
+            showIcon={false}
+            className="min-h-[30px] rounded-md px-2"
+          />
+        </div>
+        <DetailRow label="مالک" value={store.owner} />
+        <DetailRow label="دسته‌بندی" value={store.category} />
+        <DetailRow label="نشانی" value={store.address} />
+        <DetailRow label="ثبت" value={formatDateTime(store.registeredAt).split('،')[0]} />
+      </div>
+      <div className="px-5">
         <Link
           to={`/vendor/stores/${store.id}`}
-          className="flex h-11 items-center justify-between rounded-md border border-primary px-4 text-label-md text-primary transition-colors hover:bg-primary-subtle"
+          className="flex h-13 items-center justify-center rounded-[10px] border-[1.5px] border-primary bg-surface text-[16px] text-primary"
         >
-          <span>{approved ? 'مشاهده مشخصات' : 'مشاهده درخواست'}</span>
-          <ArrowLeft className="size-5" strokeWidth={1.75} />
+          مشاهده درخواست
         </Link>
       </div>
     </article>
@@ -76,24 +123,21 @@ export default function StoresPage() {
   const [error, setError] = useState('')
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [message, setMessage] = useState<string | null>(
     () => (location.state as { message?: string } | null)?.message ?? null,
   )
 
   useEffect(() => {
-    let active = true
+    const controller = new AbortController()
     storeService
-      .list()
-      .then((items) => {
-        if (active) setStores(items)
-      })
+      .list(controller.signal)
+      .then(setStores)
       .catch((reason: unknown) => {
-        if (active)
+        if (!controller.signal.aborted)
           setError(reason instanceof Error ? reason.message : 'دریافت فروشگاه‌ها ممکن نیست.')
       })
-    return () => {
-      active = false
-    }
+    return () => controller.abort()
   }, [])
 
   useEffect(() => {
@@ -102,9 +146,9 @@ export default function StoresPage() {
 
   if (error)
     return (
-      <p role="alert" className="p-6 text-error">
-        {error}
-      </p>
+      <div className="p-4 lg:p-12">
+        <InlineAlert tone="error">{error}</InlineAlert>
+      </div>
     )
   if (!stores)
     return (
@@ -113,70 +157,96 @@ export default function StoresPage() {
       </p>
     )
 
-  const approvedStores = stores.filter((store) => store.status === 'approved')
-  const pendingStores = stores.filter((store) => store.status !== 'approved')
+  const displayedStores =
+    import.meta.env.DEV && env.useMockApi && searchParams.get('state') === 'empty' ? [] : stores
+  const approvedStores = displayedStores.filter((store) => store.status === 'approved')
+  const pendingStores = displayedStores.filter((store) => store.status !== 'approved')
 
   return (
-    <div className="flex flex-col gap-6 p-4 lg:px-20 lg:py-8">
+    <div className="flex flex-col gap-6 p-4 lg:p-12">
       {message && (
-        <InlineAlert tone="success">
-          <div className="flex items-center justify-between gap-3">
-            <span>{message}</span>
-            <button type="button" onClick={() => setMessage(null)} aria-label="بستن پیام">
-              ×
-            </button>
-          </div>
-        </InlineAlert>
-      )}
-
-      <div className="flex flex-col gap-2">
-        <h1 className="text-title-xl text-text-primary lg:text-display-xl">فروشگاه‌ها</h1>
-        <p className="text-body-md text-text-secondary">
-          فروشگاه‌ها و درخواست‌های ثبت‌شده خود را مدیریت کنید.
-        </p>
-      </div>
-
-      {stores && stores.length > 0 && (
-        <div className="flex justify-start">
-          <Button onClick={() => navigate('/vendor/stores/new')}>ثبت فروشگاه</Button>
+        <div className="mx-auto w-full max-w-[1344px]">
+          <InlineAlert tone="success">
+            <div className="flex items-center justify-between gap-3">
+              <span>{message}</span>
+              <button type="button" onClick={() => setMessage(null)} aria-label="بستن پیام">
+                ×
+              </button>
+            </div>
+          </InlineAlert>
         </div>
       )}
 
-      {stores.length === 0 ? (
-        <section className="flex min-h-96 flex-col items-center justify-center gap-4 rounded-lg bg-surface p-8 text-center">
-          <Store className="size-10 text-primary" strokeWidth={1.5} />
-          <h2 className="text-title-md text-text-primary">هنوز فروشگاهی ثبت نکرده‌اید</h2>
-          <p className="max-w-md text-body-md text-text-secondary">
-            پس از ثبت درخواست فروشگاه، وضعیت و مشخصات آن را از همین بخش پیگیری کنید.
+      <header className="mx-auto flex w-full max-w-[1344px] flex-col gap-2">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="بازگشت"
+            className="grid size-11 place-items-center rounded-[10px] border border-border-default bg-surface text-text-primary hover:bg-surface-secondary"
+          >
+            <ArrowRight className="size-6" strokeWidth={1.75} />
+          </button>
+          <h1 className="flex-1 text-[24px] font-bold leading-8 text-text-primary lg:text-[32px] lg:leading-[38px]">
+            فروشگاه‌ها
+          </h1>
+        </div>
+        {displayedStores.length > 0 && (
+          <p className="text-[14px] leading-5 text-text-secondary">
+            فروشگاه‌ها و درخواست‌های ثبت‌شده خود را مدیریت کنید.
           </p>
-          <Button fullWidth className="sm:w-auto" onClick={() => navigate('/vendor/stores/new')}>
-            ثبت فروشگاه
-          </Button>
+        )}
+      </header>
+
+      {displayedStores.length === 0 ? (
+        <section className="mx-auto flex min-h-[460px] w-full max-w-[1344px] items-center justify-center lg:min-h-[640px]">
+          <div className="flex w-full max-w-[560px] flex-col items-center gap-4 rounded-2xl bg-surface p-6 text-center">
+            <div className="flex w-full items-center justify-center gap-3">
+              <h2 className="text-[20px] font-normal leading-7 text-text-primary">
+                هنوز فروشگاهی ثبت نکرده‌اید
+              </h2>
+              <MapPin className="size-6 text-primary" strokeWidth={1.75} />
+            </div>
+            <p className="text-[14px] leading-[21px] text-text-secondary">
+              برای شروع فعالیت، اطلاعات اولین فروشگاه خود را ثبت کنید.
+            </p>
+            <Button
+              variant="secondary"
+              fullWidth
+              onClick={() => navigate('/vendor/stores/new')}
+              className="h-13! rounded-[10px]!"
+            >
+              افزودن فروشگاه
+            </Button>
+          </div>
         </section>
       ) : (
-        <div className="flex flex-col gap-8">
-          {pendingStores.length > 0 && (
-            <section className="flex flex-col gap-4">
-              <h2 className="text-title-md text-text-primary">درخواست‌های فروشگاه</h2>
-              <div className="grid gap-4 xl:grid-cols-2">
-                {pendingStores.map((store) => (
-                  <StoreCard key={store.id} store={store} />
-                ))}
-              </div>
+        <>
+          <div className="mx-auto flex h-13 w-full max-w-[1344px] justify-end">
+            <Button
+              onClick={() => navigate('/vendor/stores/new')}
+              fullWidth
+              className="h-13! rounded-[10px]! lg:w-[148px]!"
+            >
+              افزودن فروشگاه
+            </Button>
+          </div>
+          <div className="mx-auto grid w-full max-w-[1344px] items-start gap-6 xl:grid-cols-[440px_minmax(0,1fr)] xl:[direction:ltr]">
+            <section dir="rtl" className="order-2 flex min-w-0 flex-col gap-4 xl:order-1">
+              <h2 className="text-[20px] font-bold leading-7 text-text-primary">
+                درخواست‌های فروشگاه
+              </h2>
+              {pendingStores.map((store) => (
+                <StoreRequest key={store.id} store={store} />
+              ))}
             </section>
-          )}
-
-          {approvedStores.length > 0 && (
-            <section className="flex flex-col gap-4">
-              <h2 className="text-title-md text-text-primary">فروشگاه‌های من</h2>
-              <div className="grid gap-4 xl:grid-cols-2">
-                {approvedStores.map((store) => (
-                  <StoreCard key={store.id} store={store} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
+            <div dir="rtl" className="contents">
+              {approvedStores.map((store) => (
+                <ApprovedStore key={store.id} store={store} />
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   )

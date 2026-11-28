@@ -504,7 +504,30 @@ export const storeService = {
         notice: 'این شعبه پس از تأیید، امکان انتشار محصول خواهد داشت.',
         created_at: createdAt,
       }
-      previewRequests = [mapRequest(response), ...previewRequests]
+      previewRequests = [
+        {
+          id: publicId,
+          name: form.name,
+          branch: '',
+          status: 'pending',
+          statusLabel: 'در انتظار بررسی',
+          source: 'request',
+          owner: form.owner,
+          category: category?.name ?? '',
+          categoryId: form.categoryId,
+          phone: form.phone,
+          address: form.address,
+          description: form.description,
+          pickupInstructions: form.pickupInstructions,
+          registeredAt: createdAt,
+          productsCount: 0,
+          images: form.images.map((image) => ({ ...image })),
+          openingHours: form.openingHours.map((day) => ({ ...day })),
+          workingHoursConfigured: form.workingHoursConfigured,
+          location: { ...form.location },
+        },
+        ...previewRequests,
+      ]
       return response
     }
 

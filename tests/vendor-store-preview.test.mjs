@@ -37,7 +37,14 @@ test('preview mode supports list, details, edit, and create without HTTP calls',
     name: 'شعبه آزمایشی',
     owner: 'فروشنده آزمایشی',
     categoryId: 1,
+    phone: '09120000000',
     address: 'تهران',
+    description: 'توضیحات',
+    pickupInstructions: 'پیشخوان',
+    images: [],
+    openingHours: [],
+    workingHoursConfigured: true,
+    location: { latitude: 35.7, longitude: 51.4 },
   })
   assert.equal((await storeService.get(request.public_id)).store.name, 'شعبه آزمایشی')
   assert.equal(fetch.mock.callCount(), 0)

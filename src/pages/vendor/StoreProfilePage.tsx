@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowRight, ImagePlus, MapPin, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
@@ -113,67 +113,68 @@ function HoursEditor({
     onChange(days.map((day, dayIndex) => (dayIndex === index ? { ...day, ...patch } : day)))
   }
 
-  return (
-    <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
-      <div>
-        <h2 className="text-title-md text-text-primary">ساعت کاری</h2>
-        <p className="mt-1 text-body-md text-text-secondary">روزها و ساعت‌های فعالیت فروشگاه</p>
-      </div>
-      <div className="flex flex-col divide-y divide-border-default">
-        {days.map((day, index) => (
-          <div
-            key={day.day}
-            className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center"
-          >
-            <label className="flex items-center gap-3 text-label-md text-text-primary">
+return (
+  <section className="flex flex-col gap-4 rounded-xl bg-surface p-5">
+    <div>
+      <h2 className="text-title-md text-text-primary">ساعت کاری</h2>
+      <p className="mt-1 text-body-md text-text-secondary">روزها و ساعت‌های فعالیت فروشگاه</p>
+    </div>
+    <div className="flex flex-col divide-y divide-border-default">
+      {days.map((day, index) => (
+        <div key={day.day} className="flex flex-col gap-2 py-3">
+          <label className="flex items-center justify-between gap-3 text-label-md text-text-primary">
+            <span>{day.day}</span>
+            <span className="relative">
               <input
                 type="checkbox"
                 checked={day.enabled}
                 disabled={disabled}
                 onChange={(event) => updateDay(index, { enabled: event.target.checked })}
-                className="size-5 accent-primary"
+                className="peer sr-only"
               />
-              {day.day}
-            </label>
-            {day.enabled ? (
-              <>
-                <label className="flex items-center gap-2 text-caption text-text-secondary">
-                  از
-                  <input
-                    type="time"
-                    aria-label={`${day.day} شروع`}
-                    value={day.opensAt}
-                    disabled={disabled}
-                    onChange={(event) => updateDay(index, { opensAt: event.target.value })}
-                    className="h-11 min-w-0 rounded-md border border-border-input bg-surface px-2 text-body-md text-text-primary"
-                  />
-                </label>
-                <label className="flex items-center gap-2 text-caption text-text-secondary">
-                  تا
-                  <input
-                    type="time"
-                    aria-label={`${day.day} پایان`}
-                    value={day.closesAt}
-                    disabled={disabled}
-                    onChange={(event) => updateDay(index, { closesAt: event.target.value })}
-                    className="h-11 min-w-0 rounded-md border border-border-input bg-surface px-2 text-body-md text-text-primary"
-                  />
-                </label>
-              </>
-            ) : (
-              <span className="text-body-md text-text-secondary sm:col-span-2">تعطیل</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </section>
-  )
+              <span className="block h-7 w-12 rounded-full border border-border-input bg-surface-secondary transition-colors peer-checked:bg-primary after:absolute after:left-1 after:top-1 after:size-5 after:rounded-full after:bg-primary after:transition-transform peer-checked:after:translate-x-5 peer-checked:after:bg-surface" />
+            </span>
+          </label>
+          {day.enabled ? (
+            <div className="flex items-center gap-2 text-caption text-text-secondary">
+              <label className="flex flex-1 items-center gap-2 text-caption text-text-secondary">
+                از
+                <input
+                  type="time"
+                  aria-label={`${day.day} شروع`}
+                  value={day.opensAt}
+                  disabled={disabled}
+                  onChange={(event) => updateDay(index, { opensAt: event.target.value })}
+                  className="h-11 flex-1 rounded-md border border-border-input bg-surface px-2 text-body-md text-text-primary"
+                />
+              </label>
+              <span>تا</span>
+              <label className="flex flex-1 items-center gap-2 text-caption text-text-secondary">
+                <input
+                  type="time"
+                  aria-label={`${day.day} پایان`}
+                  value={day.closesAt}
+                  disabled={disabled}
+                  onChange={(event) => updateDay(index, { closesAt: event.target.value })}
+                  className="h-11 flex-1 rounded-md border border-border-input bg-surface px-2 text-body-md text-text-primary"
+                />
+              </label>
+            </div>
+          ) : (
+            <span className="text-body-md text-text-secondary">تعطیل</span>
+          )}
+        </div>
+      ))}
+    </div>
+  </section>
+)
 }
 
 export default function StoreProfilePage() {
   const params = useParams()
   const id = params.id ?? ''
   const navigate = useNavigate()
+  const uploadId = useId()
   const [profile, setProfile] = useState<{
     id: string
     store?: VendorStore
@@ -283,41 +284,48 @@ export default function StoreProfilePage() {
   const isReadOnly = source === 'request'
 
   return (
-    <form onSubmit={save} className="flex flex-col gap-5 p-4 lg:px-20 lg:py-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-title-xl text-text-primary lg:text-display-xl">مشخصات فروشگاه</h1>
-        <div className="flex items-center gap-3">
-          <span
-            className={`rounded-full px-3 py-1 text-caption font-semibold ${
-              store.status === 'approved'
-                ? 'bg-success-subtle text-success'
-                : store.status === 'rejected' || store.status === 'suspended'
-                  ? 'bg-error-subtle text-error'
-                  : 'bg-warning-subtle text-warning'
-            }`}
-          >
-            {store.statusLabel}
-          </span>
-          <Link
-            to="/vendor/stores"
-            className="flex h-11 items-center gap-2 rounded-md border border-border-default bg-surface px-4 text-label-md text-text-primary hover:bg-surface-secondary"
-          >
-            <ArrowRight className="size-5" strokeWidth={1.75} />
-            بازگشت
-          </Link>
-        </div>
+    <form onSubmit={save} className="flex flex-col gap-6 p-4 pb-8 lg:p-12">
+      <div className="mx-auto flex w-full max-w-[1084px] items-center gap-3">
+        <Link
+          to="/vendor/stores"
+          aria-label="بازگشت"
+          className="grid size-11 place-items-center rounded-[10px] border border-border-default bg-surface text-text-primary hover:bg-surface-secondary"
+        >
+          <ArrowRight className="size-6" strokeWidth={1.75} />
+        </Link>
+        <h1 className="flex-1 text-[24px] font-bold leading-8 text-text-primary lg:text-[32px] lg:leading-[38px]">
+          مشخصات فروشگاه
+        </h1>
       </div>
 
-      {error && <InlineAlert tone="error">{error}</InlineAlert>}
+      <div className="mx-auto w-full max-w-[1084px]">
+        <span
+          className={`inline-flex h-8 min-w-30 items-center rounded-xl px-3 text-[12px] font-bold ${
+            store.status === 'approved'
+              ? 'bg-success-subtle text-success'
+              : store.status === 'rejected' || store.status === 'suspended'
+                ? 'bg-error-subtle text-error'
+                : 'bg-warning-subtle text-warning'
+          }`}
+        >
+          {store.statusLabel}
+        </span>
+      </div>
+
+      {error && (
+        <div className="mx-auto w-full max-w-[1084px]">
+          <InlineAlert tone="error">{error}</InlineAlert>
+        </div>
+      )}
       {isReadOnly && (
         <InlineAlert tone="info">
           درخواست ثبت‌شده فقط برای مشاهده است و از این بخش قابل ویرایش نیست.
         </InlineAlert>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]">
-        <div className="flex flex-col gap-5">
-          <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
+      <div className="mx-auto grid w-full max-w-[1084px] items-start gap-6 xl:grid-cols-[556px_minmax(0,504px)] xl:[direction:ltr]">
+        <div dir="rtl" className="flex flex-col gap-5">
+          <section className="flex flex-col gap-4 rounded-xl bg-surface p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-title-md text-text-primary">تصویر فروشگاه</h2>
@@ -329,13 +337,16 @@ export default function StoreProfilePage() {
             </div>
 
             {form.images.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="flex gap-3 overflow-x-auto pb-1">
                 {form.images.map((image, index) => (
-                  <div key={image.id} className="group relative">
+                  <div
+                    key={image.id}
+                    className="group relative h-40 min-w-52 overflow-hidden rounded-[10px]"
+                  >
                     <img
                       src={image.url}
                       alt={`تصویر ${store.name} ${index + 1}`}
-                      className="h-32 w-full rounded-md object-cover"
+                      className="size-full object-cover"
                     />
                     <button
                       type="button"
@@ -368,22 +379,42 @@ export default function StoreProfilePage() {
               </div>
             )}
 
-            <div className="flex flex-col items-start gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                icon={<ImagePlus className="size-5" strokeWidth={1.75} />}
-                disabled
-              >
-                افزودن تصویر
-              </Button>
-              <p className="text-caption text-text-secondary">
-                بارگذاری تصویر از طریق API فروشگاه هنوز پشتیبانی نمی‌شود.
-              </p>
-            </div>
+            {!isReadOnly && (
+              <div>
+                <label
+                  htmlFor={uploadId}
+                  className="inline-flex h-12 cursor-pointer items-center gap-2 rounded-[10px] border border-primary px-5 text-[14px] font-medium text-primary"
+                >
+                  <ImagePlus className="size-5" strokeWidth={1.75} /> افزودن تصویر
+                </label>
+                <input
+                  id={uploadId}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? [])
+                    updateForm({
+                      images: [
+                        ...form.images,
+                        ...files.map((file, index) => ({
+                          id: `local-${Date.now()}-${index}`,
+                          url: URL.createObjectURL(file),
+                          is_primary: form.images.length === 0 && index === 0,
+                          sort_order: form.images.length + index,
+                          local: true,
+                        })),
+                      ],
+                    })
+                    event.target.value = ''
+                  }}
+                />
+              </div>
+            )}
           </section>
 
-          <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
+          <section className="flex flex-col gap-4 rounded-xl bg-surface p-5">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <h2 className="text-title-md text-text-primary">موقعیت مکانی</h2>
@@ -415,9 +446,11 @@ export default function StoreProfilePage() {
           </section>
         </div>
 
-        <div className="flex flex-col gap-5">
-          <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
-            <h2 className="text-title-md text-text-primary">{store.name || 'مشخصات فروشگاه'}</h2>
+        <div dir="rtl" className="flex flex-col gap-5">
+          <section className="flex flex-col gap-4 rounded-xl bg-surface p-5">
+            <h2 className="text-[18px] font-bold leading-7 text-text-primary">
+              {store.name || 'مشخصات فروشگاه'}
+            </h2>
             <Input
               label="نام فروشگاه"
               value={form.name}
@@ -477,8 +510,17 @@ export default function StoreProfilePage() {
       </div>
 
       {!isReadOnly && (
-        <div className="flex justify-start">
-          <Button type="submit" isLoading={saving} className="w-full sm:w-auto">
+        <div className="mx-auto grid h-12 w-full max-w-[1084px] grid-cols-2 gap-3">
+          <Button
+            type="button"
+            variant="destructive"
+            fullWidth
+            className="h-12! rounded-xl!"
+            onClick={() => navigate('/vendor/stores')}
+          >
+            لغو
+          </Button>
+          <Button type="submit" fullWidth isLoading={saving} className="h-12! rounded-xl!">
             ذخیره
           </Button>
         </div>

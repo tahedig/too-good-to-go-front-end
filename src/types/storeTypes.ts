@@ -133,7 +133,4 @@ export type VendorStoreForm = Pick<
   | 'location'
 >
 
-export type CreateVendorStoreRequest = Pick<
-  VendorStoreForm,
-  'name' | 'owner' | 'categoryId' | 'address'
->
+export type CreateVendorStoreRequest = VendorStoreForm
