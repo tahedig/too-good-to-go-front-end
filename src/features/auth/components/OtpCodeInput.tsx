@@ -6,9 +6,20 @@ type OtpCodeInputProps = {
   onChange: (value: string) => void
   error?: boolean
   disabled?: boolean
+  autoFocus?: boolean
+  placeholder?: string
+  inputClassName?: string
 }
 
-export default function OtpCodeInput({ value, onChange, error, disabled }: OtpCodeInputProps) {
+export default function OtpCodeInput({
+  value,
+  onChange,
+  error,
+  disabled,
+  autoFocus = false,
+  placeholder,
+  inputClassName,
+}: OtpCodeInputProps) {
   const refs = useRef<Array<HTMLInputElement | null>>([])
   const digits = Array.from({ length: 6 }, (_, index) => value[index] ?? '')
 
@@ -22,8 +33,8 @@ export default function OtpCodeInput({ value, onChange, error, disabled }: OtpCo
 
   function handleKeyDown(index: number, event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === 'Backspace' && !digits[index] && index > 0) refs.current[index - 1]?.focus()
-    if (event.key === 'ArrowLeft' && index < 5) refs.current[index + 1]?.focus()
-    if (event.key === 'ArrowRight' && index > 0) refs.current[index - 1]?.focus()
+    if (event.key === 'ArrowLeft' && index > 0) refs.current[index - 1]?.focus()
+    if (event.key === 'ArrowRight' && index < 5) refs.current[index + 1]?.focus()
   }
 
   function handlePaste(event: ClipboardEvent<HTMLInputElement>) {
@@ -46,6 +57,7 @@ export default function OtpCodeInput({ value, onChange, error, disabled }: OtpCo
           type="text"
           inputMode="numeric"
           autoComplete={index === 0 ? 'one-time-code' : 'off'}
+          autoFocus={autoFocus && index === 0}
           value={toPersianDigits(digit)}
           onChange={(event: ChangeEvent<HTMLInputElement>) =>
             updateDigit(index, event.target.value)
@@ -53,9 +65,12 @@ export default function OtpCodeInput({ value, onChange, error, disabled }: OtpCo
           onKeyDown={(event) => handleKeyDown(index, event)}
           onPaste={handlePaste}
           disabled={disabled}
+          placeholder={placeholder}
+          aria-invalid={error || undefined}
           aria-label={`رقم ${index + 1} کد تایید`}
           className={[
-            'h-13 min-w-0 rounded-md border bg-surface text-center text-title-md text-primary transition-colors focus:border-focus focus:outline-none',
+            'h-13 min-w-0 rounded-md border text-center text-title-md text-primary transition-colors focus:border-focus focus:shadow-[inset_0_0_0_2px_var(--color-focus)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-60',
+            inputClassName ?? 'bg-surface',
             error ? 'border-error' : 'border-border-input',
           ].join(' ')}
         />
