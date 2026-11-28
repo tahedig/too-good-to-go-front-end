@@ -1,26 +1,33 @@
 import { useEffect, useId, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, Heart } from 'lucide-react'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
+import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Modal } from '@/components/ui/Modal'
+import { VendorDatePicker } from '@/components/vendor/VendorDateTimePicker'
 import { VendorReservationCard } from '@/components/vendor/VendorReservationCard'
+import { VendorPickupDialog } from '@/components/vendor/VendorPickupDialog'
+import { ApiError } from '@/lib/api/client'
 import { formatPrice } from '@/lib/format'
 import { toPersianDigits } from '@/lib/digits'
 import { listVendorOrders } from '@/services/vendor/ordersService'
 import { listVendorReservations } from '@/services/vendor/reservationsService'
-import { formatPickupDate, isValidDate, localDate, STATUS_LABELS } from '@/lib/vendorReservations'
+import {
+  formatPickupDate,
+  isActiveReservation,
+  isValidDate,
+  localDate,
+  STATUS_LABELS,
+} from '@/lib/vendorReservations'
 import type { Reservation, ReservationStatus } from '@/lib/vendorReservations'
 
 type Filter = 'all' | ReservationStatus
 const FILTERS: { value: Filter; label: string; color: string }[] = [
   { value: 'all', label: 'همه', color: 'border-border-input' },
-  { value: 'pending_payment', label: 'در انتظار پرداخت', color: 'border-warning' },
-  { value: 'paid', label: 'پرداخت‌شده', color: 'border-focus' },
-  { value: 'ready', label: 'آماده تحویل', color: 'border-success' },
-  { value: 'completed', label: 'تحویل‌شده', color: 'border-success' },
-  { value: 'cancelled', label: 'لغوشده', color: 'border-error' },
-  { value: 'expired', label: 'منقضی‌شده', color: 'border-border-default' },
-  { value: 'no_show', label: 'عدم مراجعه', color: 'border-error' },
+  { value: 'active', label: STATUS_LABELS.active, color: 'border-focus' },
+  { value: 'ready_for_pickup', label: STATUS_LABELS.ready_for_pickup, color: 'border-success' },
+  { value: 'delivered', label: STATUS_LABELS.delivered, color: 'border-success' },
+  { value: 'cancelled', label: STATUS_LABELS.cancelled, color: 'border-error' },
 ]
 function FilterButtons({
   value,
@@ -51,66 +58,29 @@ function FilterButtons({
     </div>
   )
 }
-function ReviewDialog({
-  reservation,
-  onClose,
+function DateInput({
+  value,
+  onChange,
+  inline,
 }: {
-  reservation: Reservation | null
-  onClose: () => void
+  value: string
+  onChange: (date: string) => void
+  inline?: boolean
 }) {
-  return (
-    <Modal
-      open={!!reservation}
-      onClose={onClose}
-      title="بررسی تحویل"
-      footer={
-        <Button variant="secondary" fullWidth onClick={onClose}>
-          بستن
-        </Button>
-      }
-    >
-      {reservation && (
-        <div className="flex flex-col gap-3 text-body-md">
-          <p className="text-label-lg">{reservation.customer ?? `سفارش ${reservation.id}`}</p>
-          <p>
-            {reservation.product} · {toPersianDigits(reservation.quantity)} بسته
-          </p>
-          <p>فروشگاه: {reservation.storeName}</p>
-          {reservation.storeAddress && <p>نشانی: {reservation.storeAddress}</p>}
-          <p>تاریخ تحویل: {formatPickupDate(reservation.pickupDate)}</p>
-          <p>
-            ساعت تحویل:{' '}
-            <span dir="ltr">
-              {toPersianDigits(reservation.startTime)}–{toPersianDigits(reservation.endTime)}
-            </span>
-          </p>
-          <p>وضعیت: {STATUS_LABELS[reservation.status]}</p>
-          <p>مبلغ: {formatPrice(reservation.amount)}</p>
-          <p className="rounded-md bg-primary-subtle p-3 text-text-primary">
-            اطلاعات از API سفارش‌ها دریافت شده است. در مستندات فعلی، عملیاتی برای ثبت یا تأیید تحویل
-            وجود ندارد.
-          </p>
-        </div>
-      )}
-    </Modal>
-  )
-}
-function DateInput({ value, onChange }: { value: string; onChange: (date: string) => void }) {
   const id = useId()
   return (
     <div className="flex w-full flex-col gap-2">
       <label htmlFor={id} className="text-label-md">
         تاریخ تحویل
       </label>
-      <input
+      <VendorDatePicker
         id={id}
-        type="date"
-        min="0001-01-01"
-        max="9999-12-31"
-        required
+        label="تاریخ تحویل"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-13 w-full rounded-md border border-border-input bg-surface px-4 text-body-lg text-text-primary"
+        onChange={onChange}
+        referenceDate={localDate()}
+        allowPast
+        inline={inline}
       />
     </div>
   )
@@ -180,15 +150,11 @@ function ReservationsSummary({
   delivered,
   amount,
   active,
-  storeName,
-  storeAddress,
 }: {
   packs: number
   delivered: number
   amount: number
   active: number
-  storeName: string
-  storeAddress: string
 }) {
   const stats = [
     ['بسته‌های رزروشده', `${toPersianDigits(packs)} بسته`],
@@ -211,8 +177,7 @@ function ReservationsSummary({
       <div className="hidden items-center gap-4 rounded-lg border border-border-default bg-surface p-5 shadow-1 lg:flex">
         <div className="w-70 shrink-0">
           <p className="text-caption text-text-secondary">فروشگاه</p>
-          <p className="text-label-lg">{storeName}</p>
-          <p className="text-body-md text-text-secondary">{storeAddress}</p>
+          <p className="text-label-lg">همهٔ فروشگاه‌های شما</p>
         </div>
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-4 xl:grid-cols-4">
           {[
@@ -239,41 +204,50 @@ export default function ReservationsPages({
 }) {
   const [items, setItems] = useState<Reservation[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<number | null>(null)
   const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState<Filter>('all')
   const [selected, setSelected] = useState<Reservation | null>(null)
+  const [verified, setVerified] = useState(false)
+  const [noticeMessage, setNoticeMessage] = useState('')
   const [dateDialog, setDateDialog] = useState(false)
   const [draftDate, setDraftDate] = useState(localDate)
   const [params, setParams] = useSearchParams()
+  const { pathname, search } = useLocation()
   const rawDate = params.get('date') ?? ''
   const validDate = isValidDate(rawDate) ? rawDate : ''
   const selectedDate =
     view === 'daily' ? validDate || localDate() : view === 'reservations' ? validDate : ''
 
-  useEffect(() => {
-    let live = true
-    const load = view === 'reservations' ? listVendorReservations() : listVendorOrders()
+  function changeDate(value: string) {
+    const next = new URLSearchParams(params)
+    if (value) next.set('date', value)
+    else next.delete('date')
+    setParams(next, { preventScrollReset: true })
+  }
 
-    load
+  useEffect(() => {
+    const controller = new AbortController()
+    const { signal } = controller
+    const load = view === 'reservations' ? listVendorReservations : listVendorOrders
+
+    load(signal)
       .then((data) => {
-        if (live) setItems(data)
+        if (!signal.aborted) setItems(data)
       })
-      .catch(() => {
-        if (live) setError(true)
+      .catch((error: unknown) => {
+        if (!signal.aborted) setError(error instanceof ApiError ? error.status : 0)
       })
       .finally(() => {
-        if (live) setLoading(false)
+        if (!signal.aborted) setLoading(false)
       })
 
-    return () => {
-      live = false
-    }
+    return () => controller.abort()
   }, [reloadKey, view])
 
   function retryLoad() {
     setItems(null)
-    setError(false)
+    setError(null)
     setLoading(true)
     setReloadKey((key) => key + 1)
   }
@@ -281,34 +255,14 @@ export default function ReservationsPages({
   // Orders default to every date. Reservations can optionally be narrowed to a date.
   const scoped = (items ?? []).filter((item) => !selectedDate || item.pickupDate === selectedDate)
   const visible = scoped.filter((item) => filter === 'all' || item.status === filter)
-  const booked = scoped.filter((item) => item.status !== 'cancelled' && item.status !== 'expired')
+  const booked = scoped.filter(isActiveReservation)
   const packs = booked.reduce((sum, item) => sum + item.quantity, 0)
   const delivered = scoped
-    .filter((item) => item.status === 'completed')
+    .filter((item) => item.status === 'delivered')
     .reduce((sum, item) => sum + item.quantity, 0)
   const amount = booked.reduce((sum, item) => sum + item.amount, 0)
-  const active = scoped.filter(
-    (item) =>
-      item.status === 'pending_payment' || item.status === 'paid' || item.status === 'ready',
-  ).length
-  const stores = Array.from(
-    new Map(
-      (items ?? []).map((item) => [
-        `${item.storeName}\u0000${item.storeAddress}`,
-        { name: item.storeName, address: item.storeAddress },
-      ]),
-    ).values(),
-  )
-  const storeName =
-    stores.length === 1
-      ? stores[0].name
-      : stores.length > 1
-        ? `${toPersianDigits(stores.length)} فروشگاه`
-        : 'فروشگاه‌های شما'
-  const storeAddress =
-    stores.length === 1 ? stores[0].address : stores.length > 1 ? 'سفارش‌های چند فروشگاه' : ''
   const noDayOrders =
-    view === 'daily' && !loading && items !== null && !error && scoped.length === 0
+    view === 'daily' && !loading && items !== null && error === null && scoped.length === 0
   const filters = (
     <FilterButtons value={filter} onChange={setFilter} daily={view !== 'reservations'} />
   )
@@ -334,11 +288,11 @@ export default function ReservationsPages({
         <h1 className={view === 'daily' ? 'text-title-lg lg:text-title-xl' : 'text-title-xl'}>
           {title}
         </h1>
-        <p className="text-body-lg text-text-secondary">
-          {storeName}
-          {storeAddress && view !== 'daily' ? ` · ${storeAddress}` : ''}
-        </p>
+        <p className="text-body-lg text-text-secondary">فروشگاه‌های شما</p>
       </header>
+      {(verified || noticeMessage) && (
+        <InlineAlert tone="success">{noticeMessage || 'تحویل بسته ثبت شد.'}</InlineAlert>
+      )}
       {noDayOrders ? (
         <>
           <div className="flex flex-col gap-4 rounded-lg bg-surface p-4">
@@ -381,21 +335,16 @@ export default function ReservationsPages({
                 packs={packs}
                 delivered={delivered}
                 amount={amount}
-                active={active}
-                storeName={storeName}
-                storeAddress={storeAddress}
+                active={booked.length}
               />
               <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between lg:gap-4">
                 <div className="hidden lg:block">{filters}</div>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
                   <div className="w-full sm:w-70">
-                    <DateInput
-                      value={selectedDate}
-                      onChange={(value) => (value ? setParams({ date: value }) : setParams({}))}
-                    />
+                    <DateInput value={selectedDate} onChange={changeDate} />
                   </div>
                   {selectedDate && (
-                    <Button variant="secondary" size="md" onClick={() => setParams({})}>
+                    <Button variant="secondary" size="md" onClick={() => changeDate('')}>
                       همه تاریخ‌ها
                     </Button>
                   )}
@@ -427,15 +376,33 @@ export default function ReservationsPages({
                 {toPersianDigits(visible.length)} رزرو
               </span>
             </div>
-            {error ? (
+            {error !== null ? (
               <div
                 role="alert"
                 className="flex flex-col items-start gap-4 rounded-lg bg-surface p-5"
               >
-                <p>دریافت اطلاعات ممکن نیست.</p>
-                <Button variant="secondary" size="md" onClick={retryLoad}>
-                  تلاش دوباره
-                </Button>
+                <p>
+                  {error === 401
+                    ? 'برای دیدن رزروها دوباره وارد حساب فروشنده شوید.'
+                    : error === 403
+                      ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+                      : error === 404
+                        ? 'دریافت رزروها به نسخهٔ جدید API سفارشات فروشنده نیاز دارد.'
+                        : 'دریافت رزروها ممکن نیست.'}
+                </p>
+                {error === 401 || error === 403 ? (
+                  <ButtonLink
+                    to={`/vendor/login?returnTo=${encodeURIComponent(pathname + search)}`}
+                    variant="secondary"
+                    size="md"
+                  >
+                    ورود با حساب فروشنده
+                  </ButtonLink>
+                ) : (
+                  <Button variant="secondary" size="md" onClick={retryLoad}>
+                    تلاش دوباره
+                  </Button>
+                )}
               </div>
             ) : loading || !items ? (
               <p role="status" className="rounded-lg bg-surface p-5">
@@ -468,19 +435,38 @@ export default function ReservationsPages({
           )}
         </>
       )}
-      <ReviewDialog reservation={selected} onClose={() => setSelected(null)} />
+      <VendorPickupDialog
+        reservation={selected}
+        onClose={() => setSelected(null)}
+        onVerified={() => {
+          setSelected(null)
+          setNoticeMessage('')
+          setVerified(true)
+          retryLoad()
+        }}
+        onStatusUpdated={(nextStatus) => {
+          setSelected(null)
+          setVerified(false)
+          setNoticeMessage(
+            nextStatus === 'cancelled'
+              ? 'سفارش لغو شد.'
+              : 'وضعیت سفارش به «آماده تحویل» تغییر کرد.',
+          )
+          retryLoad()
+        }}
+      />
       <Modal open={dateDialog} onClose={() => setDateDialog(false)} title="تغییر تاریخ">
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
             event.preventDefault()
             if (!draftDate) return
-            setParams({ date: draftDate })
+            changeDate(draftDate)
             setFilter('all')
             setDateDialog(false)
           }}
         >
-          <DateInput value={draftDate} onChange={setDraftDate} />
+          <DateInput value={draftDate} onChange={setDraftDate} inline />
           <Button type="submit" fullWidth disabled={!draftDate}>
             نمایش سفارشات روز
           </Button>

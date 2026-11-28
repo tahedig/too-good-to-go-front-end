@@ -78,6 +78,11 @@ export const router = createBrowserRouter([
         element: <VendorDashboardPage />,
       },
       {
+        path: 'dashboard',
+        loader: ({ request }) =>
+          replace(`/vendor${new URL(request.url).search}`),
+      },
+      {
         path: 'products',
         element: <VendorProductsPage />,
       },
