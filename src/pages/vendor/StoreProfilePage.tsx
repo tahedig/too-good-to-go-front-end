@@ -6,7 +6,8 @@ import { InlineAlert } from '@/components/ui/InlineAlert'
 import { Input } from '@/components/ui/Input'
 import { Select } from '@/components/ui/Select'
 import { TextArea } from '@/components/ui/TextArea'
-import { storeService } from '@/services/storeService'
+import { DEFAULT_STORE_CATEGORIES, storeService } from '@/services/storeService'
+import type { StoreCategoryOption } from '@/services/storeService'
 import type {
   OpeningDay,
   StoreLocationDto,
@@ -16,29 +17,32 @@ import type {
   VendorStoreImage,
 } from '@/types/storeTypes'
 
-const CATEGORY_OPTIONS = [
-  { value: '1', label: 'رستوران' },
-  { value: '2', label: 'فست‌فود' },
-  { value: '3', label: 'نانوایی' },
-  { value: '4', label: 'قنادی' },
-  { value: '5', label: 'کافه' },
-  { value: '6', label: 'سوپرمارکت' },
-  { value: '7', label: 'میوه و تره‌بار' },
-]
-
-const MAP_BOUNDS = { minLatitude: 35.62, maxLatitude: 35.75, minLongitude: 51.3, maxLongitude: 51.48 }
+const MAP_BOUNDS = {
+  minLatitude: 35.62,
+  maxLatitude: 35.75,
+  minLongitude: 51.3,
+  maxLongitude: 51.48,
+}
 
 function mapPosition(location: StoreLocationDto) {
   return {
     x: Math.max(
       0,
-      Math.min(100, ((location.longitude - MAP_BOUNDS.minLongitude) /
-        (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude)) * 100),
+      Math.min(
+        100,
+        ((location.longitude - MAP_BOUNDS.minLongitude) /
+          (MAP_BOUNDS.maxLongitude - MAP_BOUNDS.minLongitude)) *
+          100,
+      ),
     ),
     y: Math.max(
       0,
-      Math.min(100, ((MAP_BOUNDS.maxLatitude - location.latitude) /
-        (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude)) * 100),
+      Math.min(
+        100,
+        ((MAP_BOUNDS.maxLatitude - location.latitude) /
+          (MAP_BOUNDS.maxLatitude - MAP_BOUNDS.minLatitude)) *
+          100,
+      ),
     ),
   }
 }
@@ -117,7 +121,10 @@ function HoursEditor({
       </div>
       <div className="flex flex-col divide-y divide-border-default">
         {days.map((day, index) => (
-          <div key={day.day} className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center">
+          <div
+            key={day.day}
+            className="grid gap-3 py-3 sm:grid-cols-[minmax(96px,1fr)_auto_auto] sm:items-center"
+          >
             <label className="flex items-center gap-3 text-label-md text-text-primary">
               <input
                 type="checkbox"
@@ -163,9 +170,9 @@ function HoursEditor({
   )
 }
 
-export default function StoreProfilePage({ storeId }: { storeId?: string }) {
+export default function StoreProfilePage() {
   const params = useParams()
-  const id = storeId ?? params.id ?? ''
+  const id = params.id ?? ''
   const navigate = useNavigate()
   const [profile, setProfile] = useState<{
     id: string
@@ -178,14 +185,15 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [selectingLocation, setSelectingLocation] = useState(false)
+  const [categories, setCategories] = useState<StoreCategoryOption[]>(DEFAULT_STORE_CATEGORIES)
   const loading = !profile || profile.id !== id
 
   useEffect(() => {
-    let active = true
+    const controller = new AbortController()
     storeService
-      .get(id)
+      .get(id, controller.signal)
       .then(({ store, source }) => {
-        if (!active) return
+        if (controller.signal.aborted) return
         const form: VendorStoreForm = {
           name: store.name,
           owner: store.owner,
@@ -208,17 +216,23 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
         })
       })
       .catch((reason: unknown) => {
-        if (active)
+        if (!controller.signal.aborted)
           setProfile({
             id,
-            error:
-              reason instanceof Error ? reason.message : 'دریافت اطلاعات فروشگاه ممکن نیست.',
+            error: reason instanceof Error ? reason.message : 'دریافت اطلاعات فروشگاه ممکن نیست.',
           })
       })
-    return () => {
-      active = false
-    }
+    return () => controller.abort()
   }, [id])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    storeService
+      .listCategories(controller.signal)
+      .then(setCategories)
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
 
   function updateForm(patch: Partial<VendorStoreForm>) {
     setProfile((current) =>
@@ -234,10 +248,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
     setSaving(true)
     setError('')
     try {
-      if (profile.source === 'new-request') {
-        await storeService.createRequest(profile.form)
-        navigate('/vendor/stores', { state: { message: 'درخواست ثبت فروشگاه ارسال شد.' } })
-      } else if (profile.source === 'store') {
+      if (profile.source === 'store') {
         await storeService.update(id, profile.form, profile.originalImages ?? [])
         navigate('/vendor/stores', { state: { message: 'مشخصات فروشگاه ذخیره شد.' } })
       }
@@ -258,7 +269,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
   if (!profile?.store || !profile.form)
     return (
       <div className="flex flex-col gap-4 p-4 lg:p-8">
-        <InlineAlert tone="error">{error || profile?.error || 'مشخصات فروشگاه در دسترس نیست.'}</InlineAlert>
+        <InlineAlert tone="error">
+          {error || profile?.error || 'مشخصات فروشگاه در دسترس نیست.'}
+        </InlineAlert>
         <Link to="/vendor/stores" className="text-label-md text-primary">
           بازگشت به فروشگاه‌ها
         </Link>
@@ -267,29 +280,24 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
   const { store, form } = profile
   const source = profile.source ?? 'request'
-  const isNewRequest = source === 'new-request'
   const isReadOnly = source === 'request'
 
   return (
     <form onSubmit={save} className="flex flex-col gap-5 p-4 lg:px-20 lg:py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-title-xl text-text-primary lg:text-display-xl">
-          {isNewRequest ? 'ثبت فروشگاه' : 'مشخصات فروشگاه'}
-        </h1>
+        <h1 className="text-title-xl text-text-primary lg:text-display-xl">مشخصات فروشگاه</h1>
         <div className="flex items-center gap-3">
-          {!isNewRequest && (
-            <span
-              className={`rounded-full px-3 py-1 text-caption font-semibold ${
-                store.status === 'approved'
-                  ? 'bg-success-subtle text-success'
-                  : store.status === 'rejected' || store.status === 'suspended'
-                    ? 'bg-error-subtle text-error'
-                    : 'bg-warning-subtle text-warning'
-              }`}
-            >
-              {store.statusLabel}
-            </span>
-          )}
+          <span
+            className={`rounded-full px-3 py-1 text-caption font-semibold ${
+              store.status === 'approved'
+                ? 'bg-success-subtle text-success'
+                : store.status === 'rejected' || store.status === 'suspended'
+                  ? 'bg-error-subtle text-error'
+                  : 'bg-warning-subtle text-warning'
+            }`}
+          >
+            {store.statusLabel}
+          </span>
           <Link
             to="/vendor/stores"
             className="flex h-11 items-center gap-2 rounded-md border border-border-default bg-surface px-4 text-label-md text-text-primary hover:bg-surface-secondary"
@@ -301,12 +309,6 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
       </div>
 
       {error && <InlineAlert tone="error">{error}</InlineAlert>}
-      {isNewRequest && (
-        <InlineAlert tone="info">
-          برای ثبت درخواست، نام فروشگاه، دسته‌بندی، مالک و آدرس به سرور ارسال می‌شوند. سایر
-          مشخصات پس از تأیید فروشگاه قابل ویرایش هستند.
-        </InlineAlert>
-      )}
       {isReadOnly && (
         <InlineAlert tone="info">
           درخواست ثبت‌شده فقط برای مشاهده است و از این بخش قابل ویرایش نیست.
@@ -319,7 +321,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="text-title-md text-text-primary">تصویر فروشگاه</h2>
-                <p className="mt-1 text-body-md text-text-secondary">تصاویر فروشگاه را انتخاب کنید.</p>
+                <p className="mt-1 text-body-md text-text-secondary">
+                  تصاویر فروشگاه را انتخاب کنید.
+                </p>
               </div>
               <span className="text-caption text-text-secondary">{form.images.length} تصویر</span>
             </div>
@@ -396,7 +400,9 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
               </Button>
             </div>
             {selectingLocation && (
-              <p className="text-caption text-primary">برای ثبت موقعیت، نقطهٔ موردنظر را روی نقشه بزنید.</p>
+              <p className="text-caption text-primary">
+                برای ثبت موقعیت، نقطهٔ موردنظر را روی نقشه بزنید.
+              </p>
             )}
             <MapPreview
               location={form.location}
@@ -411,9 +417,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
         <div className="flex flex-col gap-5">
           <section className="flex flex-col gap-4 rounded-lg bg-surface p-4 lg:p-5">
-            <h2 className="text-title-md text-text-primary">
-              {store.name || 'مشخصات فروشگاه'}
-            </h2>
+            <h2 className="text-title-md text-text-primary">{store.name || 'مشخصات فروشگاه'}</h2>
             <Input
               label="نام فروشگاه"
               value={form.name}
@@ -425,16 +429,13 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
               label="دسته‌بندی فعالیت"
               value={form.categoryId === null ? '' : String(form.categoryId)}
               onChange={(event) => updateForm({ categoryId: Number(event.target.value) })}
-              options={CATEGORY_OPTIONS}
+              options={categories.map((category) => ({
+                value: String(category.id),
+                label: category.name,
+              }))}
               disabled={isReadOnly}
             />
-            <Input
-              label="مالک / شخص رابط"
-              value={form.owner}
-              disabled={!isNewRequest}
-              onChange={(event) => updateForm({ owner: event.target.value })}
-              required={isNewRequest}
-            />
+            <Input label="مالک / شخص رابط" value={form.owner} disabled />
             <Input
               label="شماره تماس"
               type="tel"
@@ -469,9 +470,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
 
           <HoursEditor
             days={form.openingHours}
-            onChange={(openingHours) =>
-              updateForm({ openingHours, workingHoursConfigured: true })
-            }
+            onChange={(openingHours) => updateForm({ openingHours, workingHoursConfigured: true })}
             disabled={source !== 'store'}
           />
         </div>
@@ -480,7 +479,7 @@ export default function StoreProfilePage({ storeId }: { storeId?: string }) {
       {!isReadOnly && (
         <div className="flex justify-start">
           <Button type="submit" isLoading={saving} className="w-full sm:w-auto">
-            {isNewRequest ? 'ثبت درخواست' : 'ذخیره'}
+            ذخیره
           </Button>
         </div>
       )}

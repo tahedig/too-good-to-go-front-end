@@ -82,7 +82,7 @@ export type CreateStoreRequestDto = {
 }
 
 export type StoreStatus = 'approved' | 'pending' | 'rejected' | 'suspended'
-export type StoreProfileSource = 'store' | 'request' | 'new-request'
+export type StoreProfileSource = 'store' | 'request'
 
 export type OpeningDay = {
   dayOfWeek: number
@@ -102,7 +102,7 @@ export type VendorStore = {
   branch: string
   status: StoreStatus
   statusLabel: string
-  source: Exclude<StoreProfileSource, 'new-request'>
+  source: StoreProfileSource
   owner: string
   category: string
   categoryId: number | null
@@ -131,4 +131,9 @@ export type VendorStoreForm = Pick<
   | 'openingHours'
   | 'workingHoursConfigured'
   | 'location'
+>
+
+export type CreateVendorStoreRequest = Pick<
+  VendorStoreForm,
+  'name' | 'owner' | 'categoryId' | 'address'
 >

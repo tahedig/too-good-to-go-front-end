@@ -1,6 +1,8 @@
 import { ApiError, apiRequest } from '@/lib/api/client'
+import { env } from '@/config/env'
 import type {
   CreateStoreRequestDto,
+  CreateVendorStoreRequest,
   OpeningDay,
   StoreImageDto,
   StoreListResponseDto,
@@ -55,6 +57,79 @@ const CATEGORY_IDS: Record<string, number> = Object.fromEntries(
 CATEGORY_IDS['قنادی'] = 2
 CATEGORY_IDS['شیرینی‌فروشی'] = 2
 CATEGORY_IDS['میوه و تره‌بار'] = 17
+const usePreviewStoreApi = import.meta.env.DEV && env.useMockApi
+
+const PREVIEW_HOURS: OpeningDay[] = DAYS.map((day, dayOfWeek) => ({
+  dayOfWeek,
+  day,
+  enabled: dayOfWeek < 5,
+  opensAt: '08:00',
+  closesAt: '18:00',
+}))
+
+const previewStores: VendorStore[] = [
+  {
+    id: 'preview-store-1',
+    name: 'نان صبحگاهی',
+    branch: 'شعبه ولیعصر',
+    status: 'approved',
+    statusLabel: 'تأییدشده',
+    source: 'store',
+    owner: 'آیدا کریمی',
+    category: 'نانوایی',
+    categoryId: 1,
+    phone: '09124550120',
+    address: 'تهران، خیابان ولیعصر، پلاک ۱۲',
+    description: 'نانوایی محلی با نان‌های تازه و شیرینی‌های پخت روز.',
+    pickupInstructions: 'تحویل از پیشخوان نانوایی انجام می‌شود.',
+    registeredAt: '2026-10-19T08:00:00Z',
+    productsCount: 3,
+    images: [
+      {
+        id: 'preview-image-1',
+        url: '/vendor-bakery.jpg',
+        is_primary: true,
+        sort_order: 0,
+      },
+    ],
+    openingHours: PREVIEW_HOURS,
+    workingHoursConfigured: true,
+    location: DEFAULT_LOCATION,
+  },
+]
+
+let previewRequests: VendorStore[] = [
+  {
+    id: 'preview-request-1',
+    name: 'کافه میدان',
+    branch: '',
+    status: 'pending',
+    statusLabel: 'در انتظار بررسی',
+    source: 'request',
+    owner: 'رضا احمدی',
+    category: 'کافه',
+    categoryId: 3,
+    phone: '',
+    address: 'تهران، میدان هفت تیر',
+    description: '',
+    pickupInstructions: '',
+    registeredAt: '2026-11-20T10:00:00Z',
+    productsCount: 0,
+    images: [],
+    openingHours: PREVIEW_HOURS.map((day) => ({ ...day, enabled: false })),
+    workingHoursConfigured: false,
+    location: DEFAULT_LOCATION,
+  },
+]
+
+function cloneStore(store: VendorStore): VendorStore {
+  return {
+    ...store,
+    images: store.images.map((image) => ({ ...image })),
+    openingHours: store.openingHours.map((day) => ({ ...day })),
+    location: { ...store.location },
+  }
+}
 
 function categoryName(id?: number, name?: string) {
   if (name) return name
@@ -161,30 +236,6 @@ function mapRequest(dto: StoreRequestResponseDto): VendorStore {
   }
 }
 
-function newRequestDraft(): VendorStore {
-  return {
-    id: 'new',
-    name: '',
-    branch: '',
-    status: 'pending',
-    statusLabel: 'در انتظار بررسی',
-    source: 'request',
-    owner: '',
-    category: 'نانوایی',
-    categoryId: CATEGORY_IDS['نانوایی'],
-    phone: '',
-    address: '',
-    description: '',
-    pickupInstructions: '',
-    registeredAt: '',
-    productsCount: 0,
-    images: [],
-    openingHours: mapHours([]),
-    workingHoursConfigured: false,
-    location: DEFAULT_LOCATION,
-  }
-}
-
 function mapFormToUpdate(form: VendorStoreForm): UpdateStoreRequestDto {
   const payload: UpdateStoreRequestDto = {
     name: form.name,
@@ -253,6 +304,7 @@ type ActiveStoreFallbackDto = {
 }
 
 async function listCategories(signal?: AbortSignal): Promise<StoreCategoryOption[]> {
+  if (usePreviewStoreApi) return DEFAULT_STORE_CATEGORIES
   try {
     const response = await apiRequest<HomeCategoriesDto>('/home/categories', { signal })
     if (Array.isArray(response?.items) && response.items.length > 0) {
@@ -378,6 +430,8 @@ export const storeService = {
   listRequests,
 
   async list(signal?: AbortSignal): Promise<VendorStore[]> {
+    if (usePreviewStoreApi) return [...previewRequests, ...previewStores].map(cloneStore)
+
     const [storesResult, requestsResult] = await Promise.allSettled([
       listStores(signal),
       listRequests(signal),
@@ -406,11 +460,20 @@ export const storeService = {
     throw new ApiError('سرویس فروشگاه‌های فروشنده در نسخهٔ فعلی سرور فعال نیست.', 404)
   },
 
-  async get(id: string): Promise<{ store: VendorStore; source: StoreProfileSource }> {
-    if (id === 'new') return { store: newRequestDraft(), source: 'new-request' }
+  async get(
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{ store: VendorStore; source: StoreProfileSource }> {
+    if (usePreviewStoreApi) {
+      const store = [...previewStores, ...previewRequests].find((item) => item.id === id)
+      if (!store) throw new ApiError('فروشگاه آزمایشی پیدا نشد.', 404)
+      return { store: cloneStore(store), source: store.source }
+    }
 
     try {
-      const store = await apiRequest<StoreResponseDto>(`/vendor/stores/${encodeURIComponent(id)}`)
+      const store = await apiRequest<StoreResponseDto>(`/vendor/stores/${encodeURIComponent(id)}`, {
+        signal,
+      })
       return { store: mapStore(store), source: 'store' }
     } catch (error) {
       if (!(error instanceof ApiError) || error.status !== 404) throw error
@@ -418,11 +481,33 @@ export const storeService = {
 
     const request = await apiRequest<StoreRequestResponseDto>(
       `/vendor/store-requests/${encodeURIComponent(id)}`,
+      { signal },
     )
     return { store: mapRequest(request), source: 'request' }
   },
 
-  async createRequest(form: VendorStoreForm): Promise<StoreRequestResponseDto> {
+  async createRequest(form: CreateVendorStoreRequest): Promise<StoreRequestResponseDto> {
+    if (usePreviewStoreApi) {
+      const createdAt = new Date().toISOString()
+      const publicId = `preview-request-${Date.now()}`
+      const category = DEFAULT_STORE_CATEGORIES.find((item) => item.id === form.categoryId)
+      const response: StoreRequestResponseDto = {
+        public_id: publicId,
+        store_name: form.name,
+        category_id: form.categoryId ?? undefined,
+        category_name: category?.name,
+        owner_name: form.owner,
+        date: createdAt.slice(0, 10),
+        address: form.address,
+        status: 'pending_review',
+        status_fa: 'در انتظار بررسی',
+        notice: 'این شعبه پس از تأیید، امکان انتشار محصول خواهد داشت.',
+        created_at: createdAt,
+      }
+      previewRequests = [mapRequest(response), ...previewRequests]
+      return response
+    }
+
     const payload: CreateStoreRequestDto = {
       store_name: form.name,
       owner_name: form.owner,
@@ -440,6 +525,47 @@ export const storeService = {
     form: VendorStoreForm,
     originalImages: VendorStoreImage[],
   ): Promise<StoreResponseDto> {
+    if (usePreviewStoreApi) {
+      const index = previewStores.findIndex((store) => store.id === id)
+      if (index < 0) throw new ApiError('فروشگاه آزمایشی پیدا نشد.', 404)
+      const category = DEFAULT_STORE_CATEGORIES.find((item) => item.id === form.categoryId)
+      previewStores[index] = {
+        ...previewStores[index],
+        ...form,
+        category: category?.name ?? previewStores[index].category,
+      }
+      const updated = previewStores[index]
+      return {
+        public_id: updated.id,
+        name: updated.name,
+        category_id: updated.categoryId ?? undefined,
+        category_name: updated.category,
+        owner_name: updated.owner,
+        phone: updated.phone,
+        biography: updated.description,
+        pickup_address: updated.address,
+        pickup_instructions: updated.pickupInstructions,
+        location: updated.location,
+        working_hours: updated.openingHours.map((hour) => ({
+          day_of_week: hour.dayOfWeek,
+          day_name: ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'][
+            hour.dayOfWeek
+          ],
+          day_name_fa: hour.day,
+          open_time: hour.opensAt,
+          close_time: hour.closesAt,
+          is_closed: !hour.enabled,
+        })),
+        images: updated.images,
+        cover_image_url: updated.images[0]?.url ?? null,
+        active_products_count: updated.productsCount,
+        approval_status: 'approved',
+        availability_status: 'available',
+        created_at: updated.registeredAt,
+        updated_at: new Date().toISOString(),
+      }
+    }
+
     if (form.images.some((image) => image.local || image.url.startsWith('data:'))) {
       throw new Error('بارگذاری تصویر در API فروشگاه هنوز پشتیبانی نمی‌شود.')
     }

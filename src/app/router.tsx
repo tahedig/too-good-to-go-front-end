@@ -11,6 +11,7 @@ import VendorDashboardPage from '@/pages/vendor/DashboardPage'
 import VendorProductsPage from '@/pages/vendor/ProductsPage'
 import VendorStoresPage from '@/pages/vendor/StoresPage'
 import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
+import AddStorePage from '@/pages/vendor/AddStorePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
 import VendorAccountPage from '@/pages/vendor/AccountPage'
@@ -79,8 +80,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'dashboard',
-        loader: ({ request }) =>
-          replace(`/vendor${new URL(request.url).search}`),
+        loader: ({ request }) => replace(`/vendor${new URL(request.url).search}`),
       },
       {
         path: 'products',
@@ -112,7 +112,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'stores/new',
-        element: <VendorStoreProfilePage storeId="new" />,
+        element: <AddStorePage />,
       },
       {
         path: 'stores/:id',

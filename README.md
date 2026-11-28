@@ -15,6 +15,35 @@ React + TypeScript + Vite + Tailwind CSS v4.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier
 
+## Testing vendor store pages locally
+
+The vendor login page is available at `/vendor/login`. For a real backend login, run the backend
+in development with `OTP_EXPOSE_CODE=true` and include the test phone in `VENDOR_PHONES`. The OTP
+returned by the backend is shown on the login page in a development build.
+
+When the backend store-management routes are not available yet, create `.env.local` in this
+frontend project with:
+
+```env
+VITE_USE_MOCK_API=true
+```
+
+Restart Vite, then open `http://localhost:5173/vendor/stores`. This development-only mode keeps the
+same frontend routes and supplies sample stores, a pending request, editing, and add-store behavior
+without sending requests to the backend. Set the flag to `false` or remove `.env.local` to test the
+real API again.
+
+Run the vendor store integration tests with:
+
+```sh
+node --test tests/vendor-stores.test.mjs
+node --test tests/vendor-store-preview.test.mjs
+```
+
+These tests mock HTTP responses and verify endpoint paths, authorization headers, response mapping,
+category loading, the create-request JSON payload, and the no-backend preview flow. They do not
+require a running backend or a browser.
+
 ## Containers
 
 Build and run the frontend locally:
