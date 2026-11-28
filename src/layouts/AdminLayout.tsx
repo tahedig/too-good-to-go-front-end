@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useMatches } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  ArrowRight,
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
+  LogIn,
+  LogOut,
   Menu,
   PackageCheck,
   Settings,
@@ -16,19 +17,78 @@ import {
   X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { adminAuthApi } from '@/features/auth/api/adminAuthApi'
 
-type NavItem = { to: string; label: string; icon: LucideIcon; end?: boolean }
+type NavItem = {
+  to: string
+  label: string
+  icon: LucideIcon
+  matches: (pathname: string) => boolean
+}
+
+function normalizePathname(pathname: string): string {
+  return pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
+}
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/admin', label: 'داشبورد', icon: LayoutDashboard, end: true },
-  { to: '/admin/store-requests', label: 'درخواست فروشگاه‌ها', icon: PackageCheck },
-  { to: '/admin/stores', label: 'فروشگاه‌ها', icon: Store },
-  { to: '/admin/customers', label: 'مشتریان', icon: UsersRound },
-  { to: '/admin/products', label: 'محصولات', icon: ShoppingBag },
-  { to: '/admin/orders', label: 'سفارشات', icon: PackageCheck },
-  { to: '/admin/finance', label: 'مالی', icon: Wallet },
-  { to: '/admin/support', label: 'پشتیبانی', icon: CircleHelp },
-  { to: '/admin/settings', label: 'تنظیمات', icon: Settings },
+  {
+    to: '/admin',
+    label: 'داشبورد',
+    icon: LayoutDashboard,
+    matches: (pathname) => pathname === '/admin' || pathname === '/admin/dashboard',
+  },
+  {
+    to: '/admin/store-requests',
+    label: 'درخواست فروشگاه‌ها',
+    icon: PackageCheck,
+    matches: (pathname) =>
+      pathname === '/admin/store-requests' || pathname.startsWith('/admin/store-requests/'),
+  },
+  {
+    to: '/admin/stores',
+    label: 'فروشگاه‌ها',
+    icon: Store,
+    matches: (pathname) => pathname === '/admin/stores' || pathname.startsWith('/admin/stores/'),
+  },
+  {
+    to: '/admin/customers',
+    label: 'مشتریان',
+    icon: UsersRound,
+    matches: (pathname) =>
+      pathname === '/admin/customers' || pathname.startsWith('/admin/customers/'),
+  },
+  {
+    to: '/admin/products',
+    label: 'محصولات',
+    icon: ShoppingBag,
+    matches: (pathname) =>
+      pathname === '/admin/products' || pathname.startsWith('/admin/products/'),
+  },
+  {
+    to: '/admin/orders',
+    label: 'سفارشات',
+    icon: PackageCheck,
+    matches: (pathname) => pathname === '/admin/orders' || pathname.startsWith('/admin/orders/'),
+  },
+  {
+    to: '/admin/finance',
+    label: 'مالی',
+    icon: Wallet,
+    matches: (pathname) => pathname === '/admin/finance' || pathname.startsWith('/admin/finance/'),
+  },
+  {
+    to: '/admin/support',
+    label: 'پشتیبانی',
+    icon: CircleHelp,
+    matches: (pathname) => pathname === '/admin/support' || pathname.startsWith('/admin/support/'),
+  },
+  {
+    to: '/admin/settings',
+    label: 'تنظیمات',
+    icon: Settings,
+    matches: (pathname) =>
+      pathname === '/admin/settings' || pathname.startsWith('/admin/settings/'),
+  },
 ]
 
 const FINANCE_ITEMS = [
@@ -40,6 +100,31 @@ const FINANCE_ITEMS = [
   ['settlements', 'تسویه‌ها'],
   ['reports', 'گزارش مالی'],
 ] as const
+
+function getAdminPageTitle(pathname: string): string {
+  const normalizedPathname = normalizePathname(pathname)
+  if (normalizedPathname.startsWith('/admin/store-requests/')) {
+    return 'بررسی درخواست'
+  }
+  if (normalizedPathname.startsWith('/admin/stores/')) {
+    return 'جزئیات فروشگاه'
+  }
+  if (normalizedPathname.startsWith('/admin/finance')) {
+    const section = normalizedPathname.split('/')[3]
+    const sub = FINANCE_ITEMS.find(([key]) => key === section)?.[1]
+    return sub ? `مالی · ${sub}` : 'مالی'
+  }
+  const match = NAV_ITEMS.find((item) => item.matches(normalizedPathname))
+  return match?.label ?? 'داشبورد'
+}
+
+function formatTodayPersianDate(): string {
+  return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date())
+}
 
 function BrandRow({ onClose }: { onClose?: () => void }) {
   return (
@@ -63,12 +148,14 @@ function BrandRow({ onClose }: { onClose?: () => void }) {
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const { pathname } = useLocation()
-  const onFinanceRoute = pathname.startsWith('/admin/finance')
+  const normalizedPathname = normalizePathname(pathname)
+  const onFinanceRoute =
+    normalizedPathname === '/admin/finance' || normalizedPathname.startsWith('/admin/finance/')
   const [financeExpanded, setFinanceExpanded] = useState(onFinanceRoute)
 
   return (
     <nav aria-label="ناوبری مدیریت" className="flex min-h-0 flex-col gap-1 overflow-y-auto">
-      {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => {
+      {NAV_ITEMS.map(({ to, label, icon: Icon, matches }) => {
         if (to === '/admin/finance') {
           return (
             <div key={to}>
@@ -105,45 +192,67 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           )
         }
 
+        const active = matches(normalizedPathname)
         return (
-          <NavLink
+          <Link
             key={to}
             to={to}
-            end={end}
+            aria-current={active ? 'page' : undefined}
             onClick={onNavigate}
-            className={({ isActive }) =>
-              `flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold transition-colors ${isActive ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`
-            }
+            className={`flex h-12 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold transition-colors ${active ? 'bg-surface-sage' : 'hover:bg-surface-secondary'}`}
           >
             <Icon className="size-6 shrink-0" strokeWidth={1.75} />
             <span className="flex-1 text-start">{label}</span>
-          </NavLink>
+          </Link>
         )
       })}
     </nav>
   )
 }
 
-export type AdminRouteHandle = { title?: string; backTo?: string }
+function AdminSessionAction({ onNavigate }: { onNavigate?: () => void }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const session = adminAuthApi.getStoredSession()
+  const returnTo = encodeURIComponent(location.pathname + location.search)
 
-const todayLabel = new Intl.DateTimeFormat('fa-IR', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-})
+  if (!session?.accessToken) {
+    return (
+      <div className="mt-auto border-t border-border-default pt-3">
+        <Link
+          to={`/admin/login?returnTo=${returnTo}`}
+          onClick={onNavigate}
+          className="flex h-11 items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-primary transition-colors hover:bg-surface-secondary"
+        >
+          <LogIn className="size-5 shrink-0" strokeWidth={1.75} />
+          <span>ورود به پنل مدیریت</span>
+        </Link>
+      </div>
+    )
+  }
 
-function useRouteHeader() {
-  const matches = useMatches()
-  const handle = [...matches]
-    .reverse()
-    .map((match) => match.handle as AdminRouteHandle | undefined)
-    .find((item) => item?.title)
-  return { title: handle?.title ?? 'مدیریت', backTo: handle?.backTo }
+  return (
+    <div className="mt-auto border-t border-border-default pt-3">
+      <button
+        type="button"
+        onClick={() => {
+          adminAuthApi.logout()
+          onNavigate?.()
+          void navigate('/admin/login', { replace: true })
+        }}
+        className="flex h-11 w-full items-center gap-3 rounded-[12px] px-3 text-label-md font-semibold text-error transition-colors hover:bg-error-subtle"
+      >
+        <LogOut className="size-5 shrink-0" strokeWidth={1.75} />
+        <span>خروج از حساب</span>
+      </button>
+    </div>
+  )
 }
 
 export default function AdminLayout() {
-  const { title, backTo } = useRouteHeader()
-  const today = todayLabel.format(new Date())
+  const { pathname } = useLocation()
+  const pageTitle = getAdminPageTitle(pathname)
+  const todayDate = formatTodayPersianDate()
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -184,45 +293,53 @@ export default function AdminLayout() {
         <div className="flex h-full flex-col gap-1 p-4">
           <BrandRow />
           <NavList />
+          <AdminSessionAction />
         </div>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-border-default bg-background px-4 py-2.5 sm:px-6 lg:px-8">
-          <button
-            ref={menuButtonRef}
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label="باز کردن منو"
-            aria-expanded={menuOpen}
-            className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface-secondary hover:bg-surface-sage lg:hidden"
-          >
-            <Menu className="size-6" strokeWidth={1.75} />
-          </button>
-          <p className="min-w-0 flex-1 truncate text-title-md">{title}</p>
-          {backTo && (
-            <Link
-              to={backTo}
-              aria-label="بازگشت"
-              className="grid size-11 shrink-0 place-items-center rounded-md bg-surface text-primary shadow-1 hover:bg-surface-secondary"
+        <header className="sticky top-0 z-30 flex h-16 items-center border-b border-border-default bg-background px-4 lg:hidden">
+          <div className="flex items-center gap-3">
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="باز کردن منو"
+              aria-expanded={menuOpen}
+              className="grid size-11 shrink-0 place-items-center rounded-md border border-border-default bg-surface-secondary text-primary transition-colors hover:bg-surface"
             >
-              <ArrowRight className="size-6" strokeWidth={1.75} />
-            </Link>
-          )}
-          <div className="hidden shrink-0 items-center gap-3 lg:flex">
-            <span
-              aria-hidden="true"
-              className="grid size-10 place-items-center rounded-md bg-primary text-label-lg text-on-primary"
-            >
-              ت
-            </span>
-            <div className="flex flex-col">
-              <span className="text-label-lg">ته‌دیگ · مدیریت</span>
-              <span className="text-caption text-text-secondary">فضای مدیریت · {today}</span>
+              <Menu className="size-5" strokeWidth={2} />
+            </button>
+            <span className="text-title-md text-primary">{pageTitle}</span>
+          </div>
+        </header>
+
+        <header className="hidden h-16 shrink-0 border-b border-border-default bg-background lg:block">
+          <div className="mx-auto flex h-full w-full max-w-[1180px] items-center justify-between px-8">
+            <span className="text-title-md text-primary">{pageTitle}</span>
+
+            <div className="flex items-center gap-8">
+              <time className="text-caption font-normal text-text-secondary">{todayDate}</time>
+
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-start">
+                  <span className="text-title-md text-primary">ته‌دیگ · مدیریت</span>
+                  <span className="text-body-md text-text-secondary">فضای مدیریت</span>
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="grid size-10 shrink-0 place-items-center rounded-md bg-primary text-title-md font-bold text-on-primary"
+                >
+                  ت
+                </span>
+              </div>
             </div>
           </div>
         </header>
+
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <div className="mx-auto w-full max-w-[1116px]">
+            <Outlet />
+          </div>
         </main>
       </div>
       <div
@@ -244,6 +361,7 @@ export default function AdminLayout() {
           <div className="flex h-full flex-col gap-1 p-4">
             <BrandRow onClose={() => setMenuOpen(false)} />
             <NavList onNavigate={() => setMenuOpen(false)} />
+            <AdminSessionAction onNavigate={() => setMenuOpen(false)} />
           </div>
         </aside>
       </div>

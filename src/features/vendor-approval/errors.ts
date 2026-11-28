@@ -1,15 +1,39 @@
 import { getErrorMessage } from '@/features/auth/utils'
 import { ApiError } from '@/lib/api/client'
 
-export type DescribedError = { message: string; unauthorized: boolean; notFound: boolean }
+export type DescribedError = {
+  message: string
+  unauthorized: boolean
+  forbidden: boolean
+  notFound: boolean
+}
 
-/** User-facing message plus the backend request id, which support can look up in server logs. */
-export function describeError(caught: unknown, fallback: string): DescribedError {
-  const message = getErrorMessage(caught, fallback)
+export function describeError(
+  caught: unknown,
+  fallback: string,
+): DescribedError {
   const apiError = caught instanceof ApiError ? caught : null
+
+  const unauthorized = apiError?.status === 401
+  const forbidden = apiError?.status === 403
+  const notFound = apiError?.status === 404
+
+  let message = getErrorMessage(caught, fallback)
+
+  if (unauthorized) {
+    message = 'برای مشاهده این بخش، ابتدا با حساب مدیر وارد شوید.'
+  } else if (forbidden) {
+    message = 'حساب کاربری فعلی دسترسی مدیریت ندارد.'
+  }
+
+  if (apiError?.requestId) {
+    message = `${message} (کد پیگیری: ${apiError.requestId})`
+  }
+
   return {
-    message: apiError?.requestId ? `${message} (کد پیگیری: ${apiError.requestId})` : message,
-    unauthorized: apiError?.status === 401,
-    notFound: apiError?.status === 404,
+    message,
+    unauthorized,
+    forbidden,
+    notFound,
   }
 }

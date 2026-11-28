@@ -19,6 +19,7 @@ import VendorFinancePage from '@/pages/vendor/FinancePage'
 import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
+import AdminLoginPage from '@/pages/admin/LoginPage'
 import VendorListPage from '@/pages/admin/VendorListPage'
 import VendorReviewPage from '@/pages/admin/VendorReviewPage'
 import MapPage from '@/pages/MapPage'
@@ -66,6 +67,7 @@ export const router = createBrowserRouter([
     element: <AuthLayout />,
     children: [
       { path: '/login', element: <LoginPage /> },
+      { path: '/admin/login', element: <AdminLoginPage /> },
       { path: '/vendor/login', element: <VendorLoginPage /> },
     ],
   },
@@ -79,8 +81,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'dashboard',
-        loader: ({ request }) =>
-          replace(`/vendor${new URL(request.url).search}`),
+        loader: ({ request }) => replace(`/vendor${new URL(request.url).search}`),
       },
       {
         path: 'products',
@@ -150,6 +151,10 @@ export const router = createBrowserRouter([
         index: true,
         element: <AdminDashboardPage />,
         handle: { title: 'داشبورد' },
+      },
+      {
+        path: 'dashboard',
+        loader: ({ request }) => replace(`/admin${new URL(request.url).search}`),
       },
       {
         path: 'store-requests',

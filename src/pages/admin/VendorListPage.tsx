@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { SearchField } from '@/components/ui/SearchField'
@@ -111,6 +111,7 @@ function SkeletonRows() {
 
 export default function VendorListPage({ mode }: { mode: VendorListMode }) {
   const config = MODES[mode]
+  const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const filterValue = config.filters.some((f) => f.value === searchParams.get('status'))
     ? (searchParams.get('status') as string)
@@ -143,15 +144,13 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
     [setSearchParams],
   )
 
-  // Debounce typing into the URL so every keystroke does not hit the API.
   useEffect(() => {
     if (searchInput.trim() === search) return
     const timer = setTimeout(() => updateParams({ q: searchInput.trim() || null, page: null }), 350)
     return () => clearTimeout(timer)
   }, [searchInput, search, updateParams])
 
-  // State is only set from the request callbacks; loading is derived from the request key.
-  const requestKey = `${filter.value}|${search}|${page}|${reloadCount}`
+  const requestKey = `${mode}|${filter.value}|${search}|${page}|${reloadCount}`
   useEffect(() => {
     let active = true
     vendorApprovalApi
@@ -188,6 +187,7 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
   const filterSummary = [search, filterValue !== 'all' ? filter.label : null]
     .filter(Boolean)
     .join(' · ')
+  const loginReturnTo = encodeURIComponent(location.pathname + location.search)
 
   return (
     <div className="mx-auto flex w-full max-w-260 flex-col gap-4">
@@ -249,10 +249,18 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
           tone="error"
           title={mode === 'requests' ? 'درخواست‌ها بارگذاری نشد' : 'فروشگاه‌ها بارگذاری نشد'}
           action={
-            error.unauthorized ? (
-              <Link to="/login" className={linkButtonClass('primary', 'w-full')}>
-                ورود دوباره
-              </Link>
+            error.unauthorized || error.forbidden ? (
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Link
+                  to={`/admin/login?returnTo=${loginReturnTo}`}
+                  className={linkButtonClass('primary', 'w-full')}
+                >
+                  ورود به پنل مدیریت
+                </Link>
+                <Button variant="secondary" fullWidth size="md" onClick={load}>
+                  تلاش دوباره
+                </Button>
+              </div>
             ) : (
               <Button fullWidth size="md" onClick={load}>
                 تلاش دوباره
@@ -295,7 +303,6 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
           >
             <h1 className="mb-4 text-title-md">{config.heading}</h1>
 
-            {/* Desktop table */}
             <table className="hidden w-full text-start lg:table">
               <thead>
                 <tr className="border-b border-border-default text-caption text-text-secondary">
@@ -340,7 +347,7 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
                       </td>
                       <td className="w-48 py-4">
                         <Link
-                          to={`${config.basePath}/${vendor.id}`}
+                          to={`${config.basePath}/${encodeURIComponent(vendor.id)}`}
                           state={{ vendor }}
                           aria-label={`${action.label} ${vendor.storeName}`}
                           className={linkButtonClass(
@@ -357,7 +364,6 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
               </tbody>
             </table>
 
-            {/* Mobile cards */}
             <ul className="flex flex-col gap-3 lg:hidden">
               {data.items.map((vendor) => {
                 const action = actionFor(vendor, mode)
@@ -382,7 +388,7 @@ export default function VendorListPage({ mode }: { mode: VendorListMode }) {
                       ))}
                     </dl>
                     <Link
-                      to={`${config.basePath}/${vendor.id}`}
+                      to={`${config.basePath}/${encodeURIComponent(vendor.id)}`}
                       state={{ vendor }}
                       className={linkButtonClass(action.primary ? 'primary' : 'outline', 'w-full')}
                     >
