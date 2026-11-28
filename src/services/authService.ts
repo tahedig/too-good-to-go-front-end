@@ -1,29 +1,40 @@
-import type {
-  VerifyOtpPayload,
-  LoginResponse,
-} from "../types/authTypes";
+import { ApiError, apiRequest } from '@/lib/api/client'
+import type { LoginResponse, VerifyOtpPayload } from '@/types/authTypes'
+import { tokenStorage } from './tokenStorage'
 
-import { postData } from "./services";
-import { tokenStorage } from "./tokenStorage";
-
-export const verifyOtpService = async (
-  payload: VerifyOtpPayload
-): Promise<LoginResponse> => {
-
-  const response = await postData<LoginResponse>({
-    endPoint: "/auth/otp/verify",
-    data: payload,
-  });
-  if (!response.verified || !response.access_token) {
-    throw new Error("OTP verification failed");
+export async function verifyOtpService(payload: VerifyOtpPayload): Promise<LoginResponse> {
+  const response = await apiRequest<LoginResponse>('/auth/otp/verify', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  if (!response?.verified || !response.access_token) {
+    throw new ApiError('ورود تأیید نشد. دوباره تلاش کنید.', 401)
   }
 
-  // Save the raw access token
-  tokenStorage.setToken(response.access_token);
+  tokenStorage.setToken(response.access_token)
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.setItem(
+        'auth_session',
+        JSON.stringify({
+          accessToken: response.access_token,
+          user: response.user,
+        }),
+      )
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
+  }
+  return response
+}
 
-  return response;
-};
-
-export const logoutService = (): void => {
-  tokenStorage.clearToken();
-};
+export function logoutService(): void {
+  tokenStorage.clearToken()
+  if (typeof sessionStorage !== 'undefined') {
+    try {
+      sessionStorage.removeItem('auth_session')
+    } catch {
+      // Ignore storage errors in restricted environments.
+    }
+  }
+}
