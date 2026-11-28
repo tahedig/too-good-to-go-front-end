@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { InlineAlert } from '@/components/ui/InlineAlert'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { env } from '@/config/env'
+import { ApiError } from '@/lib/api/client'
 import { formatDateTime, formatNumber } from '@/lib/format'
 import { storeService } from '@/services/storeService'
 import type { VendorStore } from '@/types/storeTypes'
@@ -120,7 +121,8 @@ function StoreRequest({ store }: { store: VendorStore }) {
 
 export default function StoresPage() {
   const [stores, setStores] = useState<VendorStore[] | null>(null)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<{ status: number | null; message: string } | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const location = useLocation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -132,24 +134,60 @@ export default function StoresPage() {
     const controller = new AbortController()
     storeService
       .list(controller.signal)
-      .then(setStores)
+      .then((items) => {
+        if (!controller.signal.aborted) {
+          setStores(items)
+          setError(null)
+        }
+      })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted)
-          setError(reason instanceof Error ? reason.message : 'دریافت فروشگاه‌ها ممکن نیست.')
+          setError({
+            status: reason instanceof ApiError ? reason.status : null,
+            message: reason instanceof Error ? reason.message : 'دریافت فروشگاه‌ها ممکن نیست.',
+          })
       })
     return () => controller.abort()
-  }, [])
+  }, [reloadKey])
+
+  function retryLoad() {
+    setStores(null)
+    setError(null)
+    setReloadKey((key) => key + 1)
+  }
 
   useEffect(() => {
     if (location.state) window.history.replaceState({ ...window.history.state, usr: null }, '')
   }, [location.state])
 
-  if (error)
+  if (error) {
+    const authError = error.status === 401 || error.status === 403
     return (
       <div className="p-4 lg:p-12">
-        <InlineAlert tone="error">{error}</InlineAlert>
+        <div className="flex flex-col items-start gap-4">
+          <InlineAlert tone={authError ? 'warning' : 'error'}>
+            {error.status === 403
+              ? 'این بخش فقط برای حساب فروشنده در دسترس است.'
+              : error.status === 401
+                ? 'برای مشاهدهٔ فروشگاه‌ها وارد حساب فروشنده شوید.'
+                : error.message}
+          </InlineAlert>
+          <Button
+            variant="secondary"
+            onClick={() =>
+              authError
+                ? navigate(
+                    `/vendor/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`,
+                  )
+                : retryLoad()
+            }
+          >
+            {authError ? 'ورود با حساب فروشنده' : 'تلاش دوباره'}
+          </Button>
+        </div>
       </div>
     )
+  }
   if (!stores)
     return (
       <p role="status" className="p-6">

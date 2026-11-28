@@ -14,12 +14,15 @@ import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import AddStorePage from '@/pages/vendor/AddStorePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
+import VendorOrdersPage from '@/pages/vendor/OrdersPage'
+import VendorReservationsPage from '@/pages/vendor/ReservationsPage'
 import VendorAccountPage from '@/pages/vendor/AccountPage'
 import VendorLoginPage from '@/pages/vendor/LoginPage'
 import VendorFinancePage from '@/pages/vendor/FinancePage'
 import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
+import AdminLoginPage from '@/pages/admin/LoginPage'
 import VendorListPage from '@/pages/admin/VendorListPage'
 import VendorReviewPage from '@/pages/admin/VendorReviewPage'
 import MapPage from '@/pages/MapPage'
@@ -28,6 +31,7 @@ import OfferCollectionPage from '@/pages/OfferCollectionPage'
 import OrdersPage from '@/pages/OrdersPage'
 import PublicStorePage from '@/pages/PublicStorePage'
 import ProfilePage from '@/pages/ProfilePage'
+import HelpSupportPage from '@/pages/HelpSupportPage'
 import PersonalInfoPage from '@/pages/PersonalInfoPage'
 import ProductDetailsPage from '@/pages/ProductDetailsPage'
 import CheckoutPage from '@/pages/CheckoutPage'
@@ -61,12 +65,14 @@ export const router = createBrowserRouter([
       { path: 'stores/:storeId', element: <PublicStorePage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'profile/personal', element: <PersonalInfoPage /> },
+      { path: 'profile/support', element: <HelpSupportPage /> },
     ],
   },
   {
     element: <AuthLayout />,
     children: [
       { path: '/login', element: <LoginPage /> },
+      { path: '/admin/login', element: <AdminLoginPage /> },
       { path: '/vendor/login', element: <VendorLoginPage /> },
     ],
   },
@@ -94,18 +100,11 @@ export const router = createBrowserRouter([
         path: 'products/:id/edit',
         element: <ProductEditorPage />,
       },
-      {
-        path: 'orders',
-        element: <ReservationsPages key="orders" view="orders" />,
-      },
-      {
-        path: 'orders/daily',
-        element: <ReservationsPages key="daily" view="daily" />,
-      },
-      {
-        path: 'orders/reservations',
-        element: <ReservationsPages key="reservations" />,
-      },
+      { path: 'orders', element: <VendorOrdersPage /> },
+      { path: 'orders/daily', element: <ReservationsPages key="daily" view="daily" /> },
+      { path: 'orders/reservations', element: <VendorReservationsPage /> },
+      { path: 'orders/list', element: <VendorOrdersPage /> },
+      { path: 'reservations', element: <VendorReservationsPage /> },
       {
         path: 'stores',
         element: <VendorStoresPage />,
@@ -150,6 +149,10 @@ export const router = createBrowserRouter([
         index: true,
         element: <AdminDashboardPage />,
         handle: { title: 'داشبورد' },
+      },
+      {
+        path: 'dashboard',
+        loader: ({ request }) => replace(`/admin${new URL(request.url).search}`),
       },
       {
         path: 'store-requests',

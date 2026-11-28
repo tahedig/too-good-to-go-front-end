@@ -62,17 +62,6 @@ function DiscoveryHeader() {
           </Link>
         </div>
 
-        <nav aria-label="ناوبری اصلی" className="hidden items-center gap-6 sm:flex lg:hidden">
-          <a href="#favorites" className="text-body-md text-text-secondary hover:text-primary">
-            ذخیره‌ها
-          </a>
-          <Link to="/orders" className="text-body-md text-text-secondary hover:text-primary">
-            سفارش‌ها
-          </Link>
-          <a href="#discover" className="text-body-md text-primary">
-            اکتشاف
-          </a>
-        </nav>
 
         <Link to="/" className="text-title-xl font-bold text-primary">
           ته‌دیگ

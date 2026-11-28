@@ -182,6 +182,7 @@ export default function StoreProfilePage() {
     form?: VendorStoreForm
     originalImages?: VendorStoreImage[]
     error?: string
+    errorStatus?: number | null
   } | null>(null)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -267,7 +268,7 @@ export default function StoreProfilePage() {
       </p>
     )
 
-  if (!profile?.store || !profile.form)
+  if (!profile?.store || !profile.form) {
     return (
       <div className="flex flex-col gap-4 p-4 lg:p-8">
         <InlineAlert tone="error">
@@ -278,6 +279,7 @@ export default function StoreProfilePage() {
         </Link>
       </div>
     )
+  }
 
   const { store, form } = profile
   const source = profile.source ?? 'request'
