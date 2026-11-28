@@ -13,7 +13,10 @@ import VendorStoresPage from '@/pages/vendor/StoresPage'
 import VendorStoreProfilePage from '@/pages/vendor/StoreProfilePage'
 import ProductEditorPage from '@/pages/vendor/ProductEditorPage'
 import ReservationsPages from '@/pages/vendor/ReservationsPages'
-import VendorComingSoonPage from '@/pages/vendor/ComingSoonPage'
+import VendorAccountPage from '@/pages/vendor/AccountPage'
+import VendorLoginPage from '@/pages/vendor/LoginPage'
+import VendorFinancePage from '@/pages/vendor/FinancePage'
+import { FINANCE_ITEMS } from '@/features/vendor-finance/navigation'
 import AdminDashboardPage from '@/pages/admin/DashboardPage'
 import AdminComingSoonPage from '@/pages/admin/ComingSoonPage'
 import AdminLoginPage from '@/pages/admin/LoginPage'
@@ -65,6 +68,7 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/admin/login', element: <AdminLoginPage /> },
+      { path: '/vendor/login', element: <VendorLoginPage /> },
     ],
   },
   {
@@ -74,6 +78,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <VendorDashboardPage />,
+      },
+      {
+        path: 'dashboard',
+        loader: ({ request }) => replace(`/vendor${new URL(request.url).search}`),
       },
       {
         path: 'products',
@@ -113,22 +121,21 @@ export const router = createBrowserRouter([
       },
       {
         path: 'finance',
-        element: <VendorComingSoonPage title="مالی" />,
-      },
-      {
-        path: 'finance/:section',
-        element: <VendorComingSoonPage title="مالی" />,
-      },
-      {
-        element: <VendorComingSoonPage title="فروشگاه‌ها" />,
-      },
-      {
-        path: 'finance',
-        element: <VendorComingSoonPage title="مالی" />,
+        children: [
+          {
+            index: true,
+            loader: ({ request }) =>
+              replace(`/vendor/finance/overview${new URL(request.url).search}`),
+          },
+          ...FINANCE_ITEMS.map(([section]) => ({
+            path: section,
+            element: <VendorFinancePage section={section} />,
+          })),
+        ],
       },
       {
         path: 'account',
-        element: <VendorComingSoonPage title="حساب فروشنده" />,
+        element: <VendorAccountPage />,
       },
     ],
   },
@@ -147,8 +154,7 @@ export const router = createBrowserRouter([
       },
       {
         path: 'dashboard',
-        loader: ({ request }) =>
-          replace(`/admin${new URL(request.url).search}`),
+        loader: ({ request }) => replace(`/admin${new URL(request.url).search}`),
       },
       {
         path: 'store-requests',
